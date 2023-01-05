@@ -241,6 +241,7 @@ module Engine
 
       ALLOW_TRAIN_BUY_FROM_OTHERS = true # Allows train buy from other corporations
       ALLOW_TRAIN_BUY_FROM_OTHER_PLAYERS = true # Allows train buy from other player's corporations
+      ALLOW_OBSOLETE_TRAIN_BUY = false # Allows obsolete trains to be bought from other corporations
 
       # Default tile lay, one tile either upgrade or lay at zero cost
       # allows multiple lays, value must be either true, false or :not_if_upgraded
@@ -1474,6 +1475,18 @@ module Engine
 
       def token_graph_for_entity(_entity)
         @graph
+      end
+
+      def clear_graph
+        @graph.clear
+      end
+
+      def clear_graph_for_entity(entity)
+        graph_for_entity(entity).clear
+      end
+
+      def clear_token_graph_for_entity(entity)
+        token_graph_for_entity(entity).clear
       end
 
       def graph_skip_paths(_entity)
