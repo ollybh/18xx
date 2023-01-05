@@ -85,7 +85,7 @@ module Engine
             Engine::Step::BuyCompany,
             G1867::Step::RedeemShares,
             G18BF::Step::SpecialTrack,
-            G1867::Step::Track,
+            G18BF::Step::Track,
             G1867::Step::Token,
             Engine::Step::Route,
             G1867::Step::Dividend,
