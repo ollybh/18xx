@@ -406,14 +406,27 @@ module Engine
           return 0 if entity.minor? && home_hex?(entity, hex)
 
           cost = tile.upgrades[0].cost
-          if metre_gauge_upgrade(tile, hex.tile)
-            discount = cost / 2
-            @log << "#{entity.name} receives a #{format_currency(discount)} " \
-                    'terrain discount for metre gauge track'
-            cost - discount
-          else
-            cost
-          end
+          return cost unless metre_gauge_upgrade(tile, hex.tile)
+
+          discount = cost / 2
+          log_cost_discount(entity, nil, discount, :terrain)
+          cost - discount
+        end
+
+        def tile_cost_with_discount(_tile, _hex, entity, _spender, cost)
+          return cost if cost.zero? || !@round.gauges_added.include?([:narrow])
+
+          discount = 10
+          log_cost_discount(entity, nil, discount, :tile_lay)
+          cost - discount
+        end
+
+        def log_cost_discount(entity, _ability, discount, reason = :terrain)
+          return unless discount.positive?
+
+          @log << "#{entity.name} receives a #{format_currency(discount)} " \
+                  "#{reason == :terrain ? 'terrain' : 'second tile'} " \
+                  'discount for metre gauge track'
         end
 
         def route_distance_str(route)
@@ -471,9 +484,9 @@ module Engine
         end
 
         def rust_phase4_trains!(purchased_train)
-          trains.select { |train| %i[6H 3M].include?(train.name) }
+          trains.select { |train| %w[6H 3M].include?(train.name) }
                 .each { |train| train.rusts_on = purchased_train.sym }
-          rust_trains!(purchased_train)
+          rust_trains!(purchased_train, purchased_train.owner)
         end
 
         def convert!(corporation)
@@ -516,7 +529,8 @@ module Engine
         def unstarted_corporation_summary
           # Don't show minors in the list of bank-owned entities, their
           # associated private company will be listed.
-          ['Public companies', @corporations.reject(&:ipoed)]
+          unstarted = @corporations.reject(&:ipoed)
+          [unstarted.size, unstarted]
         end
 
         def unowned_purchasable_companies(_entity)
@@ -635,6 +649,12 @@ module Engine
           # Don't show abilities buttons in a stock round for the companies
           # owned by the player.
           false
+        end
+
+        def operated_operators
+          # Don't include minors in the route history selector as they do not
+          # have any routes to show.
+          @corporations.select(&:operated?)
         end
       end
     end
