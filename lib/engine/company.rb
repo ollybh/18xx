@@ -81,5 +81,9 @@ module Engine
     def inspect
       "<#{self.class.name}: #{id}>"
     end
+
+    def max_price(_buyer = nil)
+      @max_price
+    end
   end
 end
