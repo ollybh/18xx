@@ -14,7 +14,7 @@ module Engine
           end
 
           def london_available?(entity)
-            @london_zoomed.any? { |hex| available_hex(entity, hex)}
+            @london_zoomed.any? { |hex| available_hex(entity, hex) }
           end
 
           def lay_tile(action, extra_cost: 0, entity: nil, spender: nil)
