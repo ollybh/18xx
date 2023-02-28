@@ -328,7 +328,7 @@ module Engine
         end
 
         def bonus_mine(train, stops)
-          return 0 if stops.none?
+          return 0 if stops.empty?
 
           revenue_bonus(:mine, train)
         end
@@ -338,14 +338,14 @@ module Engine
           # The border bonus is payable if:
           # - At least one of the route's stops is in Scotland.
           # - At least one stop is outside Scotland.
-          return 0 if !hexes.intersect?(@scotland) || hexes.difference(@scotland).none?
+          return 0 if !hexes.intersect?(@scotland) || hexes.difference(@scotland).empty?
 
           revenue_bonus(:scotland, train)
         end
 
         def bonus_welsh_border(train, stops)
           hexes = stops.map(&:hex)
-          return 0 if !hexes.intersect?(@wales) || hexes.difference(@wales).none?
+          return 0 if !hexes.intersect?(@wales) || hexes.difference(@wales).empty?
 
           revenue_bonus(:wales, train)
         end
