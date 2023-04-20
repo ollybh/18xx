@@ -279,6 +279,9 @@ module Engine
           london = @hexes.find { |hex| hex.coordinates == LONDON_HEX_CENTRE }
           london.neighbors.clear
           @london_zoomed << london
+
+          # Keep references to the London cities for managing routes.
+          @london_cities = @london_zoomed.flat_map { |hex| hex.tile.cities }
         end
 
         # Keeps the zoomed London hex colour and city revenue in sync with the
