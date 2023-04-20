@@ -995,7 +995,7 @@ module Engine
         end
 
         def init_stock_market
-          StockMarket.new(self.class::MARKET, [], zigzag: true)
+          StockMarket.new(self.class::MARKET, [], zigzag: true, ledge_movement: true)
         end
 
         def init_round
@@ -1798,7 +1798,7 @@ module Engine
           bundle = ShareBundle.new(shares)
           @share_pool.sell_shares(bundle)
           old_price = entity.share_price
-          num_shares.times { @stock_market.move_left(entity) }
+          num_shares.times { @stock_market.move_down(entity) }
           log_share_price(entity, old_price)
           check_bankruptcy!(entity)
         end
