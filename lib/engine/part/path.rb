@@ -34,22 +34,22 @@ module Engine
                       else
                         a_lanes
                       end
-            Path.new(a, b,
-                     terminal: terminal,
-                     lanes: [a_lanes, b_lanes],
-                     track: track,
-                     ignore: ignore,
-                     ignore_gauge_walk: ignore_gauge_walk,
-                     ignore_gauge_compare: ignore_gauge_compare)
+            new(a, b,
+                terminal: terminal,
+                lanes: [a_lanes, b_lanes],
+                track: track,
+                ignore: ignore,
+                ignore_gauge_walk: ignore_gauge_walk,
+                ignore_gauge_compare: ignore_gauge_compare)
           end
         else
-          Path.new(a, b,
-                   terminal: terminal,
-                   lanes: [decode_lane_spec(a_lane), decode_lane_spec(b_lane)],
-                   track: track,
-                   ignore: ignore,
-                   ignore_gauge_walk: ignore_gauge_walk,
-                   ignore_gauge_compare: ignore_gauge_compare)
+          new(a, b,
+              terminal: terminal,
+              lanes: [decode_lane_spec(a_lane), decode_lane_spec(b_lane)],
+              track: track,
+              ignore: ignore,
+              ignore_gauge_walk: ignore_gauge_walk,
+              ignore_gauge_compare: ignore_gauge_compare)
         end
       end
 
@@ -194,6 +194,10 @@ module Engine
 
       def path?
         true
+      end
+
+      def shadow?
+        false
       end
 
       def node?

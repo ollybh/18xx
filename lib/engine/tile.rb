@@ -15,7 +15,7 @@ module Engine
     include Config::Tile
 
     attr_accessor :blocks_lay, :hex, :icons, :index, :legal_rotations, :location_name,
-                  :name, :opposite, :reservations, :upgrades, :color, :future_label
+                  :name, :opposite, :reservations, :upgrades, :color, :future_label, :shadow_paths
     attr_reader :borders, :cities, :edges, :junction, :nodes, :labels, :parts, :preprinted, :rotation, :stops, :towns,
                 :offboards, :blockers, :city_towns, :unlimited, :stubs, :partitions, :id, :frame, :stripes, :hidden,
                 :hidden_blockers
@@ -85,7 +85,7 @@ module Engine
 
     def self.part(type, params, cache)
       case type
-      when 'path'
+      when 'path', 'shadow-path'
         params = params.to_h do |k, v|
           case k
           when 'terminal', 'a_lane', 'b_lane', 'ignore'
@@ -104,7 +104,8 @@ module Engine
           end
         end
 
-        Part::Path.make_lanes(params['a'], params['b'], terminal: params['terminal'],
+        path_class = type == 'path' ? Part::Path : Part::ShadowPath
+        path_class.make_lanes(params['a'], params['b'], terminal: params['terminal'],
                                                         lanes: params['lanes'], a_lane: params['a_lane'],
                                                         b_lane: params['b_lane'],
                                                         track: params['track'],
@@ -210,6 +211,7 @@ module Engine
       @rotation = rotation
       @cities = []
       @paths = []
+      @shadow_paths = []
       @stubs = []
       @partitions = []
       @towns = []
@@ -602,7 +604,11 @@ module Engine
         elsif part.label?
           @labels << part
         elsif part.path?
-          @paths << part
+          if part.shadow?
+            @shadow_paths << part
+          else
+            @paths << part
+          end
         elsif part.town?
           @towns << part
           @city_towns << part
