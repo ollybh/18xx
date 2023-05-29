@@ -146,6 +146,7 @@ module Engine
         repar: :gray,
         ignore_one_sale: :green,
         safe_par: :white,
+        max_price: :purple,
       }.freeze
 
       MIN_BID_INCREMENT = 5
@@ -215,6 +216,7 @@ module Engine
       PHASES = [].freeze
 
       LOCATION_NAMES = {}.freeze
+      HEXES_HIDE_LOCATION_NAMES = {}.freeze
 
       TRACK_RESTRICTION = :semi_restrictive
 
@@ -929,7 +931,7 @@ module Engine
       end
 
       def shares
-        @corporations.flat_map(&:shares)
+        @corporations.flat_map(&:shares) + @players.flat_map(&:shares) + @share_pool.shares
       end
 
       def share_prices
@@ -1206,6 +1208,12 @@ module Engine
           steps
         end
       end
+
+      # A hook to allow a game to request a consent check for a share exchange
+      # or purchase. If consent is needed then this method should return the
+      # player that needs to consent to this action. Returning nil or false
+      # means that consent is not required.
+      def consenter_for_buy_shares(_entity, _bundle); end
 
       def can_run_route?(entity)
         graph_for_entity(entity).route_info(entity)&.dig(:route_available)
@@ -2021,7 +2029,7 @@ module Engine
         nil
       end
 
-      def hex_blocked_by_ability?(_entity, ability, hex)
+      def hex_blocked_by_ability?(_entity, ability, hex, _tile = nil)
         ability.hexes.include?(hex.id)
       end
 
@@ -2091,6 +2099,15 @@ module Engine
 
       def update_tile_lists(tile, old_tile)
         add_extra_tile(tile) if tile.unlimited
+
+        # TileSelector creates "fake" A1 hexes that are attached to the tiles,
+        # so here we need to check that tile.hex actually belongs to the Game
+        # object
+        if (hex = tile.hex) && (hex == hex_by_id(hex.id))
+          raise GameError,
+                "Cannot lay tile #{tile.id}; it is already on hex #{tile.hex.id}"
+        end
+
         @tiles.delete(tile)
         @tiles << old_tile unless old_tile.preprinted
       end
@@ -2256,16 +2273,16 @@ module Engine
       end
 
       def init_hexes(companies, corporations)
-        blockers = {}
+        blockers = Hash.new { |h, k| h[k] = [] }
         (companies + minors + corporations).each do |company|
           abilities(company, :blocks_hexes) do |ability|
             ability.hexes.each do |hex|
-              blockers[hex] = company
+              blockers[hex] << [company, ability.hidden?]
             end
           end
           abilities(company, :blocks_hexes_consent) do |ability|
             ability.hexes.each do |hex|
-              blockers[hex] = company
+              blockers[hex] << [company, ability.hidden?]
             end
           end
         end
@@ -2310,8 +2327,8 @@ module Engine
                   Tile.from_code(coord, color, tile_string, preprinted: true, index: index)
                 end
 
-              if (blocker = blockers[coord])
-                tile.add_blocker!(blocker)
+              blockers[coord].each do |blocker, hidden|
+                tile.add_blocker!(blocker, hidden: hidden)
               end
 
               tile.partitions.each do |partition|
@@ -2328,7 +2345,8 @@ module Engine
               # name the location (city/town)
               location_name = location_name(coord)
 
-              Hex.new(coord, layout: layout, axes: axes, tile: tile, location_name: location_name)
+              Hex.new(coord, layout: layout, axes: axes, tile: tile, location_name: location_name,
+                             hide_location_name: self.class::HEXES_HIDE_LOCATION_NAMES[coord])
             end
           end
         end.flatten.compact
@@ -2911,10 +2929,8 @@ module Engine
       end
 
       def ability_blocking_step
-        supported_steps = [Step::Tracker, Step::Token, Step::BuyTrain]
+        supported_steps = [Step::Tracker, Step::Token, Step::Route, Step::BuyTrain]
         @round.steps.find do |step|
-          # Currently, abilities only care about Tracker, Token and BuyTrain steps
-          # The is_a? check can be expanded to include more classes/modules when needed
           supported_steps.any? { |s| step.is_a?(s) } && !step.passed? && step.active? && step.blocks?
         end
       end

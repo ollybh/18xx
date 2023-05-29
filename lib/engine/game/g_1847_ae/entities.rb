@@ -7,14 +7,185 @@ module Engine
       module Entities
         COMPANIES = [
           {
+            name: 'Pfälzische Ludwigsbahn presidency',
+            value: 172,
+            revenue: 0,
+            desc: 'Comes with the President\'s certificate of Pfälzische Ludwigsbahn (L). '\
+                  'Closes immediately.',
+            sym: 'PLP',
+            abilities: [{ type: 'shares', shares: 'L_0' }],
+          },
+          {
+            name: 'Saarbrücker Private Railway',
+            value: 190,
+            revenue: 15,
+            desc: 'Comes with the president\'s certificate of Saarbrücker Eisenbahn (Saar). '\
+                  'May not be sold to a corporation. '\
+                  'Closes when Saar buys its first train.',
+            sym: 'SPR',
+            abilities: [{ type: 'no_buy' },
+                        { type: 'shares', shares: 'Saar_0' },
+                        { type: 'close', when: 'bought_train', corporation: 'Saar' }],
+          },
+          {
+            name: 'Locomotive Firm Krauss & Co.',
+            value: 130,
+            revenue: 0,
+            desc: 'Every OR, first time a train is purchased from supply, this pays revenue '\
+                  'equal to 10% of the train\'s cost and the stock price marker is moved right. '\
+                  'If no train is purchased from supply in OR, no revenue is paid and the stock '\
+                  'price marker is moved left. '\
+                  'May not be sold to a corporation. '\
+                  'May be sold to or purchased from the market. '\
+                  'Never closes.',
+            sym: 'LFKC',
+            abilities: [{ type: 'no_buy' }],
+          },
+          {
+            name: 'Rammelsbach',
+            value: 150,
+            revenue: 30,
+            min_price: 100,
+            max_price: 200,
+            desc: 'Revenue increases to 50M when a tile is laid in D9. '\
+                  'May be sold to a corporation for 100 to 200M. '\
+                  'Never closes.',
+            sym: 'R',
+          },
+          {
+            name: 'Königsbach',
+            value: 110,
+            revenue: 5,
+            min_price: 15,
+            max_price: 40,
+            desc: 'Owning corporation may close this company to place a yellow tile on '\
+                  'a mountain hex for free, in addition to normal track action. '\
+                  'Otherwise closes in Phase 6E. '\
+                  'May be sold to a corporation for 15 to 40M. '\
+                  'Comes with a share of Pfälzische Ludwigsbahn (L).',
+            sym: 'K',
+            abilities: [
+              { type: 'close', on_phase: '6E' },
+              { type: 'shares', shares: 'L_1' },
+              {
+                type: 'tile_lay',
+                hexes: %w[B4
+                          C5
+                          D4
+                          D8
+                          D10
+                          D12
+                          D14
+                          D20
+                          E3
+                          E5
+                          E7
+                          E9
+                          E11
+                          E15
+                          F4
+                          F10
+                          F14
+                          G11
+                          G13
+                          I15],
+                tiles: %w[1 3 4 7 8 9 55 56 58 69],
+                free: true,
+                when: 'track',
+                owner_type: 'corporation',
+                reachable: true,
+                count: 1,
+                consume_tile_lay: false,
+                closed_when_used_up: true,
+                special: false,
+              },
+            ],
+          },
+          {
+            name: 'Hochstätten',
+            value: 160,
+            revenue: 15,
+            min_price: 40,
+            max_price: 120,
+            desc: 'Owning corporation may close this company to place a yellow tile on '\
+                  'a mountain hex for free, in addition to normal track action. '\
+                  'Otherwise closes in Phase 6E. '\
+                  'May be sold to a corporation for 40 to 120M. '\
+                  'Comes with a share of Pfälzische Ludwigsbahn (L).',
+            sym: 'H',
+            abilities: [
+              { type: 'close', on_phase: '6E' },
+              { type: 'shares', shares: 'L_2' },
+              {
+                type: 'tile_lay',
+                hexes: %w[B4
+                          C5
+                          D4
+                          D8
+                          D10
+                          D12
+                          D14
+                          D20
+                          E3
+                          E5
+                          E7
+                          E9
+                          E11
+                          E15
+                          F4
+                          F10
+                          F14
+                          G11
+                          G13
+                          I15],
+                tiles: %w[1 3 4 7 8 9 55 56 58 69],
+                free: true,
+                when: 'track',
+                owner_type: 'corporation',
+                reachable: true,
+                count: 1,
+                consume_tile_lay: false,
+                closed_when_used_up: true,
+                special: false,
+              },
+            ],
+          },
+          {
+            name: 'Weidenthal',
+            value: 135,
+            revenue: 10,
+            min_price: 25,
+            max_price: 75,
+            desc: 'Owning corporation may close this company to place a token for half the price. '\
+                  'Otherwise closes in Phase 6E. '\
+                  'May be sold to a corporation for 25 to 75M. '\
+                  'Comes with a share of Pfälzische Ludwigsbahn (L).',
+            sym: 'W',
+            abilities: [
+              { type: 'close', on_phase: '6E' },
+              { type: 'shares', shares: 'L_3' },
+              {
+                type: 'token',
+                owner_type: 'corporation',
+                when: 'token',
+                connected: true,
+                hexes: [],
+                discount: 0.5,
+                count: 1,
+                from_owner: true,
+                closed_when_used_up: true,
+              },
+            ],
+          },
+          {
             name: 'Main-Neckar-Railway',
             value: 90,
             revenue: 20,
             desc: 'May be exchanged for an Investor share of the Hessische Ludwigsbahn (HLB), '\
-                  'instead of buying a share, during a stock round in Phase 3+3 or later. ' \
-                  'Automatically exchanged at the beginning of the first stock round in Phase 5+5.',
+                  'instead of buying a share, during a stock round in Phase 3+3 or later. '\
+                  'Automatically exchanged at the beginning of the first stock round in Phase 5+5. '\
+                  'May not be sold to a corporation. ',
             sym: 'MNR',
-            color: nil,
             abilities: [{ type: 'no_buy' },
                         {
                           type: 'exchange',
@@ -29,10 +200,10 @@ module Engine
             value: 75,
             revenue: 15,
             desc: 'May be exchanged for an Investor share of the Saarbrücker Eisenbahn (Saar), '\
-                  'instead of buying a share, during a stock round in Phase 3+3 or later. ' \
-                  'Automatically exchanged at the beginning of the first stock round in Phase 5+5.',
+                  'instead of buying a share, during a stock round in Phase 3+3 or later. '\
+                  'Automatically exchanged at the beginning of the first stock round in Phase 5+5. '\
+                  'May not be sold to a corporation. ',
             sym: 'SCR',
-            color: nil,
             abilities: [{ type: 'no_buy' },
                         {
                           type: 'exchange',
@@ -47,10 +218,10 @@ module Engine
             value: 85,
             revenue: 20,
             desc: 'May be exchanged for an Investor share of the Saarbrücker Eisenbahn (Saar), '\
-                  'instead of buying a share, during a stock round in Phase 3+3 or later. ' \
-                  'Automatically exchanged at the beginning of the first stock round in Phase 5+5.',
+                  'instead of buying a share, during a stock round in Phase 3+3 or later. '\
+                  'Automatically exchanged at the beginning of the first stock round in Phase 5+5. '\
+                  'May not be sold to a corporation. ',
             sym: 'VIW',
-            color: nil,
             abilities: [{ type: 'no_buy' },
                         {
                           type: 'exchange',

@@ -510,7 +510,6 @@ module Engine
           'P21' => { acquire: %i[major minor], phase: 2 },
         }.freeze
 
-        PRIVATE_CLOSE_AFTER_PASS = %w[P12 P21].freeze
         PRIVATE_MAIL_CONTRACTS = %w[P6 P7].freeze
         PRIVATE_REMOVE_REVENUE = %w[P5 P6 P7 P8 P10 P17 P18 P21].freeze
         PRIVATE_PHASE_REVENUE = %w[P15 P20].freeze
@@ -539,8 +538,7 @@ module Engine
 
         UPGRADE_COST_L_TO_2 = 80
 
-        include StubsAreRestricted
-
+        attr_reader :minor_14_city_exit
         attr_accessor :bidding_token_per_player, :player_debts
 
         def bank_sort(corporations)
@@ -631,9 +629,9 @@ module Engine
         def company_bought(company, entity)
           # On acquired abilities
           on_acquired_train(company, entity) if self.class::PRIVATE_TRAINS.include?(company.id)
-          on_aqcuired_remove_revenue(company) if self.class::PRIVATE_REMOVE_REVENUE.include?(company.id)
+          on_acquired_remove_revenue(company) if self.class::PRIVATE_REMOVE_REVENUE.include?(company.id)
           on_acquired_phase_revenue(company) if self.class::PRIVATE_PHASE_REVENUE.include?(company.id)
-          on_aqcuired_double_cash(company) if self.class::COMPANY_DOUBLE_CASH == company.id
+          on_acquired_double_cash(company) if self.class::COMPANY_DOUBLE_CASH == company.id
         end
 
         def company_status_str(company)
@@ -685,6 +683,7 @@ module Engine
             trains = c.trains.count { |t| !extra_train?(t) }
             crowded = trains > train_limit(c)
             crowded |= extra_train_permanent_count(c) > 1
+            crowded |= pullman_train_count(c) > 1
             crowded
           end
         end
@@ -1087,6 +1086,7 @@ module Engine
         end
 
         def setup
+          @nothing_sold_in_sr = true
           @game_end_reason = nil
 
           # Setup the bidding token per player
@@ -1232,7 +1232,7 @@ module Engine
             return self.class::UPGRADABLE_S_YELLOW_CITY_TILE == to.name
           end
 
-          # Special case for Middleton Railway where we remove a town from a tile
+          # Special case for P2 Middleton Railway where we remove a town from a tile
           if self.class::TRACK_TOWN.include?(from.name) && self.class::TRACK_PLAIN.include?(to.name)
             return Engine::Tile::COLORS.index(to.color) == (Engine::Tile::COLORS.index(from.color) + 1)
           end
@@ -1306,21 +1306,6 @@ module Engine
           upgrade_france_to_brown
         end
 
-        def after_track_pass(entity)
-          # Special case of when we only used up one of the 2 track lays of
-          # Leicester & Swannington Railway or Humber Suspension Bridge Company
-          self.class::PRIVATE_CLOSE_AFTER_PASS.each do |company_id|
-            company = entity.companies.find { |c| c.id == company_id }
-            next unless company
-
-            count = company.all_abilities.find { |a| a.type == :tile_lay }&.count
-            next if !count || count == 2
-
-            @log << "#{company.name} closes"
-            company.close!
-          end
-        end
-
         def bank_companies(prefix)
           @companies.select do |c|
             c.id[0] == prefix && (!c.owner || c.owner == @bank) && !c.closed?
@@ -1373,15 +1358,6 @@ module Engine
 
         def bidbox_start_private
           self.class::BIDDING_BOX_START_PRIVATE
-        end
-
-        def can_gain_extra_train?(entity, train)
-          if train.name == self.class::EXTRA_TRAIN_PULLMAN
-            return false if entity.trains.any? { |t| t.name == self.class::EXTRA_TRAIN_PULLMAN }
-          elsif self.class::EXTRA_TRAIN_PERMANENTS.include?(train.name)
-            return false if entity.trains.any? { |t| self.class::EXTRA_TRAIN_PERMANENTS.include?(t.name) }
-          end
-          true
         end
 
         def calculate_destination_bonus(route)
@@ -1456,7 +1432,7 @@ module Engine
         end
 
         def company_choices_egr(company, time)
-          return {} if !company.all_abilities.empty? || time != :special_choose
+          return {} if company.all_abilities.size != 3 || time != :special_choose
 
           choices = {}
           choices['token'] = 'Receive a discount token that can be used to pay the full cost of a single '\
@@ -1567,17 +1543,9 @@ module Engine
 
         def company_made_choice_egr(company, choice, time)
           company.desc = company_choices(company, time)[choice]
-          if choice == 'token'
-            # Give the company a free tile lay.
-            ability = Engine::Ability::TileLay.new(type: 'tile_lay', tiles: [], hexes: [], owner_type: 'corporation',
-                                                   count: 1, closed_when_used_up: true, reachable: true, free: true,
-                                                   special: false, when: 'track')
-            company.add_ability(ability)
-          else
-            %w[mountain hill].each do |terrain|
-              ability = Engine::Ability::TileDiscount.new(type: 'tile_discount', discount: 20, terrain: terrain)
-              company.add_ability(ability)
-            end
+          remove_type = choice == 'token' ? :tile_discount : :tile_lay
+          company.all_abilities.dup.each do |ability|
+            company.remove_ability(ability) if ability.type == remove_type
           end
         end
 
@@ -1663,7 +1631,7 @@ module Engine
         end
 
         def exchange_tokens(entity)
-          return 0 unless entity.corporation?
+          return 0 unless entity&.corporation?
 
           ability = entity.all_abilities.find { |a| a.type == :exchange_token }
           return 0 unless ability
@@ -1681,6 +1649,14 @@ module Engine
 
         def extra_train_permanent_count(corporation)
           corporation.trains.count { |train| extra_train_permanent?(train) }
+        end
+
+        def pullman_train_count(corporation)
+          corporation.trains.count { |train| pullman_train?(train) }
+        end
+
+        def remove_discarded_train?(train)
+          extra_train_permanent?(train) || pullman_train?(train)
         end
 
         def find_corporation(company)
@@ -1726,20 +1702,16 @@ module Engine
           company.close!
         end
 
-        def on_aqcuired_double_cash(company)
+        def on_acquired_double_cash(company)
           company.revenue = self.class::COMPANY_DOUBLE_CASH_REVENUE[@phase.name.to_i]
         end
 
-        def on_aqcuired_remove_revenue(company)
+        def on_acquired_remove_revenue(company)
           company.revenue = 0
         end
 
         def on_acquired_train(company, entity)
           train = @company_trains[company.id]
-
-          unless can_gain_extra_train?(entity, train)
-            raise GameError, "Can't gain an extra #{train.name}, already have a permanent 2P, LP, or P+"
-          end
 
           buy_train(entity, train, :free)
           @log << "#{entity.name} gains a #{train.name} train"
@@ -1776,8 +1748,9 @@ module Engine
           city.place_token(entity, token, free: true, check_tokenable: false, cheater: true)
           hex.tile.icons.reject! { |icon| icon.name == "#{entity.id}_destination" }
 
-          ability = entity.all_abilities.find { |a| a.type == :destination }
-          entity.remove_ability(ability)
+          entity.all_abilities.each do |ability|
+            entity.remove_ability(ability) if ability.type == :destination
+          end
 
           @graph.clear
 
@@ -1879,6 +1852,10 @@ module Engine
           entity.id == self.class::COMPANY_EGR
         end
 
+        def must_be_on_estuary?(entity)
+          entity.id == self.class::COMPANY_GSWR
+        end
+
         def must_remove_town?(entity)
           entity.id == self.class::COMPANY_MTONR
         end
@@ -1896,6 +1873,52 @@ module Engine
           return [:bank, @round.is_a?(Engine::Round::Operating) ? :full_or : :current_or] if @bank.broken?
 
           return %i[stock_market current_or] if @stock_market.max_reached?
+        end
+
+        def preprocess_action(action)
+          case action
+          when Action::LayTile
+            if action.tile.name != 'BC'
+              action.hex.tile.blockers.each do |entity|
+                entity.all_abilities.dup.each do |ability|
+                  entity.remove_ability(ability) if ability.type == :blocks_hexes_consent
+                end
+              end
+            end
+          end
+        end
+
+        def hex_blocked_by_ability?(entity, ability, hex, tile)
+          return false if tile.name == 'BC'
+          return false unless ability.player
+          return false if entity.player == ability.player
+          return false unless ability.hexes.include?(hex.id)
+          return false if hex.tile.blockers.map(&:player).include?(entity.player)
+
+          true
+        end
+
+        def legal_tile_rotation?(entity, hex, tile)
+          rights_owners = hex.tile.blockers.map(&:owner).compact.uniq
+          return true if rights_owners.delete(acting_for_entity(entity))
+
+          rights_owners.empty? ? legal_if_stubbed?(hex, tile) : super
+        end
+
+        def legal_if_stubbed?(hex, tile)
+          hex.tile.stubs.empty? || (hex.tile.stubs.map(&:edge) - tile.exits).empty?
+        end
+
+        def london_hex
+          @london_hex ||= hex_by_id(LONDON_HEX)
+        end
+
+        def something_sold_in_sr!
+          @nothing_sold_in_sr = false
+        end
+
+        def nothing_sold_in_sr?
+          @nothing_sold_in_sr
         end
 
         private
@@ -1985,20 +2008,31 @@ module Engine
           @corporations.each do |c|
             next unless c.destination_coordinates
 
-            description = if c.id == self.class::TWO_HOME_CORPORATION
-                            "Gets destination token at #{c.destination_coordinates} when floated"
-                          else
-                            "Connect to #{c.destination_coordinates} for your destination token"
-                          end
+            home_hex = hex_by_id(c.coordinates)
             ability = Ability::Base.new(
-              type: 'destination',
-              description: description
+              type: 'base',
+              description: "Home: #{home_hex.location_name} (#{home_hex.name})",
             )
             c.add_ability(ability)
+
+            dest_hex = hex_by_id(c.destination_coordinates)
+            ability = Ability::Base.new(
+              type: 'base',
+              description: "Destination: #{dest_hex.location_name} (#{dest_hex.name})",
+            )
+            c.add_ability(ability)
+
             c.tokens << Engine::Token.new(c, logo: "../#{c.destination_icon}.svg",
                                              simple_logo: "../#{c.destination_icon}.svg",
                                              type: :destination)
-            hex_by_id(c.destination_coordinates).tile.icons << Part::Icon.new("../#{c.destination_icon}", "#{c.id}_destination")
+            dest_hex.tile.icons << Part::Icon.new("../#{c.destination_icon}", "#{c.id}_destination")
+
+            next unless c.id == self.class::TWO_HOME_CORPORATION
+
+            c.add_ability(Ability::Base.new(
+              type: 'destination',
+              description: 'Places destination token in its first OR'
+            ))
           end
         end
 

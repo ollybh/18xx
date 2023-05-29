@@ -16,7 +16,7 @@ module Engine
         GAME_INFO_URL = 'https://github.com/tobymao/18xx/wiki/18GB'
         GAME_LOCATION = 'Great Britain'
         GAME_PUBLISHER = :all_aboard_games
-        GAME_RULES_URL = 'https://docs.google.com/document/d/12yNo5WAi6ywc6N5XmTl-FvAZeI5kLwCMkxhgf7jgNSk/view'
+        GAME_RULES_URL = 'https://www.dropbox.com/s/uilbrqw8qyo3ves/18GB%20Rules.pdf?dl=0'
 
         PLAYER_RANGE = [2, 6].freeze
         OPTIONAL_RULES = [
@@ -40,8 +40,10 @@ module Engine
           two_player_map = optional_rules.include?(:two_player_ew) ? 'East-West' : 'North-South'
           four_player_setup = optional_rules.include?(:four_player_alt) ? 'Alternative' : 'Standard'
 
-          "The 2P #{two_player_map} map will be used if the game is started with 2 players. The 4P #{four_player_setup} setup " \
-            'will be used if the game is started with 4 players.'
+          {
+            info: "The 2P #{two_player_map} map will be used if the game is started with 2 players. The "\
+                  "4P #{four_player_setup} setup will be used if the game is started with 4 players.",
+          }
         end
       end
     end

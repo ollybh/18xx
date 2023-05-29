@@ -49,11 +49,11 @@ module Engine
              360 400 450 500 550 600e],
         ].freeze
 
+        MUST_SELL_IN_BLOCKS = true
         SELL_MOVEMENT = :left_per_10_if_pres_else_left_one
         PRIVATE_TRAINS = %w[P1 P2 P3 P4 P5 P6].freeze
         EXTRA_TRAINS = %w[2P P+ LP 3/2P].freeze
         EXTRA_TRAIN_PERMANENTS = %w[2P LP 3/2P].freeze
-        PRIVATE_CLOSE_AFTER_PASS = %w[P9].freeze
         PRIVATE_MAIL_CONTRACTS = %w[P14 P15].freeze
         PRIVATE_PHASE_REVENUE = %w[].freeze # Stub for 1822 specific code
         P7_REVENUE = [0, 0, 0, 20, 20, 40, 40, 60].freeze
@@ -307,7 +307,7 @@ module Engine
             G1822::Step::PendingToken,
             G1822::Step::FirstTurnHousekeeping,
             Engine::Step::AcquireCompany,
-            G1822MX::Step::DiscardTrain,
+            G1822::Step::DiscardTrain,
             G1822MX::Step::SpecialChoose,
             G1822MX::Step::SpecialTrack,
             G1822::Step::SpecialToken,
@@ -319,7 +319,7 @@ module Engine
             G1822::Step::BuyTrain,
             G1822MX::Step::MinorAcquisition,
             G1822::Step::PendingToken,
-            G1822MX::Step::DiscardTrain,
+            G1822::Step::DiscardTrain,
             G1822MX::Step::IssueShares,
             G1822MX::Step::CashOutNdem,
             G1822MX::Step::AuctionNdemTokens,
@@ -535,6 +535,10 @@ module Engine
           super
         end
 
+        def acting_for_entity(entity)
+          entity == ndem ? active_players.first : super
+        end
+
         def set_private_revenues
           @companies.each do |c|
             next unless c.owner
@@ -723,22 +727,8 @@ module Engine
           @ndem ||= corporation_by_id('NDEM')
         end
 
-        def extra_train_pullman_count(corporation)
-          corporation.trains.count { |train| extra_train_pullman?(train) }
-        end
-
-        def extra_train_pullman?(train)
-          train.name == self.class::EXTRA_TRAIN_PULLMAN
-        end
-
-        def crowded_corps
-          @crowded_corps ||= corporations.select do |c|
-            trains = c.trains.count { |t| !extra_train?(t) }
-            crowded = trains > train_limit(c)
-            crowded |= extra_train_permanent_count(c) > 1
-            crowded |= extra_train_pullman_count(c) > 1
-            crowded
-          end
+        def remove_discarded_train?(train)
+          train.owner == ndem || super
         end
 
         def finalize_end_game_values; end
@@ -760,6 +750,29 @@ module Engine
             ['One or more shares sold (if sold by non-director)', '1 ←'],
             ['Corporation (except NdeM) sold out at end of SR', '1 →'],
           ]
+        end
+
+        def legal_tile_rotation?(entity, hex, tile)
+          return false if must_connect_mc?(hex) && !connects_mc?(tile)
+
+          super
+        end
+
+        # Per 6.9.2 and clarification in discussion at
+        # https://github.com/tobymao/18xx/issues/7812, if MC Major/Concession
+        # does not have an owner, then the track that is laid in M22 must not
+        # only connect to Mexico City, but also connect to other existing track.
+        def must_connect_mc?(hex)
+          hex.id == 'M22' && !company_by_id('C2').player && !corporation_by_id('MC').player
+        end
+
+        def connects_mc?(tile)
+          path_to_mc = tile.paths.find { |p| p.edges[0].num == 5 }
+          return false unless path_to_mc
+
+          exit_out = tile.paths.find { |p| p.town == path_to_mc.town && p != path_to_mc }.edges[0].num
+          @m22_adjacent_hexes ||= { 0 => 'N21', 1 => 'M20', 2 => 'L21', 3 => 'L23', 4 => 'M24' }
+          hex_by_id(@m22_adjacent_hexes[exit_out]).tile.exits.include?((exit_out + 3) % 6)
         end
       end
     end

@@ -67,6 +67,16 @@ module Engine
           two_player? ? { max_ownership_percent: 70 } : {}
         end
 
+        def corporation_view(entity)
+          return unless entity.minor?
+
+          # Override the default rendering for private railway companies that
+          # are owned by players. These would be rendered as minor companies
+          # (with treasury, trains and revenue). Instead render them in the same
+          # way as private companies that are owned by the bank.
+          'private_railway'
+        end
+
         def option_quick_start?
           optional_rules.include?(:quick_start)
         end
@@ -256,6 +266,18 @@ module Engine
           @minors.find { |minor| minor.id == entity.sym }
         end
 
+        def private_description(minor)
+          private_company(minor).desc
+        end
+
+        def private_revenue(minor)
+          format_currency(private_company(minor).revenue)
+        end
+
+        def private_value(minor)
+          format_currency(private_company(minor).value)
+        end
+
         def purchase_company(player, company, price)
           player.spend(price, @bank) unless price.zero?
 
@@ -307,6 +329,19 @@ module Engine
         # Returns true if the hex is this private railway's home hex.
         def home_hex?(operator, hex)
           operator.coordinates.include?(hex.coordinates)
+        end
+
+        # Constent for a share purchase is only needed in one circumstance:
+        # - A private railway company is being exchanged for a share.
+        # - The share is from the corporation's treasury (not the market).
+        # - The private railway and corporation are controlled by different players.
+        def consenter_for_buy_shares(entity, bundle)
+          return unless entity.minor?
+          return unless bundle.share_price.nil?
+          return if entity.owner == bundle.corporation.owner
+          return unless bundle.shares.first.owner.corporation?
+
+          bundle.corporation.owner
         end
 
         def tile_lays(entity)
