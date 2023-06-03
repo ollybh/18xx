@@ -104,7 +104,7 @@ module Engine
 
             break unless slot
 
-            tile.reservations.delete(corp)
+            tile.remove_reservation!(corp)
             city.add_reservation!(corp, slot)
           end
         end

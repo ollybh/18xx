@@ -82,7 +82,7 @@ module Engine
               token = Engine::Token.new(cn_corp, price: 0, logo: logo, simple_logo: logo, type: :neutral)
               cn_corp.tokens << token
 
-              action.city.reservations.delete(owner)
+              action.city.remove_reservation!(owner)
               token.place(action.city)
               action.city.tokens[action.slot] = token
             else

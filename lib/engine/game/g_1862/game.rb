@@ -611,7 +611,7 @@ module Engine
         def remove_reservation(corporation)
           hex = @hexes.find { |h| h.id == corporation.coordinates } # hex_by_id doesn't work here
           hex.tile.cities.each do |city|
-            city.reservations.delete(corporation) if city.reserved_by?(corporation)
+            city.remove_reservation!(corporation)
           end
         end
 

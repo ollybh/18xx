@@ -620,7 +620,7 @@ module Engine
             cities = tile.cities
             city = cities.find { |c| c.reserved_by?(major) } || cities.first
             city.remove_reservation!(major)
-            tile.reservations.delete(major)
+            tile.remove_reservation!(major)
             if ndm.tokens.find { |t| t.city == city }
               @log << "#{ndm.name} does not place token in #{city.hex.name} as it already has a token there"
             else
@@ -761,7 +761,7 @@ module Engine
             hex.tile.cities.each do |city|
               if city.tokened_by?(minor)
                 city.tokens.map! { |token| token&.corporation == minor ? nil : token }
-                city.reservations.delete(minor)
+                city.remove_reservation!(minor)
               end
             end
           end

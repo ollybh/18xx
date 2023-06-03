@@ -616,7 +616,7 @@ module Engine
               @log << "Associated minor #{minor_id} closes"
               minor_corporation = corporation_by_id(minor_id)
               minor_city = hex_by_id(minor_corporation.coordinates).tile.cities.find { |c| c.reserved_by?(minor_corporation) }
-              minor_city.reservations.delete(minor_corporation)
+              minor_city.remove_reservation!(minor_corporation)
               minor_company.close!
             end
           end

@@ -47,7 +47,7 @@ module Engine
             @log << "#{old_corporation.id} is removed from the game"
             old_corporation.all_abilities.each { |a| @new_associated_minor.add_ability(a) }
             minor_city = @game.hex_by_id(old_corporation.coordinates).tile.cities.find { |c| c.reserved_by?(old_corporation) }
-            minor_city.reservations.delete(old_corporation)
+            minor_city.remove_reservation!(old_corporation)
             @game.corporations.delete(old_corporation)
 
             old_company = @game.company_by_id(@game.company_id_from_corp_id(action.choice))

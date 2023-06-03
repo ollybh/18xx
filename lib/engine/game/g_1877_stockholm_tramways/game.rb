@@ -506,7 +506,7 @@ module Engine
             hex.tile.cities.each do |city|
               city.tokens.select { |t| t&.corporation == corporation }.each(&:remove!)
 
-              city.reservations.delete(corporation) if corporation.ipoed && city.reserved_by?(corporation)
+              city.remove_reservation!(corporation) if corporation.ipoed && city.reserved_by?(corporation)
             end
           end
 

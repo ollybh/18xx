@@ -1060,7 +1060,7 @@ module Engine
             hex.tile.cities.each do |city|
               if city.tokened_by?(major)
                 city.tokens.map! { |token| token&.corporation == major ? nil : token }
-                city.reservations.delete(major)
+                city.remove_reservation!(major)
               end
             end
           end

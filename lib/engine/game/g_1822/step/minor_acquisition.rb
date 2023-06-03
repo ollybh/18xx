@@ -114,7 +114,7 @@ module Engine
                 receiving << "a token on hex #{@game.class::MINOR_14_HOME_HEX}"
               else
                 minor_city = @game.hex_by_id(@selected_minor.coordinates).tile.cities.find { |c| c.reserved_by?(@selected_minor) }
-                minor_city.reservations.delete(@selected_minor)
+                minor_city.remove_reservation!(@selected_minor)
 
                 if minor_city.tokened_by?(entity)
                   @game.move_exchange_token(entity)

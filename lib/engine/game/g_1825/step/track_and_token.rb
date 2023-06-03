@@ -55,7 +55,7 @@ module Engine
             return unless (slot = city.get_slot(corp))
 
             city.add_reservation!(corp, slot)
-            tile.reservations.delete(corp)
+            tile.remove_reservation!(corp)
           end
 
           def track_upgrade?(from, _to, _hex)
