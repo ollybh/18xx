@@ -63,7 +63,7 @@ module Engine
             reservations = Array(@game.abilities(company, :reservation))
             reservations.each do |reservation|
               city = reservation.tile.cities[reservation.city]
-              city.reservations[city.find_reservation(company)] = corporation
+              city.reservations[city.find_reservation(company)].entity = corporation
               company.remove_ability(reservation)
               corporation.add_ability(reservation)
             end

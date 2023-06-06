@@ -48,7 +48,7 @@ module Engine
             return unless tile.reservations.one?
             return if tile.cities.empty?
 
-            corp = tile.reservations[0]
+            corp = tile.reservations.first.entity
             return unless tile.cities.count { |c| c.tokenable?(corp) } == 1
 
             city = tile.cities.find { |c| c.tokenable?(corp) }

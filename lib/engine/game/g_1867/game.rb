@@ -1001,7 +1001,7 @@ module Engine
 
           hexes.each do |hex|
             hex.tile.cities.each do |city|
-              city.reservations.reject! { |reservation| removed.include?(reservation) }
+              city.reservations.reject! { |reservation| removed.include?(reservation.entity) }
             end
           end
 

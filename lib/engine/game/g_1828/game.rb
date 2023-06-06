@@ -1353,6 +1353,7 @@ module Engine
               if (pending_token = @round.pending_tokens.find { |p_t| p_t[:entity] == c })
                 pending_token[:entity] = corporation
                 pending_token[:token] = system_token
+                # FIXME: change reservation owner
                 pending_token[:hexes].first.tile.reservations.map! { |r| r == c ? corporation : r }
               else
                 token.swap!(system_token, check_tokenable: false)
