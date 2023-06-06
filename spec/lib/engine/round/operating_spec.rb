@@ -737,7 +737,7 @@ module Engine
 
         describe 'reservation' do
           before :each do
-            expect(city.reservations).to eq([company])
+            expect(city.reservations.map(&:entity)).to eq([company])
           end
 
           it 'is removed if owned by a player when a 5 train is bought' do

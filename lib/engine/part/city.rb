@@ -50,7 +50,7 @@ module Engine
       end
 
       def find_reservation(corporation)
-        @reservations.find_index { |r| r && [r, r.owner].include?(corporation) }
+        @reservations.index { |r| r && [r.entity, r.entity.owner].include?(corporation) }
       end
 
       def reserved_by?(corporation)
@@ -58,15 +58,16 @@ module Engine
       end
 
       def add_reservation!(entity, slot = nil)
+        reservation = Part::Reservation.new(entity)
         if slot
-          @reservations.insert(slot, entity)
+          @reservations.insert(slot, reservation)
         else
-          @reservations << entity
+          @reservations << reservation
         end
       end
 
       def remove_reservation!(entity)
-        return unless (index = @reservations.index(entity))
+        return unless (index = @reservations.index { |r| r&.entity == entity })
 
         @reservations[index] = nil
       end
@@ -153,7 +154,7 @@ module Engine
         end
 
         exchange_token(token, cheater: cheater, extra_slot: extra_slot)
-        tile.reservations.delete(corporation)
+        tile.reservations.reject! { |reservation| reservation.entity == corporation }
         remove_reservation!(corporation)
       end
 

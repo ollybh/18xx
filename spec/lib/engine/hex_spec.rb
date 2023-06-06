@@ -38,10 +38,10 @@ module Engine
         end
 
         it 'preserves a token reservation' do
-          subject.tile.cities[0].reservations = [corp_1]
+          subject.tile.add_reservation!(corp_1, 0)
 
           subject.lay(green_tile)
-          expect(subject.tile.cities[0].reservations).to eq([corp_1])
+          expect(subject.tile.cities[0].reservations.map(&:entity)).to eq([corp_1])
         end
       end
 
@@ -80,14 +80,14 @@ module Engine
         end
 
         it 'preserves a placed token and a reservation' do
-          subject.tile.cities[0].reservations = [corp_1]
+          subject.tile.add_reservation!(corp_1, 0)
           subject.tile.cities[0].place_token(corp_2, corp_2.next_token)
 
           subject.lay(brown_tile)
 
           expect(subject.tile.cities[0].tokens[0]).to be_nil
           expect(subject.tile.cities[0].tokens[1]).to have_attributes(corporation: corp_2)
-          expect(subject.tile.cities[0].reservations).to eq([corp_1])
+          expect(subject.tile.cities[0].reservations.map(&:entity)).to eq([corp_1])
         end
       end
 

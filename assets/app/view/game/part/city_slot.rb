@@ -46,8 +46,8 @@ module View
         }.freeze
 
         def render_part
-          color = ((@reservation&.corporation? || @reservation&.minor?) &&
-                    @reservation&.reservation_color) ||
+          color = ((@reservation&.entity&.corporation? || @reservation&.entity&.minor?) &&
+                    @reservation&.entity&.reservation_color) ||
                     'white'
 
           radius = @radius
@@ -95,9 +95,10 @@ module View
         end
 
         def reservation
-          text = @reservation.id
+          entity = @reservation.entity
+          text = entity.id
 
-          non_home = @reservation.corporation? && !Array(@reservation.coordinates).include?(@city.hex.coordinates)
+          non_home = entity.corporation? && !Array(entity.coordinates).include?(@city.hex.coordinates)
           color = non_home ? '#808080' : 'black'
 
           attrs = {

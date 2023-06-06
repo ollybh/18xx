@@ -146,7 +146,7 @@ module Engine
           erie = game.corporation_by_id('ERIE')
           nyc = game.corporation_by_id('NYC')
 
-          expect(city.reservations).to eq([nyc, erie])
+          expect(city.reservations.map(&:entity)).to eq([nyc, erie])
         end
 
         it 'keeps the second slot reserved for ERIE when NYC floats' do
@@ -155,7 +155,7 @@ module Engine
           erie = game.corporation_by_id('ERIE')
           nyc = game.corporation_by_id('NYC')
 
-          expect(city.reservations).to eq([nil, erie])
+          expect(city.reservations.map { |r| r&.entity }).to eq([nil, erie])
           expect(city.tokens.map { |t| t&.corporation }).to eq([nyc, nil])
         end
 

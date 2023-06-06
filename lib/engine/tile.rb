@@ -361,7 +361,7 @@ module Engine
     end
 
     def reserved_by?(corporation)
-      @reservations.any? { |r| [r, r.owner].include?(corporation) }
+      @reservations.any? { |r| [r.entity, r.entity.owner].include?(corporation) }
     end
 
     def add_reservation!(entity, city, slot = nil, reserve_city = true)
@@ -372,7 +372,7 @@ module Engine
       if city && slot
         @cities[city].add_reservation!(entity, slot)
       else
-        @reservations << entity
+        @reservations << Part::Reservation.new(entity)
       end
     end
 
@@ -381,9 +381,9 @@ module Engine
 
       if @reservation_blocks == :always ||
         (@reservation_blocks == :single_slot_cities && @cities.any? { |city| city.slots == 1 })
-        !@reservations.include?(corporation)
+        @reservations.none? { |r| r&.entity == corporation }
       else
-        @reservations.count { |x| corporation != x } >= @cities.sum(&:available_slots)
+        @reservations.count { |r| r&.entity != corporation } >= @cities.sum(&:available_slots)
       end
     end
 

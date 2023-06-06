@@ -1708,11 +1708,11 @@ module Engine
             city.tokens.select { |t| t&.corporation == corporation }.each(&:remove!)
 
             if self.class::CLOSED_CORP_RESERVATIONS_REMOVED && city.reserved_by?(corporation)
-              city.reservations.delete(corporation)
+              city.reservations.reject! { |reservation| reservation&.entity == corporation }
             end
           end
           if self.class::CLOSED_CORP_RESERVATIONS_REMOVED && hex.tile.reserved_by?(corporation)
-            hex.tile.reservations.delete(corporation)
+            hex.tile.reservations.reject! { |reservation| reservation.entity == corporation }
           end
         end
 
