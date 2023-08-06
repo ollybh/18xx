@@ -23,6 +23,7 @@ module View
         needs :last_player, default: nil, store: true
         needs :corporation_to_par, default: nil, store: true
         needs :show_other_players, default: nil, store: true
+        needs :flexible_player, default: nil, store: true
 
         def render
           round = @game.round
@@ -55,6 +56,7 @@ module View
           children = []
 
           children << h(Choose) if @current_actions.include?('choose') && @step.choice_available?(@current_entity)
+          children << h(FlexibleBuy) if @current_actions.include?('buy_shares') && @flexible_player
 
           if @step.respond_to?(:must_sell?) && @step.must_sell?(@current_entity)
             children << if @game.num_certs(@current_entity) > @game.cert_limit(@current_entity)
@@ -93,7 +95,8 @@ module View
           buttons = []
           buttons.concat(render_merge_button) if @current_actions.include?('merge')
           buttons.concat(render_payoff_player_debt_button) if @current_actions.include?('payoff_player_debt')
-
+          buttons.concat(render_take_loan) if @current_actions.include?('take_loan')
+          buttons.concat(render_payoff_loan) if @current_actions.include?('payoff_loan')
           buttons.any? ? [h(:div, buttons)] : []
         end
 
@@ -405,6 +408,20 @@ module View
           children << h(ParChart, corporation_to_par: @corporation_to_par)
 
           h(:div, children)
+        end
+
+        def render_take_loan
+          take_loan = lambda do
+            process_action(Engine::Action::TakeLoan.new(@current_entity, loan: nil))
+          end
+          [h(:button, { on: { click: take_loan } }, "Take Loan (#{@game.format_currency(@game.loan_amount)})")]
+        end
+
+        def render_payoff_loan
+          payoff_loan = lambda do
+            process_action(Engine::Action::PayoffLoan.new(@current_entity, loan: nil))
+          end
+          [h(:button, { on: { click: payoff_loan } }, "Payoff Loan (#{@game.format_currency(@game.loan_amount)})")]
         end
       end
     end

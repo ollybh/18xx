@@ -9,7 +9,11 @@ module Engine
         class SpecialTrack < Engine::Game::G1822::Step::SpecialTrack
           PORT_TILES = %w[P1-0 P2-0].freeze
 
-          def potential_tiles(entity, hex)
+          def potential_tiles(entity_or_entities, hex)
+            # entity_or_entities is an array when combining private company abilities
+            entities = Array(entity_or_entities)
+            entity, *_combo_entities = entities
+
             if @game.port_company?(entity)
               return [] if PORT_TILES.include?(hex.tile.id)
 
@@ -27,7 +31,11 @@ module Engine
             tiles
           end
 
-          def legal_tile_rotation?(entity, hex, tile)
+          def legal_tile_rotation?(entity_or_entities, hex, tile)
+            # entity_or_entities is an array when combining private company abilities
+            entities = Array(entity_or_entities)
+            entity, *_combo_entities = entities
+
             return hex.tile.paths[0].exits == tile.exits if @game.port_company?(entity)
             return true if @game.cube_company?(entity)
             return true if tile.id == 'BC-0'
@@ -52,7 +60,11 @@ module Engine
             nil
           end
 
-          def available_hex(entity, hex)
+          def available_hex(entity_or_entities, hex)
+            # entity_or_entities is an array when combining private company abilities
+            entities = Array(entity_or_entities)
+            entity, *_combo_entities = entities
+
             if @game.port_company?(entity)
               return [hex.tile.exits] if hex.tile.color == :blue && !PORT_TILES.include?(hex.tile.id)
 
@@ -80,7 +92,7 @@ module Engine
               @log << "#{action.entity.name} places builder cube on #{action.hex.name}"
               action.hex.tile.icons << Part::Icon.new('../icons/1822_mx/red_cube', 'block')
               ability = abilities(action.entity)
-              ability.use!
+              ability.use!(upgrade: %i[green brown gray].include?(action.tile.color))
               # Minors can only do this once...
               if action.entity.owner.type == :minor
                 ability.use!
@@ -92,6 +104,8 @@ module Engine
                 @log << "#{ability.owner.name} closes"
                 ability.owner.close!
               end
+
+              handle_extra_tile_lay_company(ability, action.entity)
             else
               super
               action.hex.tile.icons.reject! { |i| i.name == 'block' }

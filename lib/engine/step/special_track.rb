@@ -61,7 +61,7 @@ module Engine
           @round.laid_hexes << action.hex
           check_connect(action, ability)
         end
-        ability.use!
+        ability.use!(upgrade: %i[green brown gray].include?(action.tile.color))
 
         # Record any track laid after the dividend step
         if owner&.corporation? && (operating_info = owner.operating_history[[@game.turn, @round.round_num]])
@@ -119,7 +119,11 @@ module Engine
         @game.hex_by_id(hex.id).neighbors.keys
       end
 
-      def potential_tiles(entity, hex)
+      def potential_tiles(entity_or_entities, hex)
+        # entity_or_entities is an array when combining private company abilities
+        entities = Array(entity_or_entities)
+        entity, *_combo_entities = entities
+
         return [] unless (tile_ability = abilities(entity))
 
         tiles = tile_ability.tiles.map { |name| @game.tiles.find { |t| t.name == name } }

@@ -33,12 +33,13 @@ module Engine
               {
                 type: 'tile_lay',
                 owner_type: 'corporation',
-                when: 'track',
+                when: %w[track special_track],
                 count: 1,
                 reachable: true,
                 closed_when_used_up: true,
                 hexes: [],
                 tiles: %w[7 8 9 80 81 82 83 544 545 546 60 169],
+                combo_entities: %w[P8 P10 P11 P12],
               },
             ],
             color: nil,
@@ -90,14 +91,17 @@ module Engine
                   'power to place a token in the English Channel). If no token spaces are available, but a space '\
                   'could be created by upgrading the English Channel track then this power may be used to place a '\
                   'token and upgrade the track simultaneously. This counts as the acquiring company’s tile lay '\
-                  'action and incurs the usual costs for doing so. Alternatively, it can move an exchange station '\
-                  'token to the available station token section on its company charter.',
+                  'action and incurs the usual costs for doing so. It does not count as the company’s token placing '\
+                  'step. Alternatively, it can move an exchange station token to the available station token section '\
+                  'on its company charter.',
             abilities: [
               {
                 type: 'teleport',
                 owner_type: 'corporation',
                 hexes: ['P43'],
                 tiles: %w[X9 X15],
+                from_owner: false,  # uses an exchange token
+                extra_action: true,
               },
               {
                 type: 'token',
@@ -107,6 +111,8 @@ module Engine
                 teleport_price: 0,
                 count: 1,
                 extra_action: true,
+                special_only: true,
+                when: 'token',
               },
             ],
             color: nil,
@@ -147,10 +153,39 @@ module Engine
             desc: 'MAJOR/MINOR, Phase 3. Mountain/Hill Discount. Either: The acquiring company receives a discount '\
                   'token that can be used to pay the full cost of a single track tile lay on a rough terrain, hill '\
                   'or mountain hex. This closes the company. Or: The acquiring company rejects the token and '\
-                  'receives a £20 discount off the cost of all hill and mountain terrain (i.e. NOT off the cost of '\
-                  'rough terrain). The private company does not close. Closes if free token taken when acquired. '\
+                  'receives a £20 discount off the cost of all £60 hill and £80 mountain terrain (i.e. NOT off the cost of '\
+                  '£40 rough terrain). The private company does not close. Closes if free token taken when acquired. '\
                   'Otherwise, flips when acquired and does not close.',
-            abilities: [],
+            abilities: [
+              {
+                type: 'tile_lay',
+                tiles: [],
+                hexes: %w[
+                  B41 C40 D39 E10 F9 G14 G30 G8 H15 H39 H7 H9 I10 I12 I14 I16 I18
+                  I20 I22 I24 I38 I40 I8 J19 J21 J23 J25 J39 J7 O40
+                ],
+                owner_type: 'corporation',
+                count: 1,
+                closed_when_used_up: true,
+                reachable: true,
+                free: true,
+                special: false,
+                when: %w[track special_track],
+                combo_entities: %w[P2 P12],
+              },
+              {
+                type: 'tile_discount',
+                owner_type: 'corporation',
+                discount: 20,
+                hexes: %w[C40 E10 F9 G8 H7 H9 H15 I8 I10 I22 J7 J21 J23 J25],
+              },
+              {
+                type: 'tile_discount',
+                owner_type: 'corporation',
+                discount: 20,
+                terrain: 'mountain',
+              },
+            ],
             color: nil,
           },
           {
@@ -179,12 +214,13 @@ module Engine
               {
                 type: 'tile_lay',
                 owner_type: 'corporation',
-                when: 'track',
+                when: %w[track special_track],
                 count: 2,
                 reachable: true,
                 closed_when_used_up: true,
                 hexes: [],
                 tiles: [],
+                combo_entities: %w[P2 P11 P12],
               },
               {
                 type: 'tile_discount',
@@ -211,12 +247,13 @@ module Engine
               {
                 type: 'tile_lay',
                 owner_type: 'corporation',
-                when: 'track',
+                when: %w[track special_track],
                 count: 1,
                 reachable: true,
                 closed_when_used_up: true,
                 hexes: [],
                 tiles: %w[80 81 82 83 544 545 546 60 169 141 142 143 144 767 768 769 X17],
+                combo_entities: %w[P2 P10 P12],
               },
             ],
             color: nil,
@@ -235,12 +272,15 @@ module Engine
               {
                 type: 'tile_lay',
                 owner_type: 'corporation',
-                when: 'track',
-                count: 2,
+                when: %w[track special_track],
+                must_lay_together: true,
+                lay_count: 2,
+                upgrade_count: 1,
                 reachable: true,
                 closed_when_used_up: true,
                 hexes: [],
                 tiles: [],
+                combo_entities: %w[P2 P8 P10 P11],
               },
             ],
             color: nil,
@@ -372,13 +412,15 @@ module Engine
               {
                 type: 'tile_lay',
                 owner_type: 'corporation',
-                when: 'track',
+                when: %w[track special_track],
                 count: 2,
                 free: true,
                 reachable: true,
                 closed_when_used_up: true,
                 hexes: %w[N21 N23],
                 tiles: %w[5 6 57 15],
+                must_lay_together: true,
+                consume_tile_lay: true,
               },
             ],
             color: nil,

@@ -11,6 +11,9 @@ module View
       include Actionable
 
       needs :corporation
+      needs :selected_corporation, default: nil, store: true
+      needs :flexible_player, default: nil, store: true
+      needs :flexible_corporation, default: nil, store: true
 
       def render
         @step = @game.round.active_step
@@ -65,6 +68,7 @@ module View
         children.concat(render_treasury_shares)
         children.concat(render_market_shares)
         children.concat(render_corporate_shares)
+        children.concat(render_other_player_shares)
         children.concat(render_shares_for_others)
         children.concat(render_price_protection)
         children.concat(render_reduced_price_shares(@ipo_shares, source: @game.ipo_name(@corporation)))
@@ -129,6 +133,44 @@ module View
               percentages_available: @ipo_shares.group_by(&:percent).size,
               source: share.corporation.name,
               prefix: button_prefix)
+          end
+        end
+      end
+
+      def render_other_player_shares
+        if @step.respond_to?(:flexible_buy?) && @step.flexible_buy?(@current_entity)
+          if @flexible_player && @flexible_corporation != @selected_corporation
+            store(:flexible_corporation, nil, skip: true)
+            store(:flexible_player, nil)
+          end
+          @corporation.player_share_holders.keys.reject { |sh| sh == @current_entity }.select(&:player?).flat_map do |sh|
+            next unless @step.flexible_can_buy_any_shares?(@current_entity, sh.shares_of(@corporation))
+
+            update_player = lambda do
+              store(:flexible_corporation, @corporation, skip: true)
+              store(:flexible_player, sh)
+            end
+
+            button_props = {
+              attrs: {
+                type: :button,
+              },
+              on: { click: update_player },
+            }
+            h(:button, button_props, "Buy Shares from #{sh.name}")
+          end
+        else
+          @corporation.player_share_holders.keys.reject { |sh| sh == @current_entity }.flat_map do |sh|
+            shares = sh.shares_of(@corporation).select(&:buyable).group_by(&:percent).values.map(&:first)
+            shares.sort_by(&:percent).reverse.map do |share|
+              next unless @step.can_buy?(@current_entity, share.to_bundle)
+
+              h(Button::BuyShare,
+                share: share,
+                entity: @current_entity,
+                percentages_available: shares.group_by(&:percent).size,
+                source: sh.name)
+            end
           end
         end
       end
