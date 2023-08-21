@@ -81,14 +81,6 @@ module View
             children << h(:div, "#{player.name} may not sell more shares than is necessary "\
                                 'to buy the train that is purchased.')
           end
-        elsif !@game.class::EBUY_DEPOT_TRAIN_MUST_BE_CHEAPEST
-          prices = @depot.depot_trains.map(&:variants).flat_map(&:values).map { |train| train['price'] }
-          max_affordable = prices.select { |price| price <= cash }.max
-          if max_affordable > cheapest_train_price
-            contribution = max_affordable - @corporation.cash
-            children << h(:div, "#{player.name} may be contribute up to " \
-                                "#{@game.format_currency(contribution)} to buy a more expensive train.")
-          end
         end
 
         must_take_loan = @step.must_take_player_loan?(@corporation) if @step.respond_to?(:must_take_player_loan?)
