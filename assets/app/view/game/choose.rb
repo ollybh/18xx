@@ -51,10 +51,16 @@ module View
         end
 
         div_class = choice_buttons.size < 5 ? '.inline' : ''
-        h(:div, [
-          h("div#{div_class}", { style: { marginTop: '0.5rem' } }, "#{@game.round.active_step.choice_name}: "),
-          h(:div, choice_buttons),
-        ])
+        children = []
+        children << h("div#{div_class}",
+                      { style: { marginTop: '0.5rem' } },
+                      "#{@game.round.active_step.choice_name}: ")
+        children << h(:div, choice_buttons)
+        if @game.round.active_step.respond_to?(:choice_explanation) &&
+            (explanation = @game.round.active_step.choice_explanation)
+          children << h(:div, { style: { marginTop: '0.5rem' } }, explanation)
+        end
+        h(:div, children)
       end
 
       def render_choice_amount(amounts)
