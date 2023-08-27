@@ -43,12 +43,16 @@ module Engine
           end
 
           def choice_explanation
-            'To exchange for a treasury share you need the approval of the ' \
-            'public company’s president. If a public company has both ' \
-            'treasury and market shares available, then you can only ' \
-            'exchange for a market share if you have first requested the ' \
-            'exchange for a treasury share. If a public company only has ' \
-            'market shares available then you do not need approval.'
+            [
+              'To exchange for a treasury share you need the approval of the ' \
+                'public company’s president.',
+              'If a public company has both ' \
+                'treasury and market shares available, then you can only ' \
+                'exchange for a market share if you have first requested the ' \
+                'exchange for a treasury share.',
+              'If a public company only has ' \
+                'market shares available then you do not need approval.'
+            ]
           end
 
           def choices
