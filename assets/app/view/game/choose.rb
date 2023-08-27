@@ -58,7 +58,8 @@ module View
         children << h(:div, choice_buttons)
         if @game.round.active_step.respond_to?(:choice_explanation) &&
             (explanation = @game.round.active_step.choice_explanation)
-          children << h(:div, { style: { marginTop: '0.5rem' } }, explanation)
+          paragraphs = explanation.map { |text_block| h(:p, text_block) }
+          children << h(:div, { style: { marginTop: '0.5rem' } }, paragraphs)
         end
         h(:div, children)
       end
