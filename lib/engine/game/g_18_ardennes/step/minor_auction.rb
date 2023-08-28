@@ -20,7 +20,7 @@ module Engine
             # Picking a new minor to auction.
             return %w[bid] unless discount_mode?
             # Everyone has <100F, GL is not available.
-            return %w[par] if @minors.none? { |minor| minor.company? }
+            return %w[par] if @minors.none?(&:company?)
 
             # Everyone has <100F, GL is available.
             %w[par bid]
