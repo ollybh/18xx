@@ -5,12 +5,14 @@ require_relative 'meta'
 require_relative 'entities'
 require_relative 'map'
 require_relative 'stock_market'
+require_relative '../cities_plus_towns_route_distance_str'
 
 module Engine
   module Game
     module G1841
       class Game < Game::Base
         include_meta(G1841::Meta)
+        include CitiesPlusTownsRouteDistanceStr
         include Entities
         include Map
 
@@ -1222,7 +1224,7 @@ module Engine
           end
 
           # minor
-          [find_rightmost_share_price(((corpa.share_price.price + corpb.share_price.price) / 2.0).to_i)]
+          [find_rightmost_share_price((corpa.share_price.price + corpb.share_price.price) / 2.0)]
         end
 
         def merger_start(corpa, corpb, target, tuscan_merge: false)

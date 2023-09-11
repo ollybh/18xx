@@ -1159,7 +1159,7 @@ module Engine
           minors = @coal_companies.select { |c| c.floated? && !c.closed? }.sort_by { |m| @players.index(m.owner) }
           oil = @oil_companies.select { |c| c.floated? && !c.closed? }.sort_by { |m| @players.index(m.owner) }
           minors.concat(oil)
-          minors.sort_by! { |m| @players.index(m.owner) } if @optional_rules.include?(:async)
+          minors.sort_by! { |m| @players.index(m.owner) } if @optional_rules.include?(:async_friendly)
           minors
         end
 
@@ -2215,6 +2215,14 @@ module Engine
 
         def event_setup_company_price_up_to_face!
           setup_company_price_up_to_face
+        end
+
+        def check_connected(route, corporation)
+          route.hexes.each do |hex|
+            raise GameError, 'Route is not connected' if hex.tile.color == :purple && hex.id != corporation.coordinates
+          end
+
+          super
         end
       end
     end

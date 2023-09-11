@@ -10,14 +10,15 @@ module View
       needs :entity, default: nil
 
       def render
-        choices = if @game.round.active_step.respond_to?(:entity_choices)
-                    @game.round.active_step.entity_choices(@entity)
+        step = @game.round.active_step
+        choices = if step.respond_to?(:entity_choices)
+                    step.entity_choices(@entity)
                   else
-                    @game.round.active_step.choices
+                    step.choices
                   end
 
-        choice_is_amount = if @game.round.active_step.respond_to?(:choice_is_amount?)
-                             @game.round.active_step.choice_is_amount?
+        choice_is_amount = if step.respond_to?(:choice_is_amount?)
+                             step.choice_is_amount?
                            else
                              false
                            end
@@ -50,14 +51,11 @@ module View
           h('button', props, label)
         end
 
-        div_class = choice_buttons.size < 5 ? '.inline' : ''
         children = []
-        children << h("div#{div_class}",
-                      { style: { marginTop: '0.5rem' } },
-                      "#{@game.round.active_step.choice_name}: ")
+        div_class = choice_buttons.size < 5 ? '.inline' : ''
+        children << h("div#{div_class}", { style: { marginTop: '0.5rem' } }, "#{step.choice_name}: ") if step.choice_name
         children << h(:div, choice_buttons)
-        if @game.round.active_step.respond_to?(:choice_explanation) &&
-            (explanation = @game.round.active_step.choice_explanation)
+        if step.respond_to?(:choice_explanation) && (explanation = step.choice_explanation)
           paragraphs = explanation.map { |text_block| h(:p, text_block) }
           children << h(:div, { style: { marginTop: '0.5rem' } }, paragraphs)
         end

@@ -55,10 +55,9 @@ module Engine
             color: nil,
           },
           {
-            name: 'P6 (Recycled train) [N/A]',
+            name: 'P6 (Recycled train)',
             sym: 'P6',
-            desc: '[NOT YET FUNCTIONAL] '\
-                  'MAJOR/MINOR, Phase 3. Close this company to buy a rusted train for full price '\
+            desc: 'MAJOR/MINOR, Phase 3. Close this company to buy a rusted train for full price '\
                   '(purchased train becomes permanent and is not a special train)',
             value: 0,
             revenue: 10,
@@ -134,17 +133,30 @@ module Engine
             color: nil,
           },
           {
-            name: 'P10 (Game Reserve) [N/A]',
+            name: 'P10 (Game Reserve)',
             sym: 'P10',
-            desc: '[NOT YET FUNCTIONAL] '\
-                  'MAJOR/MINOR, Phase 3. When this company is acquired, the owning company must place '\
+            desc: 'MAJOR/MINOR, Phase 3. When this company is acquired, the owning company must place '\
                   'the striped Game Reserve tile on any empty (and non-desert) hex. '\
                   'Placement must not run track into an unplayable hex edge. This hex becomes a game reserve. '\
                   'The company immediately receives a bonus equal to A5x the number of hexes between '\
                   'this game reserve and the preprinted game reserve (excluding the reserve hexes).',
             value: 0,
             revenue: 10,
-            abilities: [],
+            abilities: [
+              {
+                type: 'tile_lay',
+                hexes: %w[B4 B8 E3 E17 F2 F4 F8 F10 F12 F14 F16 G5 G11 G15 H6 H14 H16 I9],
+                tiles: ['GR'],
+                owner_type: 'corporation',
+                when: %w[sold special_track],
+                count: 1,
+                special: true,
+                blocks: true,
+                free: true,
+                connect: false,
+                closed_when_used_up: true,
+              },
+            ],
             color: nil,
           },
           {
@@ -205,10 +217,9 @@ module Engine
             color: nil,
           },
           {
-            name: 'P13 (Station Swap) [N/A]',
+            name: 'P13 (Station Swap)',
             sym: 'P13',
-            desc: '[NOT YET FUNCTIONAL] '\
-                  'MAJOR, Phase 5. Station Marker Swap. Allows the owning company to move a token from the exchange '\
+            desc: 'MAJOR, Phase 5. Station Marker Swap. Allows the owning company to move a token from the exchange '\
                   'token area of its charter to the available token area, or vice versa. '\
                   'This company closes when its power is exercised.',
             value: 0,
@@ -217,30 +228,51 @@ module Engine
             color: nil,
           },
           {
-            name: 'P14 (Gold Mine) [N/A]',
+            name: 'P14 (Gold Mine)',
             sym: 'P14',
-            desc: '[NOT YET FUNCTIONAL] '\
-                  'MAJOR, Phase 3. Owning company close this company to place the +20 gold mine token in any city '\
+            desc: 'MAJOR, Phase 3. Owning company close this company to place the +20 gold mine token in any city '\
                   'with an open city slot. This token adds 20 to the value of that city for all corporations. '\
                   'The gold mine token occupies a city slot and blocks routes through that city '\
                   'if the city is otherwise full.',
             value: 0,
             revenue: 10,
-            abilities: [],
+            abilities: [
+              {
+                type: 'token',
+                when: 'owning_corp_or_turn',
+                owner_type: 'corporation',
+                hexes: %w[A7 B2 B10 C9 D2 E1 E9 E11 E13 F18 G3 G7 G17 H8 H10 H12 I7],
+                price: 0,
+                teleport_price: 0,
+                count: 1,
+                extra_action: true,
+                special_only: true,
+                closed_when_used_up: true,
+                check_tokenable: false,
+              },
+            ],
             color: nil,
           },
           {
-            name: 'P15 (Coffee Plantation) [N/A]',
+            name: 'P15 (Coffee Plantation)',
             sym: 'P15',
-            desc: '[NOT YET FUNCTIONAL] '\
-                  'MAJOR/MINOR, Phase 1. Owning company may close this private company to place the coffee '\
+            desc: 'MAJOR/MINOR, Phase 1. Owning company may close this private company to place the coffee '\
                   'plantation token on any hex with mountainous terrain and no tile. '\
                   'The company immediately receives into its treasury A30. When a tile is placed in that hex, '\
                   'the coffee plantation token is placed on it and prevents upgrading this tile. '\
                   'All routes that use this tile earn an extra A20.',
             value: 0,
             revenue: 10,
-            abilities: [],
+            abilities: [
+              {
+                type: 'assign_hexes',
+                when: 'owning_corp_or_turn',
+                hexes: %w[G11 G15 H10 H14],
+                count: 1,
+                closed_when_used_up: true,
+                owner_type: 'corporation',
+              },
+            ],
             color: nil,
           },
           {
@@ -258,10 +290,9 @@ module Engine
             color: nil,
           },
           {
-            name: 'P17 (Bank Share Buy) [N/A]',
+            name: 'P17 (Bank Share Buy)',
             sym: 'P17',
-            desc: '[NOT YET FUNCTIONAL] '\
-                  'MAJOR, Phase 2. Owning company may close this private company for the bank to purchase a share '\
+            desc: 'MAJOR, Phase 2. Owning company may close this private company for the bank to purchase a share '\
                   'it owns for the current market value. The share is moved to the bank pool. This does not count '\
                   'as a share issuance and does not affect the stock price.',
             value: 0,
@@ -500,12 +531,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'B2',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '2',
@@ -517,12 +548,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'G3',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '3',
@@ -534,12 +565,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'G7',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '4',
@@ -551,12 +582,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'H8',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '5',
@@ -568,12 +599,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'H10',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '6',
@@ -585,12 +616,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'H12',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '7',
@@ -602,12 +633,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'G17',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '8',
@@ -619,12 +650,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'E13',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '9',
@@ -636,12 +667,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'E11',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '10',
@@ -653,12 +684,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'C9',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '11',
@@ -670,12 +701,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'B10',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '12',
@@ -687,12 +718,12 @@ module Engine
             float_percent: 100,
             hide_shares: true,
             shares: [100],
+            forced_share_percent: 100,
             max_ownership_percent: 100,
             coordinates: 'A7',
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: 'NAR',
@@ -705,7 +736,6 @@ module Engine
             coordinates: 'D2',
             color: 'black',
             text_color: 'white',
-            reservation_color: nil,
             destination_coordinates: 'C9',
             destination_icon: '1822_africa/NAR_DEST',
           },
@@ -720,7 +750,6 @@ module Engine
             coordinates: 'A7',
             color: '#CD2226',
             text_color: 'white',
-            reservation_color: nil,
             destination_coordinates: 'G7',
             destination_icon: '1822_africa/WAR_DEST',
           },
@@ -735,7 +764,6 @@ module Engine
             coordinates: 'I7',
             color: '#FBE93B',
             text_color: 'black',
-            reservation_color: nil,
             destination_coordinates: 'E9',
             destination_icon: '1822_africa/EAR_DEST',
           },
@@ -750,7 +778,6 @@ module Engine
             coordinates: 'E9',
             color: '#12853F',
             text_color: 'white',
-            reservation_color: nil,
             destination_coordinates: 'D2',
             destination_icon: '1822_africa/CAR_DEST',
           },
@@ -765,7 +792,6 @@ module Engine
             coordinates: 'F18',
             color: '#007ba7',
             text_color: 'white',
-            reservation_color: nil,
             destination_coordinates: 'H10',
             destination_icon: '1822_africa/SAR_DEST',
           },
