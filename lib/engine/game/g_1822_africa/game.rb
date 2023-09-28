@@ -60,13 +60,14 @@ module Engine
           P15: '/icons/1822_africa/coffee.svg',
         }.freeze
 
+        TOKEN_PRICE = 100
+
         PRIVATES_IN_GAME = 12
 
-        EXTRA_TRAINS = %w[2P P+ LP].freeze
+        EXTRA_TRAINS = %w[2P P+ LP S].freeze
         EXTRA_TRAIN_PERMANENTS = %w[2P LP].freeze
-        EXPRESS_TRAIN_MULTIPLIER = 2
 
-        PRIVATE_TRAINS = %w[P1 P2 P3 P4 P5].freeze
+        PRIVATE_TRAINS = %w[P1 P2 P3 P4 P5 P18].freeze
         PRIVATE_MAIL_CONTRACTS = [].freeze # Stub
         PRIVATE_PHASE_REVENUE = %w[P16].freeze
         PRIVATE_REMOVE_REVENUE = %w[P13].freeze
@@ -89,6 +90,8 @@ module Engine
 
         GAME_RESERVE_TILE = 'GR'
         GAME_RESERVE_MULTIPLIER = 5
+
+        SAFARI_TRAIN_BONUS = 20
 
         MINOR_BIDBOX_PRICE = 100
         BIDDING_BOX_MINOR_COUNT = 3
@@ -364,6 +367,12 @@ module Engine
             num: 1,
             price: 160,
           },
+          {
+            name: 'S',
+            distance: 2,
+            num: 1,
+            price: 0,
+          },
         ].freeze
 
         UPGRADE_COST_L_TO_2 = 70
@@ -415,6 +424,7 @@ module Engine
           @company_trains['P3'] = find_and_remove_train_by_id('2P-1', buyable: false)
           @company_trains['P4'] = find_and_remove_train_by_id('P+-0', buyable: false)
           @company_trains['P5'] = find_and_remove_train_by_id('P+-1', buyable: false)
+          @company_trains['P18'] = find_and_remove_train_by_id('S-0', buyable: false)
 
           @recycled_trains = [
             find_and_remove_train_by_id('LR-0', buyable: false),
@@ -500,8 +510,8 @@ module Engine
             G1822Africa::Step::Assign,
             G1822::Step::Track,
             G1822::Step::DestinationToken,
-            G1822::Step::Token,
-            G1822::Step::Route,
+            G1822Africa::Step::Token,
+            G1822Africa::Step::Route,
             G1822::Step::Dividend,
             G1822Africa::Step::BuyTrain,
             G1822Africa::Step::MinorAcquisition,
@@ -600,69 +610,14 @@ module Engine
           help
         end
 
-        # This repeats the logic from the base game because our determination of train type is based on route
-        def check_overlap(routes)
-          # Tracks by e-train and normal trains
-          tracks_by_type = Hash.new { |h, k| h[k] = [] }
-
-          # Check local train not use the same token more then one time
-          local_cities = []
-
-          routes.each do |route|
-            local_cities.concat(route.visited_stops.select(&:city?)) if route.train.local? && !route.chains.empty?
-
-            route.paths.each do |path|
-              a = path.a
-              b = path.b
-
-              tracks = tracks_by_type[route_train_type(route)]
-              tracks << [path.hex, a.num, path.lanes[0][1]] if a.edge?
-              tracks << [path.hex, b.num, path.lanes[1][1]] if b.edge?
-
-              if b.edge? && a.town? && (nedge = a.tile.preferred_city_town_edges[a]) && nedge != b.num
-                tracks << [path.hex, a, path.lanes[0][1]]
-              end
-              if a.edge? && b.town? && (nedge = b.tile.preferred_city_town_edges[b]) && nedge != a.num
-                tracks << [path.hex, b, path.lanes[1][1]]
-              end
-            end
-          end
-
-          tracks_by_type.each do |_type, tracks|
-            tracks.group_by(&:itself).each do |k, v|
-              raise GameError, "Route can't reuse track on #{k[0].id}" if v.size > 1
-            end
-          end
-
-          local_cities.group_by(&:itself).each do |k, v|
-            raise GameError, "Local train can only use each token on #{k.hex.id} once" if v.size > 1
-          end
-        end
-
-        def compute_other_paths(routes, route)
-          routes.flat_map do |r|
-            next if r == route || route_train_type(route) != route_train_type(r)
-
-            r.paths
-          end
-        end
-
-        # This repeats the logic from the base game, but with changes to how */E trains are calculated
         def revenue_for(route, stops)
           revenue = super
+
           revenue += plantation_bonus(route)
           revenue += gold_mine_bonus(route, stops)
-          revenue += destination_bonus_for(route)
+          revenue += safari_train_bonus(route)
 
-          return revenue unless can_be_express?(route.train)
-          return revenue unless includes_two_tokens?(route)
-
-          express_revenue = revenue_for_express(route, stops)
-          express_revenue += destination_bonus_for(route) * self.class::EXPRESS_TRAIN_MULTIPLIER
-
-          return express_revenue if train_over_distance?(route)
-
-          [revenue, express_revenue].max
+          revenue
         end
 
         def plantation_bonus(route)
@@ -684,81 +639,38 @@ module Engine
           self.class::GOLD_MINE_BONUS
         end
 
-        def destination_bonus_for(route)
-          destination_bonus = destination_bonus(route.routes)
+        def safari_train_bonus(route)
+          return 0 unless safari_train_attached?(route.train)
 
-          return destination_bonus[:revenue] if destination_bonus && destination_bonus[:route] == route
-
-          0
-        end
-
-        def revenue_for_express(route, stops)
-          entity = route.train.owner
-
-          stops.sum do |stop|
-            next 0 unless stop.city?
-
-            if stop.tokened_by?(entity)
-              stop.route_base_revenue(route.phase, route.train) * self.class::EXPRESS_TRAIN_MULTIPLIER
-            else
-              0
-            end
-          end
-        end
-
-        def runs_as_express?(route)
-          return false unless can_be_express?(route.train)
-          return false unless includes_two_tokens?(route)
-          return true if train_over_distance?(route)
-
-          stops = route.stops
-
-          normal_revenue = G1822::Game.instance_method(:revenue_for).bind_call(self, route, stops)
-          express_revenue = revenue_for_express(route, stops)
-
-          express_revenue > normal_revenue
+          self.class::SAFARI_TRAIN_BONUS * find_game_reserves(route.all_hexes).count
         end
 
         def revenue_str(route)
           str = super
-          str += ' [Express]' if runs_as_express?(route)
+
           str += ' +20 (Coffee Plantation) ' if plantation_bonus(route).positive?
           str += ' +20 (Gold Mine)' if gold_mine_bonus(route, route.stops).positive?
+
+          safari_bonus = safari_train_bonus(route)
+          str += " + #{safari_bonus} (Safari)" if safari_bonus.positive?
+
           str
         end
 
-        def check_distance(route, visits, train = nil)
-          return if can_be_express?(route.train)
-
-          super
+        def train_type(train)
+          train.name[0] == 'E' ? :etrain : :normal
         end
 
-        def train_over_distance?(route)
-          train_distance = route.train.distance
-          visits = route.visited_stops
-
-          return false unless train_distance.is_a?(Numeric)
-
-          route_distance = visits.sum(&:visit_cost)
-
-          route_distance > train_distance
+        def route_trains(entity)
+          entity.runnable_trains.reject { |t| pullman_train?(t) || safari_train?(t) }
         end
 
-        def includes_two_tokens?(route)
-          entity = route.train.owner
-
-          tokened_stops = route.stops.count do |stop|
-            stop.city? && stop.tokened_by?(entity)
-          end
-
-          tokened_stops > 1
+        def safari_train?(t)
+          t.name == 'S'
         end
 
-        def route_train_type(route)
-          return :normal unless can_be_express?(route.train)
-          return :express if runs_as_express?(route)
-
-          :normal
+        def safari_train_attached?(t)
+          t.name[-1] == 'S'
         end
 
         def can_be_express?(train)
@@ -794,8 +706,12 @@ module Engine
           current_entity == company_reserve_tiles&.owner
         end
 
+        def find_game_reserves(hexes)
+          hexes.select { |h| h.tile.color == :purple }
+        end
+
         def pay_game_reserve_bonus!(entity)
-          reserves = hexes.select { |h| h.tile.color == :purple }
+          reserves = find_game_reserves(hexes)
           bonus = hex_crow_distance_not_inclusive(*reserves) * self.class::GAME_RESERVE_MULTIPLIER
 
           return if bonus.zero?
