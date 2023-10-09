@@ -134,7 +134,7 @@ module Engine
           },
         ].freeze
 
-        POOL_SHARE_DROP = :one
+        POOL_SHARE_DROP = :down_block
         SELL_AFTER = :p_any_operate
         SELL_BUY_ORDER = :sell_buy
         SELL_MOVEMENT = :left_block_pres
@@ -217,14 +217,14 @@ module Engine
         def price_movement_chart
           [
             ['Action', 'Share Price Change'],
-            ['Dividend < 1/2 stock value', '1 ←'],
-            ['Dividend > 1/2 stock value and < stock value', 'none'],
-            ['Dividend ≥ stock value', '1 →'],
-            ['Dividend ≥ 2× stock value', '2 →'],
-            ['Dividend ≥ 3× stock value and stock value is at least 165', '3 →'],
+            ['Dividend < 1/2 stock price', '1 ←'],
+            ['Dividend ≥ 1/2 stock price but < stock price', 'none'],
+            ['Dividend ≥ stock price', '1 →'],
+            ['Dividend ≥ 2X stock price', '2 →'],
+            ['Dividend ≥ 3X stock price and stock price ≥ 165', '3 →'],
             ['Corporation director sells any number of shares', '1 ←'],
-            ['Corporation has any shares in market at end of SR', '1 ←'],
-            ['Corporation is sold out at end of SR', '1 →'],
+            ['Corporation has any shares in the Market at end of an SR', '1 ←'],
+            ['Corporation is sold out at end of an SR', '1 →'],
           ]
         end
 
@@ -268,7 +268,9 @@ module Engine
           @second_tokens_in_green = {}
 
           # When creating a game the game will not have enough to start
-          return unless @players.size.between?(*self.class::PLAYER_RANGE)
+          unless (player_count = @players.size).between?(*self.class::PLAYER_RANGE)
+            raise GameError, "#{self.class::GAME_TITLE} does not support #{player_count} players"
+          end
 
           if first_edition?
             remove_icons(self.class::BOOMTOWN_HEXES, self.class::ABILITY_ICONS['BT'])
@@ -980,6 +982,12 @@ module Engine
           end
 
           false
+        end
+
+        def purchasable_companies(entity = nil)
+          return [] if entity&.minor?
+
+          super
         end
       end
     end

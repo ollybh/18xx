@@ -70,7 +70,7 @@ module Engine
 
               next unless ability_.type == :tile_lay
 
-              if ability_.count <= 0 && ability_.closed_when_used_up
+              if ability_.closed_when_used_up && ability_.count <= 0
                 @log << "#{ability_.owner.name} closes"
                 ability_.owner.close!
               end
@@ -208,7 +208,7 @@ module Engine
 
           def potential_tiles_for_entity(entity, hex, tile_ability)
             advanced_tile_lay = @game.can_upgrade_one_phase_ahead?(entity)
-            return [] if advanced_tile_lay && entity.owner.type == :minor && !hex.tile.color == :yellow
+            return [] if advanced_tile_lay && entity.owner.type == :minor && hex.tile.color != :yellow
 
             special = tile_ability.special if tile_ability.type == :tile_lay
 

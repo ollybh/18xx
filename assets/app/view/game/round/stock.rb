@@ -74,6 +74,7 @@ module View
           end
 
           children.concat(render_buttons)
+          children << render_bid if @current_actions.include?('bid')
           children << h(SpecialBuy) if @current_actions.include?('special_buy')
           children.concat(render_failed_merge) if @current_actions.include?('failed_merge')
           children.concat(render_bank_companies) if @bank_first
@@ -131,10 +132,11 @@ module View
         end
 
         def render_payoff_player_debt_button
-          payoffloan = lambda do
+          payoffdebt = lambda do
             process_action(Engine::Action::PayoffPlayerDebt.new(@current_entity))
           end
-          [h(:button, { on: { click: payoffloan } }, 'Payoff Loan')]
+          partial = @current_entity.cash < @game.player_debt(@current_entity)
+          [h(:button, { on: { click: payoffdebt } }, "Payoff Debt#{partial ? ' (Partial)' : ''}")]
         end
 
         def render_failed_merge
@@ -203,7 +205,7 @@ module View
           when :par
             children << h(Par, corporation: corporation) if @current_actions.include?('par')
           when :bid
-            children << h(Bid, entity: @current_entity, corporation: corporation) if @current_actions.include?('bid')
+            children << h(Bid, entity: @current_entity, biddable: corporation) if @current_actions.include?('bid')
           when :form
             children << h(FormCorporation, corporation: corporation) if @current_actions.include?('par')
           when String
@@ -324,13 +326,15 @@ module View
           }
 
           @game.buyable_bank_owned_companies.map do |company|
+            inputs = []
+            inputs.concat(render_buy_input(company)) if @current_actions.include?('buy_company')
+            inputs.concat(render_company_bid_input(company)) if @current_actions.include?('bid')
+
             children = []
             children << h(Company, company: company,
-                                   bids: (@current_actions.include?('bid') ? @step.bids[company] : nil))
-            if @selected_company == company
-              inputs = []
-              inputs.concat(render_buy_input(company)) if @current_actions.include?('buy_company')
-              inputs.concat(render_bid_input(company)) if @current_actions.include?('bid')
+                                   bids: (@current_actions.include?('bid') ? @step.bids[company] : nil),
+                                   interactive: !inputs.empty?)
+            if !inputs.empty? && @selected_company == company
               children << h('div.margined_bottom', { style: { width: '20rem' } }, inputs)
             end
             h(:div, props, children)
@@ -351,7 +355,7 @@ module View
           end
           [h(:button,
              { on: { click: buy } },
-             "Buy #{@selected_company.sym} from Bank for #{@game.format_currency(company.value)}")]
+             "Buy #{company.sym} from Bank for #{@game.format_currency(company.value)}")]
         end
 
         def render_buy_input_interval(company)
@@ -384,10 +388,10 @@ module View
           ])]
         end
 
-        def render_bid_input(company)
+        def render_company_bid_input(company)
           return [] if !@step.respond_to?(:can_bid_company?) || !@step.can_bid_company?(@current_entity, company)
 
-          [h(Bid, entity: @current_entity, corporation: company)]
+          [h(Bid, entity: @current_entity, biddable: company)]
         end
 
         def render_bank
@@ -422,6 +426,14 @@ module View
             process_action(Engine::Action::PayoffLoan.new(@current_entity, loan: nil))
           end
           [h(:button, { on: { click: payoff_loan } }, "Payoff Loan (#{@game.format_currency(@game.loan_amount)})")]
+        end
+
+        def render_bid
+          children = []
+          if @step.respond_to?(:can_bid?) && @step.can_bid?(@current_entity)
+            children << h(Bid, entity: @current_entity, biddable: @step.bid_entity)
+          end
+          h(:div, children)
         end
       end
     end

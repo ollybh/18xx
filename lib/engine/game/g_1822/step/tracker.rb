@@ -101,6 +101,12 @@ module Engine
         def upgraded_track?(from, _to, _hex)
           from.color != :white
         end
+
+        def update_token!(action, entity, tile, old_tile)
+          @game.remove_extra_tokens!(tile)
+
+          super
+        end
       end
     end
   end

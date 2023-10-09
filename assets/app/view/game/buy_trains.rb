@@ -89,7 +89,7 @@ module View
                  "contribute towards #{@corporation.name} buying a train "\
                  'from the Depot. '
 
-          if @game.class::ALLOW_TRAIN_BUY_FROM_OTHERS
+          if @game.can_buy_train_from_others?
             text += "#{@corporation.name} must buy a "\
                     'train from another corporation, or '
           end
@@ -214,7 +214,15 @@ module View
 
         if (@step.can_buy_train?(@corporation, @active_shell) && @step.room?(@corporation, @active_shell)) ||
            @must_buy_train
-          children << h(:div, "#{@corporation.name} must buy an available train") if @must_buy_train
+          if @must_buy_train
+            children << if @step.must_issue_before_ebuy?(@corporation)
+                          h(:div, "#{@corporation.name} must buy a train from another corporation, "\
+                                  'or issue shares and then buy an available train ')
+                        else
+                          h(:div, "#{@corporation.name} must buy an available train")
+                        end
+          end
+
           if @should_buy_train == :liquidation
             children << h(:div, "#{@corporation.name} must buy a train or it will be liquidated")
           end
@@ -363,7 +371,7 @@ module View
 
       def render_warranty(depot_trains)
         @warranty_input = nil
-        return if depot_trains.empty? || !@step.respond_to?(:warranty_max)
+        return [] if depot_trains.empty? || !@step.respond_to?(:warranty_max)
 
         @warranty_input =
           h(
@@ -576,7 +584,7 @@ module View
           },
         }
 
-        rows = @depot.upcoming.group_by(&:name).flat_map do |_, trains|
+        rows = @depot.upcoming.reject(&:reserved).group_by(&:name).flat_map do |_, trains|
           [h(:div, @game.info_train_name(trains.first)),
            h(:div, @game.info_train_price(trains.first)),
            h(:div, trains.size)]

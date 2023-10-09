@@ -110,6 +110,7 @@ module Engine
       BANK_CASH = 12_000
 
       CURRENCY_FORMAT_STR = '$%s'
+      FORMAT_UPGRADES_ON_HEXES = false
 
       STARTING_CASH = {}.freeze
 
@@ -168,6 +169,7 @@ module Engine
       # operate         -- after operation
       # p_any_operate   -- pres any time, share holders after operation
       # any_time        -- at any time
+      # round           -- after the stock round the share was purchased in
       SELL_AFTER = :first
 
       # down_share -- down one row per share
@@ -175,8 +177,10 @@ module Engine
       # down_block -- down one row per block
       # left_share -- left one column per share
       # left_share_pres -- left one column per share if president
-      # left_block_pres -- left one column per block if president
       # left_block -- one row per block
+      # down_block_pres -- down one row per block if president
+      # left_block_pres -- left one column per block if president
+      # left_per_10_if_pres_else_left_one -- left_share_pres + left_block
       # none -- don't drop price
       SELL_MOVEMENT = :down_share
 
@@ -186,7 +190,7 @@ module Engine
       SELL_BUY_ORDER = :sell_buy_or_buy_sell
 
       # do shares in the pool drop the price?
-      # none, one, each
+      # none, down_block, left_block, down_share
       POOL_SHARE_DROP = :none
 
       # do sold out shares increase the price?
@@ -276,6 +280,9 @@ module Engine
       # for track and/or cities?
       # :cities for cities, as in  #611 and #63 in 1822
       # :track  for track, as in 18USA
+      # :unlabeled_cities for cities with no special label on their hex; the
+      #     labeled cities in 1822CA don't always add track in all possible
+      #     upgrades
       TILE_UPGRADES_MUST_USE_MAX_EXITS = [].freeze
 
       TILE_COST = 0
@@ -916,7 +923,7 @@ module Engine
       end
 
       def train_limit(entity)
-        @phase.train_limit(entity)
+        @phase.train_limit(entity) + Array(abilities(entity, :train_limit)).sum(&:increase)
       end
 
       def train_owner(train)
@@ -1004,6 +1011,13 @@ module Engine
             end
           end
         end
+        abilities(company, :acquire_company) do |ability|
+          acquired_company = company_by_id(ability.company)
+          acquired_company.owner = player
+          player.companies << acquired_company
+          @log << "#{player.name} receives #{acquired_company.name}"
+          after_buy_company(player, acquired_company, 0)
+        end
       end
 
       def after_sell_company(_buyer, _company, _price, _seller); end
@@ -1052,8 +1066,9 @@ module Engine
         when :p_any_operate
           corporation.operated? || corporation.president?(entity)
         when :round
-          @round.stock? &&
-            corporation.share_holders[entity] - @round.players_bought[entity][corporation] >= bundle.percent
+          (@round.stock? &&
+            corporation.share_holders[entity] - @round.players_bought[entity][corporation] >= bundle.percent) ||
+            @round.operating?
         when :any_time
           true
         else
@@ -1143,12 +1158,16 @@ module Engine
         self.class::SELL_AFTER == :first ? (@turn > 1 || !@round.stock?) : true
       end
 
+      def sell_movement
+        self.class::SELL_MOVEMENT
+      end
+
       def sell_shares_and_change_price(bundle, allow_president_change: true, swap: nil, movement: nil)
         corporation = bundle.corporation
         old_price = corporation.share_price
         was_president = corporation.president?(bundle.owner)
         @share_pool.sell_shares(bundle, allow_president_change: allow_president_change, swap: swap)
-        case movement || self.class::SELL_MOVEMENT
+        case movement || sell_movement
         when :down_share
           bundle.num_shares.times { @stock_market.move_down(corporation) }
         when :down_per_10
@@ -1179,7 +1198,7 @@ module Engine
         else
           raise NotImplementedError
         end
-        log_share_price(corporation, old_price) if self.class::SELL_MOVEMENT != :none
+        log_share_price(corporation, old_price) if sell_movement != :none
       end
 
       def sold_out_increase?(_corporation)
@@ -1193,9 +1212,8 @@ module Engine
         return unless from != to
 
         jumps = ''
-        if steps
-          steps = share_jumps(steps)
-          jumps = " (#{steps} step#{steps == 1 ? '' : 's'})" if (steps > 1) || log_steps
+        if steps && ((steps > 1) || log_steps)
+          jumps = " (#{steps} step#{steps == 1 ? '' : 's'})"
         end
 
         r1, c1 = from.coordinates
@@ -1209,16 +1227,6 @@ module Engine
 
         @log << "#{entity.name}'s share price moves #{dir_str} from #{format_currency(from_price)} "\
                 "to #{format_currency(to_price)}#{jumps}"
-      end
-
-      def share_jumps(steps)
-        return steps unless @stock_market.zigzag
-
-        if steps > 1
-          steps / 2
-        else
-          steps
-        end
       end
 
       # A hook to allow a game to request a consent check for a share exchange
@@ -1242,6 +1250,10 @@ module Engine
           !depot.depot_trains.empty? &&
           (self.class::MUST_BUY_TRAIN == :always ||
            (self.class::MUST_BUY_TRAIN == :route && @graph.route_info(entity)&.dig(:route_train_purchase)))
+      end
+
+      def can_buy_train_from_others?
+        self.class::ALLOW_TRAIN_BUY_FROM_OTHERS
       end
 
       def discard_discount(train, price)
@@ -1284,6 +1296,13 @@ module Engine
 
       def routes_revenue(routes)
         routes.sum(&:revenue)
+      end
+
+      # Revenue earned during an Action::RunRoutes, in addition to the train
+      # revenue calculated in #routes_revenue. This value is stored in the game
+      # JSON, this method is not called again whilst a game is being loaded.
+      def extra_revenue(_entity, _routes)
+        0
       end
 
       def compute_other_paths(routes, route)
@@ -1355,7 +1374,7 @@ module Engine
           h['nodes'].each { |type| type_info[type] << info }
         end
 
-        grouped = visits.group_by(&:type)
+        grouped = visits.group_by { |v| stop_type(v, train) }
 
         grouped.sort_by { |t, _| type_info[t].size }.each do |type, group|
           num = group.sum(&:visit_cost)
@@ -1410,7 +1429,7 @@ module Engine
 
             next unless stops.all? do |stop|
               row = distance.index.with_index do |h, i|
-                h['nodes'].include?(stop.type) && types_used[i] < h['pay']
+                h['nodes'].include?(stop_type(stop, train)) && types_used[i] < h['pay']
               end
 
               types_used[row] += 1 if row
@@ -1430,6 +1449,10 @@ module Engine
         end
 
         []
+      end
+
+      def stop_type(stop, _train)
+        stop.type
       end
 
       def visited_stops(route)
@@ -1491,7 +1514,7 @@ module Engine
 
       def place_home_token(corporation)
         return unless corporation.next_token # 1882
-        # If a corp has laid it's first token assume it's their home token
+        # If a corp has laid its first token assume its their home token
         return if corporation.tokens.first&.used
 
         hex = hex_by_id(corporation.coordinates)
@@ -2118,7 +2141,7 @@ module Engine
           @log << "-- Event: obsolete #{removed_obsolete_trains.uniq.join(', ')} trains are removed from The Depot --"
         end
 
-        return unless rusted_trains.any?
+        return if rusted_trains.empty?
 
         @log << "-- Event: #{rusted_trains.uniq.join(', ')} trains rust " \
                 "( #{owners.map { |c, t| "#{c} x#{t}" }.join(', ')}) --"
@@ -2217,6 +2240,14 @@ module Engine
         []
       end
 
+      def initial_auction_companies
+        @companies
+      end
+
+      def player_debt(_player)
+        0
+      end
+
       private
 
       def init_graph
@@ -2227,7 +2258,7 @@ module Engine
         cash = self.class::BANK_CASH
         cash = cash[players.size] if cash.is_a?(Hash)
 
-        Bank.new(cash, log: @log)
+        Bank.new(cash, log: @log, check: game_end_check_values.include?(:bank))
       end
 
       def init_cert_limit
@@ -2649,7 +2680,11 @@ module Engine
                            " : Game Ends at conclusion of this round (#{turn})"
                          end
                        when :current_or
-                         " : Game Ends at conclusion of this OR (#{turn}.#{@round.round_num})"
+                         if @round.is_a?(Round::Operating)
+                           " : Game Ends at conclusion of this OR (#{turn}.#{@round.round_num})"
+                         else
+                           " : Game Ends at conclusion of the next OR (#{turn}.#{@round.round_num})"
+                         end
                        when :full_or
                          if @round.is_a?(Round::Operating)
                            " : Game Ends at conclusion of #{round_end.short_name} #{turn}.#{operating_rounds}"
@@ -2701,7 +2736,14 @@ module Engine
 
       def next_sr_position(entity)
         player_order = if @round.current_entity&.player?
-                         next_sr_player_order == :first_to_pass ? @round.pass_order : []
+                         case next_sr_player_order
+                         when :first_to_pass
+                           @round.pass_order
+                         when :most_cash
+                           @players.sort_by { |p| [p.cash, @players.index(p)] }.reverse
+                         else
+                           []
+                         end
                        else
                          @players
                        end
@@ -2951,8 +2993,9 @@ module Engine
 
       def ability_right_time?(ability, time, on_phase, passive_ok, strict_time)
         return true unless @round
+        return false if ability.on_phase && !['any', ability.on_phase].include?(on_phase)
+        return false if ability.after_phase && !@phase.previous.map { |p| p['name'] }.include?(ability.after_phase)
         return true if time == 'any' || ability.when?('any')
-        return (on_phase == ability.on_phase) || (on_phase == 'any') if ability.on_phase
         return false if ability.passive && !passive_ok
         return true if ability.passive && ability.when.empty?
 
@@ -2990,6 +3033,8 @@ module Engine
             @round.operating? && !@round.current_operator_acted
           when 'or_start'
             ability_time_is_or_start?
+          when 'stock_round'
+            @round.stock?
           else
             default
           end
