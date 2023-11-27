@@ -44,6 +44,8 @@ module Engine
           },
         ]).freeze
 
+        PENDING_HOME_TOKENERS = [MINOR_14_ID, 'GNWR'].freeze
+
         def init_companies(players)
           game_companies.map do |company|
             next if players.size < (company[:min_players] || 0)
@@ -52,6 +54,34 @@ module Engine
             opts = self.class::STARTING_COMPANIES_OVERRIDE[company[:sym]] || {}
             Company.new(**company.merge(opts))
           end.compact
+        end
+
+        def after_lay_tile(hex, _old_tile, _tile)
+          super
+          update_home(gnwr, tile_trigger: true) if hex.id == gnwr.coordinates
+        end
+
+        def after_place_token(_entity, city)
+          super
+          update_home(gnwr) if city.hex.id == gnwr.coordinates
+        end
+
+        # the pending home tokeners are all in the east
+        def pending_home_tokeners
+          []
+        end
+
+        # GNWR and minor 18 both live in Thunder Bay (R16), and they might both
+        # be there before there are actually 2 token slots available
+        def home_token_can_be_cheater
+          true
+        end
+
+        def place_home_token(corporation)
+          # placing the "cheater" token while GNWR also has a reservation
+          # creates a third slot in green/brown
+          hex_by_id(gnwr.coordinates).tile.remove_reservation!(gnwr) if corporation == gnwr
+          super
         end
       end
     end

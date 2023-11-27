@@ -8,11 +8,12 @@ module Engine
       module Meta
         include Game::Meta
 
-        DEV_STAGE = :production
+        DEV_STAGE = :beta
 
         GAME_DESIGNER = 'David Hecht'
         GAME_IMPLEMENTER = 'R. Ryan Driskel'
         GAME_LOCATION = 'Europe'
+        PUBLISHER = :golden_spike
         GAME_RULES_URL = 'https://drive.google.com/file/d/1zk_J3EiQyj4DCDWNIfCNLGKGu3GsuhPR/view?usp=sharing'
 
         PLAYER_RANGE = [2, 6].freeze
