@@ -79,7 +79,7 @@ module View
           else
             [
               P_CENTER,
-              PP_TOP_RIGHT_CORNER,
+              PP_UPPER_RIGHT_CORNER,
               PP_EDGE2,
               PP_BOTTOM_LEFT_CORNER,
               PP_RIGHT_CORNER,
@@ -111,6 +111,7 @@ module View
               cow_skull: svg(delta_x: delta_x, delta_y: delta_y, icon: 'cow_skull'),
               wall: svg(delta_x: delta_x, delta_y: delta_y, icon: 'wall'),
               forest: svg(delta_x: delta_x, delta_y: delta_y, icon: 'tree'),
+              mine: svg(delta_x: delta_x, delta_y: delta_y, icon: 'mine'),
             }[t]
           end
 

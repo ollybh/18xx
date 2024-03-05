@@ -10,8 +10,14 @@ module Engine
         class BuyTrain < Engine::Step::BuyTrain
           def buyable_train_variants(train, entity)
             variants = super
-            variants.select! { |t| @game.hex_train_name?(t['name']) } if entity.type == :regional
+            variants.select! { |t| @game.hex_train_name?(t[:name]) } if entity.type == :regional
             variants
+          end
+
+          def other_trains(entity)
+            trains = super
+            trains.select! { |t| @game.hex_train_name?(t.name) } if entity.type == :regional
+            trains
           end
 
           def spend_minmax(entity, train)

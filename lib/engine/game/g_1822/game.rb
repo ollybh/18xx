@@ -294,7 +294,7 @@ module Engine
         MUST_BUY_TRAIN = :always
         NEXT_SR_PLAYER_ORDER = :most_cash
 
-        SELL_AFTER = :operate
+        SELL_AFTER = :full_or_turn
 
         SELL_BUY_ORDER = :sell_buy
 
@@ -1307,9 +1307,6 @@ module Engine
 
           # If we upgraded london, check if we need to add the extra slot from minor 14
           upgrade_minor_14_home_hex(hex) if hex.name == self.class::MINOR_14_HOME_HEX
-
-          # If we upgraded the english channel to brown, upgrade france as well since we got 2 lanes to france.
-          return if hex.name != self.class::ENGLISH_CHANNEL_HEX || tile.color != :brown
         end
 
         def bank_companies(prefix)
@@ -1766,7 +1763,7 @@ module Engine
           end
         end
 
-        def place_destination_token(entity, hex, token, city = nil)
+        def place_destination_token(entity, hex, token, city = nil, log: true)
           city ||= destination_city(hex, entity)
           city.place_token(entity, token, free: true, check_tokenable: false, cheater: true)
           hex.tile.icons.reject! { |icon| icon.name == "#{entity.id}_destination" }
@@ -1777,7 +1774,7 @@ module Engine
 
           @graph.clear
 
-          @log << "#{entity.name} places its destination token on #{hex.name}"
+          @log << "#{entity.name} places its destination token on #{hex.name}" if log
         end
 
         def destination_city(hex, _entity)
@@ -1845,7 +1842,7 @@ module Engine
           return unless @minor_14_city_exit
 
           extra_city = hex.tile.paths.find { |p| p.edges[0].num == @minor_14_city_exit }.city
-          return unless extra_city.tokens.size == 1
+          return unless extra_city.tokens.size <= extra_city.normal_slots
 
           extra_city.tokens[extra_city.normal_slots] = nil
         end
@@ -1966,6 +1963,10 @@ module Engine
           end
         end
 
+        def pending_home_tokeners
+          self.class::PENDING_HOME_TOKENERS
+        end
+
         private
 
         def find_and_remove_train_by_id(train_id, buyable: true)
@@ -2009,18 +2010,18 @@ module Engine
             bid_box_3 = privates.map { |c| c if self.class::PLUS_EXPANSION_BIDBOX_3.include?(c.id) }.compact
             privates = bid_box_1 + bid_box_2 + bid_box_3
 
-            # Remove one of the bidbid 2 privates, except London, Chatham and Dover Railway
+            # Remove one of the bidbox 2 privates, except London, Chatham and Dover Railway
             company = privates.find do |c|
               c.id != self.class::COMPANY_LCDR && self.class::PLUS_EXPANSION_BIDBOX_2.include?(c.id)
             end
             privates.delete(company)
-            @log << "#{company.name} have been removed from the game"
+            @log << "#{company.name} has been removed from the game"
 
             # Remove two of the bidbox 3 privates
             2.times.each do |_|
               company = privates.find { |c| self.class::PLUS_EXPANSION_BIDBOX_3.include?(c.id) }
               privates.delete(company)
-              @log << "#{company.name} have been removed from the game"
+              @log << "#{company.name} has been removed from the game"
             end
           end
 
@@ -2052,8 +2053,11 @@ module Engine
         end
 
         def setup_destinations
+          @destination_hexes = {}
           @corporations.each do |c|
             next unless c.destination_coordinates
+
+            @destination_hexes[c.destination_coordinates] = c
 
             home_hex = hex_by_id(c.coordinates)
             ability = Ability::Base.new(
@@ -2069,10 +2073,16 @@ module Engine
             )
             c.add_ability(ability)
 
-            c.tokens << Engine::Token.new(c, logo: "../#{c.destination_icon}.svg",
-                                             simple_logo: "../#{c.destination_icon}.svg",
+            c.tokens << Engine::Token.new(c, logo: "#{c.destination_icon}.svg",
+                                             simple_logo: "#{c.destination_icon}.svg",
                                              type: :destination)
-            dest_hex.tile.icons << Part::Icon.new("../#{c.destination_icon}", "#{c.id}_destination")
+            icon = Part::Icon.new(c.destination_icon.to_s, "#{c.id}_destination", owner: c, loc: c.destination_loc)
+            if c.destination_icon_in_city_slot
+              city, slot = c.destination_icon_in_city_slot
+              dest_hex.tile.cities[city].slot_icons[slot] = icon
+            else
+              dest_hex.tile.icons << icon
+            end
 
             next unless c.id == self.class::TWO_HOME_CORPORATION
 

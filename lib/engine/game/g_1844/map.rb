@@ -113,19 +113,16 @@ module Engine
           },
           'XM1' => {
             'count' => 2,
-            'hidden' => true,
             'color' => 'gray',
             'code' => 'offboard=revenue:yellow_10|green_20|brown_50|gray_80',
           },
           'XM2' => {
             'count' => 2,
-            'hidden' => true,
             'color' => 'gray',
             'code' => 'offboard=revenue:yellow_10|green_40|brown_50|gray_60',
           },
           'XM3' => {
             'count' => 2,
-            'hidden' => true,
             'color' => 'gray',
             'code' => 'offboard=revenue:yellow_10|green_50|brown_80|gray_10',
           },
@@ -175,7 +172,7 @@ module Engine
           'D17' => 'Baden',
           'D19' => 'Zurich',
           'D21' => 'Rapperswil',
-          'D23' => 'Appelzell',
+          'D25' => 'Appelzell',
           'E8' => 'Biel',
           'E10' => 'Solothurn',
           'E18' => 'Zug',

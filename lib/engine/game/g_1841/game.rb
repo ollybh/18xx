@@ -447,7 +447,6 @@ module Engine
           if count < 2
             @log << '-- Event: The Tuscan Merge will not occur - 2 or more Tuscan corporations are not active --'
             sfli.close!
-            holding.close!
             return
           end
 
@@ -455,7 +454,7 @@ module Engine
           sfma_idx = @round.entities.find_index(sfma)
           ssfl_idx = @round.entities.find_index(ssfl)
 
-          will_run = true
+          will_run = (version == 2)
           will_run = false if sflp_idx && sflp_idx <= @round.entity_index
           will_run = false if sfma_idx && sfma_idx <= @round.entity_index
           will_run = false if ssfl_idx && ssfl_idx <= @round.entity_index
@@ -1292,8 +1291,18 @@ module Engine
             next if shares[corp].empty?
 
             bundle = ShareBundle.new(Array(shares[corp]))
+            is_pres = bundle.presidents_share
             @log << "Moving #{bundle.percent}% of shares of #{corp.name} from #{from.name} to #{target.name} treasury"
-            @share_pool.transfer_shares(bundle, target, allow_president_change: true)
+
+            # special case: if from is already president of share being moved, don't allow president change
+            # because: 1: transfer_shares doesn't handle the president transfer correctly if more than 1 share is moved
+            # and 2: the presidency should stay with the target anyway
+            @share_pool.transfer_shares(bundle, target, allow_president_change: !is_pres)
+            next unless is_pres
+
+            # handle president transfer manually
+            corp.owner = target
+            @log << "#{target.name} retains presidency of #{corp.name}"
           end
 
           # cash
@@ -1409,7 +1418,7 @@ module Engine
             options = [:cash]
             options << :pres if entity.player? && pres_share && afford_upgrade_to_pres?(entity, tp, @merger_target)
             options << :full if entity.player && normal_share && afford_upgrade_to_full?(entity, @merger_target)
-            if entity.player && !normal_share && pres_share && !current_shares.emtpy? &&
+            if entity.player && !normal_share && pres_share && !current_shares.empty? &&
                 afford_upgrade_to_full?(entity, @merger_target)
               # special case: entity already has a share, no target normal shares left but
               # president share is still available
@@ -1954,7 +1963,8 @@ module Engine
           min = current_token_cnt == 1 ? 1 : 0
 
           first_price = min.zero? ? XFORM_OPT_TOKEN_COST : XFORM_REQ_TOKEN_COST
-          max_opt_tokens = [((@transform_target.cash - first_price) / XFORM_OPT_TOKEN_COST).to_i, 0].max
+          required_payment = min.zero? ? 0 : XFORM_REQ_TOKEN_COST
+          max_opt_tokens = [((@transform_target.cash - required_payment) / XFORM_OPT_TOKEN_COST).to_i, 0].max
           max = [max_opt_tokens + min, 5 - current_token_cnt].min
 
           if max.zero?
@@ -2075,10 +2085,10 @@ module Engine
           tshares.each_with_index do |share, i|
             if i.even?
               @log << "Moving #{share.percent}% share of #{share.corporation.name} from #{old.name} to #{newa.name} treasury"
-              @share_pool.transfer_shares(share.to_bundle, newa, allow_president_change: true)
+              @share_pool.transfer_shares(share.to_bundle, newa, allow_president_change: true, corporate_transfer: true)
             else
               @log << "Moving #{share.percent}% share of #{share.corporation.name} from #{old.name} to #{newb.name} treasury"
-              @share_pool.transfer_shares(share.to_bundle, newb, allow_president_change: true)
+              @share_pool.transfer_shares(share.to_bundle, newb, allow_president_change: true, corporate_transfer: true)
             end
           end
         end
@@ -2461,8 +2471,13 @@ module Engine
           event_tuscan_merge!
         end
 
+        # Return corp first in operating order:
+        # 1. Highest price, then
+        # 2. Rightmost price, then
+        # 3. Highest in stack within a price
+        #
         def best_stock_value(corps)
-          corps.compact.select(&:floated?).max_by { |c| c.share_price.price }
+          corps.compact.select(&:floated?).min
         end
 
         def tuscan_merge_start(sflp, sfma, ssfl, sfli, holding, will_run)
@@ -2471,6 +2486,7 @@ module Engine
           @tuscan_merge_run = will_run
 
           decider = best_stock_value([sflp, sfma, ssfl])
+          @log << "#{decider.name} has best stock value"
           @tuscan_merge_decider = decider.player || @round.current_entity.player
           @log << "#{@tuscan_merge_decider.name} will perform Tuscan Merge operations"
           @tuscan_merge_ssfl = ssfl
@@ -2487,7 +2503,6 @@ module Engine
             transform_start(sflp, holding, tuscan_merge: true)
           else
             # sflp and sfma are open, but not ssfl
-            holding.close! # not needed
             @tuscan_merge_ssfl = nil
             merger_start(sflp, sfma, sfli, tuscan_merge: true)
           end

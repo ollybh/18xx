@@ -19,10 +19,9 @@ module Engine
             return super if hex.id != @game.class::PARIS_HEX || hex.tile.color != :green
 
             plm_in_city_0 = true if hex.tile.cities[0].reserved_by?(@game.plm) || hex.tile.cities[0].tokened_by?(@game.plm)
-
-            if tile.name == 'X7' || plm_in_city_0
+            if plm_in_city_0
               return true if tile.rotation == hex.tile.rotation
-            elsif tile.rotation == hex.tile.rotation + 3
+            elsif tile.rotation == (hex.tile.rotation + 3) % 6
               true
             end
           end
@@ -59,18 +58,17 @@ module Engine
           end
 
           def update_token!(action, entity, tile, old_tile)
-            cities = tile.cities
-            tokens = cities.flat_map(&:tokens).compact
             saved_tokens = @game.saved_tokens
 
             if old_tile.name == @game.class::PARIS_HEX && old_tile.paths.empty?
+              cities = tile.cities
+              tokens = cities.flat_map(&:tokens).compact
               plm_token = tokens.find { |t| t.corporation.id == 'PLM' }
 
               return unless plm_token
 
               plm_token.move!(cities.first)
               @game.graph.clear
-
             elsif saved_tokens.any?
               token = saved_tokens.find { |t| t[:entity] == entity }
               return unless token

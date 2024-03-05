@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# backtick_javascript: true
+
 if RUBY_ENGINE == 'opal'
   require_tree '../action'
   require_tree '../round'
@@ -34,14 +36,15 @@ require_relative 'meta'
 
 module Engine
   module Game
-    def self.load(data, at_action: nil, actions: nil, pin: nil, optional_rules: nil, user: nil, **kwargs)
+    def self.load(data, at_action: nil, actions: nil, pin: nil, seed: nil, optional_rules: nil, user: nil, **kwargs)
       case data
       when String
-        parsed_data = JSON.parse(File.exist?(data) ? File.read(data) : data)
-        return load(parsed_data,
+        data = JSON.parse(File.exist?(data) ? File.read(data) : data)
+        return load(data,
                     at_action: at_action,
                     actions: actions,
-                    pin: pin,
+                    pin: pin || data.dig('settings', 'pin'),
+                    seed: seed || data.dig('settings', 'seed'),
                     optional_rules: optional_rules,
                     user: user,
                     **kwargs)
@@ -51,13 +54,16 @@ module Engine
         id = data['id']
         actions ||= data['actions'] || []
         pin ||= data.dig('settings', 'pin')
+        seed ||= data.dig('settings', 'seed')
         optional_rules ||= data.dig('settings', 'optional_rules') || []
       when Integer
-        return load(::Game[data],
+        db_game = ::Game[data]
+        return load(db_game,
                     at_action: at_action,
                     actions: actions,
-                    pin: pin,
-                    optional_rules: optional_rules,
+                    pin: pin || db_game.settings['pin'],
+                    seed: seed || db_game.settings['seed'],
+                    optional_rules: optional_rules || db_game.settings['optional_rules'],
                     user: user,
                     **kwargs)
       when ::Game
@@ -66,11 +72,20 @@ module Engine
         id = data.id
         actions ||= data.actions.map(&:to_h)
         pin ||= data.settings['pin']
+        seed ||= data.settings['seed']
         optional_rules ||= data.settings['optional_rules'] || []
       end
 
       Engine.game_by_title(title).new(
-        names, id: id, actions: actions, at_action: at_action, pin: pin, optional_rules: optional_rules, user: user, **kwargs
+        names,
+        id: id,
+        actions: actions,
+        at_action: at_action,
+        pin: pin,
+        seed: seed,
+        optional_rules: optional_rules,
+        user: user,
+        **kwargs
       )
     end
 
@@ -83,7 +98,7 @@ module Engine
                   :tiles, :turn, :total_loans, :undo_possible, :redo_possible, :round_history, :all_tiles,
                   :optional_rules, :exception, :last_processed_action, :broken_action,
                   :turn_start_action_id, :last_turn_start_action_id, :programmed_actions, :round_counter,
-                  :manually_ended
+                  :manually_ended, :seed
 
       # Game end check is described as a dictionary
       # with reason => after
@@ -164,12 +179,13 @@ module Engine
       TURN_SELL_LIMIT = nil
 
       # when can a share holder sell shares
-      # first           -- after first stock round
-      # after_ipo       -- after stock round in which company is opened
-      # operate         -- after operation
-      # p_any_operate   -- pres any time, share holders after operation
-      # any_time        -- at any time
-      # round           -- after the stock round the share was purchased in
+      # first            -- after first stock round
+      # after_sr_floated -- after stock round in which company floated
+      # operate          -- after operation
+      # full_or_turn     -- after corp completes a full OR turn
+      # p_any_operate    -- pres any time, share holders after operation
+      # any_time         -- at any time
+      # round            -- after the stock round the share was purchased in
       SELL_AFTER = :first
 
       # down_share -- down one row per share
@@ -195,6 +211,10 @@ module Engine
 
       # do sold out shares increase the price?
       SOLD_OUT_INCREASE = true
+
+      # :none -- No movement
+      # :down_right -- Moves down and right
+      SOLD_OUT_TOP_ROW_MOVEMENT = :none
 
       # :after_last_to_act -- player after the last to act goes first. Order remains the same.
       # :first_to_pass -- players ordered by when they first started passing.
@@ -497,7 +517,7 @@ module Engine
         true
       end
 
-      def initialize(names, id: 0, actions: [], at_action: nil, pin: nil, strict: false, optional_rules: [], user: nil)
+      def initialize(names, id: 0, actions: [], at_action: nil, pin: nil, strict: false, optional_rules: [], user: nil, seed: nil)
         @id = id
         @turn = 1
         @final_turn = nil
@@ -524,7 +544,7 @@ module Engine
 
         @optional_rules = init_optional_rules(optional_rules)
 
-        @seed = @id.to_s.scan(/\d+/).first.to_i % RAND_M
+        initialize_seed(seed)
 
         case self.class::DEV_STAGE
         when :prealpha
@@ -556,6 +576,8 @@ module Engine
         @loans = init_loans
         @total_loans = @loans.size
         @corporations = init_corporations(@stock_market)
+        @closing_queue = {}
+        @corporations_are_closing = false
         @bank = init_bank
         @tiles = init_tiles
         @all_tiles = init_tiles
@@ -604,12 +626,20 @@ module Engine
         @log << '----'
       end
 
+      def initialize_seed(seed)
+        # hotseat games created without the seed field being set
+        seed = nil if seed == ''
+
+        @seed = seed || @id.to_s.scan(/\d+/).first.to_i
+        @rand = @seed % RAND_M
+      end
+
       def rand
-        @seed =
+        @rand =
           if RUBY_ENGINE == 'opal'
-            `parseInt(Big(#{RAND_A}).times(#{@seed}).plus(#{RAND_C}).mod(#{RAND_M}).toString())`
+            `parseInt(Big(#{RAND_A}).times(#{@rand}).plus(#{RAND_C}).mod(#{RAND_M}).toString())`
           else
-            ((RAND_A * @seed) + RAND_C) % RAND_M
+            ((RAND_A * @rand) + RAND_C) % RAND_M
           end
       end
 
@@ -736,6 +766,7 @@ module Engine
         action = Engine::Action::Base.action_from_h(action, self) if action.is_a?(Hash)
 
         action.id = current_action_id + 1
+        LOGGER.debug { "Game::Base#process_action({ id: #{action.id}, ... }, ...)" }
         @raw_actions << action.to_h
         return clone(@raw_actions) if action.is_a?(Action::Undo) || action.is_a?(Action::Redo)
 
@@ -907,6 +938,9 @@ module Engine
         end
       end
 
+      # hook from Engine::Round::Operating before next_entity!
+      def after_end_of_operating_turn(_operator); end
+
       def next_turn!
         return if @turn_start_action_id == current_action_id
 
@@ -915,7 +949,7 @@ module Engine
       end
 
       def clone(actions)
-        self.class.new(@names, id: @id, pin: @pin, actions: actions, optional_rules: @optional_rules)
+        self.class.new(@names, id: @id, pin: @pin, seed: @seed, actions: actions, optional_rules: @optional_rules)
       end
 
       def trains
@@ -1059,12 +1093,18 @@ module Engine
         case self.class::SELL_AFTER
         when :first
           @turn > 1 || @round.operating?
-        when :after_ipo
+        when :after_sr_floated
           corporation.operated? || @round.operating?
         when :operate
           corporation.operated?
         when :p_any_operate
           corporation.operated? || corporation.president?(entity)
+        when :full_or_turn
+          if @round.operating? && corporation == @round.current_operator
+            corporation.operating_history.size > 1
+          else
+            corporation.operated?
+          end
         when :round
           (@round.stock? &&
             corporation.share_holders[entity] - @round.players_bought[entity][corporation] >= bundle.percent) ||
@@ -1113,17 +1153,20 @@ module Engine
       def all_bundles_for_corporation(share_holder, corporation, shares: nil)
         return [] unless corporation.ipoed
 
-        shares = (shares || share_holder.shares_of(corporation)).sort_by { |h| [h.president ? 1 : 0, h.percent] }
+        shares ||= share_holder.shares_of(corporation)
+        return [] if shares.empty?
 
-        bundles = shares.flat_map.with_index do |share, index|
-          bundle = shares.take(index + 1)
-          percent = bundle.sum(&:percent)
-          bundles = [Engine::ShareBundle.new(bundle, percent)]
-          bundles.concat(partial_bundles_for_presidents_share(corporation, bundle, percent)) if share.president
-          bundles
+        shares = shares.sort_by { |h| [h.president ? 1 : 0, h.percent] }
+        bundle = []
+        percent = 0
+        all_bundles = shares.each_with_object([]) do |share, bundles|
+          bundle << share
+          percent += share.percent
+          bundles << Engine::ShareBundle.new(bundle, percent)
         end
+        all_bundles.concat(partial_bundles_for_presidents_share(corporation, bundle, percent)) if shares.last.president
 
-        bundles.sort_by(&:percent)
+        all_bundles.sort_by(&:percent)
       end
 
       def partial_bundles_for_presidents_share(corporation, bundle, percent)
@@ -1158,7 +1201,7 @@ module Engine
         self.class::SELL_AFTER == :first ? (@turn > 1 || !@round.stock?) : true
       end
 
-      def sell_movement
+      def sell_movement(_corporation = nil)
         self.class::SELL_MOVEMENT
       end
 
@@ -1167,9 +1210,11 @@ module Engine
         old_price = corporation.share_price
         was_president = corporation.president?(bundle.owner)
         @share_pool.sell_shares(bundle, allow_president_change: allow_president_change, swap: swap)
-        case movement || sell_movement
+        case movement || sell_movement(corporation)
         when :down_share
           bundle.num_shares.times { @stock_market.move_down(corporation) }
+        when :down_left_hex_share
+          bundle.num_shares.times { @stock_market.move_down_left_hex(corporation) }
         when :down_per_10
           percent = bundle.percent
           percent -= swap.percent if swap
@@ -1198,7 +1243,7 @@ module Engine
         else
           raise NotImplementedError
         end
-        log_share_price(corporation, old_price) if sell_movement != :none
+        log_share_price(corporation, old_price) if sell_movement(corporation) != :none
       end
 
       def sold_out_increase?(_corporation)
@@ -1415,7 +1460,7 @@ module Engine
         # in a city/town/offboard slot.
         distance = distance.sort_by { |types, _| types.size }
 
-        max_num_stops = [distance.sum { |h| h['pay'] }, visits.size].min
+        max_num_stops = [distance.sum { |h| h['pay'].to_i }, visits.size].min
 
         max_num_stops.downto(1) do |num_stops|
           # to_i to work around Opal bug
@@ -1477,8 +1522,12 @@ module Engine
         end
       end
 
+      def companies_to_payout(ignore: [])
+        @companies.select { |c| c.owner && c.revenue.positive? && !ignore.include?(c.id) }
+      end
+
       def payout_companies(ignore: [])
-        companies = @companies.select { |c| c.owner && c.revenue.positive? && !ignore.include?(c.id) }
+        companies = companies_to_payout(ignore: ignore)
 
         companies.sort_by! do |company|
           [
@@ -1775,6 +1824,10 @@ module Engine
 
         corporation.close!
         @cert_limit = init_cert_limit
+
+        # when the entity after the closing one starts operating, it might skip
+        # all its steps and land in a closing cell too
+        close_corporations_in_close_cell!
       end
 
       def shares_for_corporation(corporation)
@@ -2191,7 +2244,7 @@ module Engine
         2
       end
 
-      def skip_route_track_type; end
+      def skip_route_track_type(train); end
 
       def tile_valid_for_phase?(tile, hex: nil, phase_color_cache: nil)
         phase_color_cache ||= @phase.tiles
@@ -2248,6 +2301,12 @@ module Engine
         0
       end
 
+      def render_hex_reservation?(_corporation)
+        true
+      end
+
+      def after_phase_change(_name); end
+
       private
 
       def init_graph
@@ -2292,7 +2351,8 @@ module Engine
 
       def init_stock_market
         StockMarket.new(game_market, self.class::CERT_LIMIT_TYPES,
-                        multiple_buy_types: self.class::MULTIPLE_BUY_TYPES)
+                        multiple_buy_types: self.class::MULTIPLE_BUY_TYPES,
+                        sold_out_top_row_movement: self.class::SOLD_OUT_TOP_ROW_MOVEMENT)
       end
 
       def game_market
@@ -2706,9 +2766,29 @@ module Engine
       end
 
       def action_processed(_action)
+        close_corporations_in_close_cell!
+      end
+
+      # close_corporation() might cause another corporation to need closing; if
+      # this function is called multiple times before resolving, corporations
+      # that should be closed are added to @closing_queue, but the closing loop
+      # is not re-entered
+      def close_corporations_in_close_cell!
         return unless stock_market.has_close_cell
 
-        @corporations.dup.each { |c| close_corporation(c) if c.share_price&.type == :close }
+        @corporations.each do |corp|
+          @closing_queue[corp] = true if !corp.closed? && corp.share_price&.type == :close
+        end
+
+        return if @corporations_are_closing
+
+        @corporations_are_closing = true
+        until @closing_queue.empty?
+          corp = @closing_queue.first[0]
+          @closing_queue.delete(corp)
+          close_corporation(corp)
+        end
+        @corporations_are_closing = false
       end
 
       def show_priority_deal_player?(order)
@@ -2741,6 +2821,8 @@ module Engine
                            @round.pass_order
                          when :most_cash
                            @players.sort_by { |p| [p.cash, @players.index(p)] }.reverse
+                         when :least_cash
+                           @players.sort_by { |p| [p.cash, @players.index(p)] }
                          else
                            []
                          end
@@ -2994,7 +3076,7 @@ module Engine
       def ability_right_time?(ability, time, on_phase, passive_ok, strict_time)
         return true unless @round
         return false if ability.on_phase && !['any', ability.on_phase].include?(on_phase)
-        return false if ability.after_phase && !@phase.previous.map { |p| p['name'] }.include?(ability.after_phase)
+        return false if ability.after_phase && !@phase.previous.map { |p| p[:name] }.include?(ability.after_phase)
         return true if time == 'any' || ability.when?('any')
         return false if ability.passive && !passive_ok
         return true if ability.passive && ability.when.empty?
@@ -3132,6 +3214,10 @@ module Engine
       end
 
       def show_map_legend?
+        false
+      end
+
+      def show_map_legend_on_left?
         false
       end
 

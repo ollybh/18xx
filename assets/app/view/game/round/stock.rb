@@ -51,16 +51,23 @@ module View
             store(:corporation_to_par, nil, skip: true)
           end
 
+          if @current_actions.include?('par') && @step.respond_to?(:companies_pending_par) && !@step.companies_pending_par.empty?
+            return h(:div, render_company_pending_par)
+          end
           return render_select_par_slot if @corporation_to_par && @current_actions.include?('par')
 
           children = []
 
+          children.concat(render_bankruptcy) if @current_actions.include?('bankrupt')
           children << h(Choose) if @current_actions.include?('choose') && @step.choice_available?(@current_entity)
           children << h(FlexibleBuy) if @current_actions.include?('buy_shares') && @flexible_player
 
           if @step.respond_to?(:must_sell?) && @step.must_sell?(@current_entity)
             children << if @game.num_certs(@current_entity) > @game.cert_limit(@current_entity)
                           h('div.margined', 'Must sell stock: above certificate limit')
+                        elsif @step.respond_to?(:must_sell_corporations)
+                          corps_over_limit = @step.must_sell_corporations(@current_entity).map(&:name).join(', ')
+                          h('div.margined', "Must sell stock: above 60% limit in #{corps_over_limit}")
                         else
                           h('div.margined', 'Must sell stock: above 60% limit in corporation(s)')
                         end
@@ -90,6 +97,24 @@ module View
           children << h(StockMarket, game: @game, show_bank: true)
 
           h(:div, children)
+        end
+
+        def render_company_pending_par
+          children = []
+
+          company = @step.companies_pending_par.first
+          @game.abilities(company, :shares).shares&.each do |share|
+            next unless share.president
+
+            children << h(Corporation, corporation: share.corporation)
+            children << if @game.respond_to?(:par_chart)
+                          h(ParChart, corporation_to_par: share.corporation)
+                        else
+                          h(Par, corporation: share.corporation)
+                        end
+          end
+
+          children
         end
 
         def render_buttons
@@ -129,6 +154,24 @@ module View
           end
 
           [h(:button, { on: { click: merge } }, @step.merge_action)]
+        end
+
+        def render_bankruptcy
+          resign = lambda do
+            process_action(Engine::Action::Bankrupt.new(@current_entity))
+          end
+
+          props = {
+            style: {
+              width: 'max-content',
+            },
+            on: { click: resign },
+          }
+
+          [h(:div, [
+            h(:button, props, 'Declare Bankruptcy'),
+            h(:div, @step.bankruptcy_description(@current_entity)),
+          ])]
         end
 
         def render_payoff_player_debt_button
@@ -383,7 +426,7 @@ module View
 
           div_class = buy_buttons.size < 5 ? '.inline' : ''
           [h(:div, [
-            h("div#{div_class}", { style: { marginTop: '0.5rem' } }, "Buy #{@selected_company.sym}: "),
+            h("div#{div_class}", { style: { marginTop: '0.5rem' } }, "Buy #{company.sym}: "),
             *buy_buttons,
           ])]
         end

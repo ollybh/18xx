@@ -6,6 +6,8 @@ module Engine
   module Game
     module G1822CA
       module Scenario
+        include G1822::Scenario
+
         CERT_LIMIT = { 2 => 27, 3 => 17, 4 => 13, 5 => 10 }.freeze
         STARTING_CASH = { 2 => 750, 3 => 500, 4 => 375, 5 => 300 }.freeze
 
@@ -17,8 +19,6 @@ module Engine
           %w[5y 10y 15y 20y 25y 30y 35y 40y 45y 50p 60xp 70xp 80xp 90xp 100xp 110 120 135 150 165 180 200 220
              245 270 300 330 360 400 450 500e 550e 600e],
         ].freeze
-
-        PHASES = G1822::Scenario::PHASES
 
         TRAINS = [
           {
@@ -190,6 +190,16 @@ module Engine
 
         def block_detroit_duluth; end
         def event_open_detroit_duluth!; end
+
+        def init_companies(players)
+          game_companies.map do |company|
+            next if players.size < (company[:min_players] || 0)
+            next unless starting_companies.include?(company[:sym])
+
+            opts = self.class::STARTING_COMPANIES_OVERRIDE[company[:sym]] || {}
+            Company.new(**company.merge(opts))
+          end.compact
+        end
       end
     end
   end

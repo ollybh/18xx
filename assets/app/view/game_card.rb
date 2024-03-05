@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# backtick_javascript: true
+
 require 'lib/settings'
 require 'lib/truncate'
 require 'lib/profile_link'
@@ -122,9 +124,14 @@ module View
         },
       }
 
+      dev_status = game.meta::DEV_STAGE
+
       h('div.header', div_props, [
         h(:div, text_props, [
-          h(:div, "Game: #{game.display_title}"),
+          h(:div, [
+            "Game: #{game.display_title}",
+            (dev_status != :production ? " (#{dev_status})" : ''),
+          ].join),
           h('div.nowrap', owner_props, "Owner: #{@gdata['user']['name']}"),
         ]),
         h(:div, buttons_props, buttons),

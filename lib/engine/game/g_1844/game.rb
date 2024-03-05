@@ -188,7 +188,7 @@ module Engine
             num: 6,
             distance: 4,
             price: 300,
-            rusts_on: '7',
+            rusts_on: '8E',
             variants: [
               {
                 name: '4H',
@@ -245,7 +245,7 @@ module Engine
         EVENTS_TEXT = Base::EVENTS_TEXT.merge(
           'train_exports' => ['Train Exports', 'Next train exported at the end of each OR set'],
           '2t_downgrade' => ['2 -> 2H', '2 trains downgraded to 2H trains'],
-          'company_abilities' => ['Company Abilities Useable', 'Company special abilities can be used'],
+          'company_abilities' => ['Company Abilities', 'Company special abilities can be used'],
           'buy_across' => ['Buy Across', 'Trains can be bought between corporations'],
           '3t_downgrade' => ['3 -> 3H', '3 trains downgraded to 3H trains'],
           'sbb_formation' => ['SBB Forms', 'SBB forms after the Operating Round'],
@@ -308,13 +308,15 @@ module Engine
           tunnel_companies.each { |tc| tc.owner = @bank }
 
           @eva = @depot.trains.find { |t| t.name == '5' && t.events.empty? }
-          @depot.forget_train(@eva)
+          @depot.remove_train(@eva)
+          @eva.reserved = true
           @eva.variant = '5H'
 
           @sbb_train = @depot.trains.find { |t| t.name == '5' && t.events.empty? }
           @depot.forget_train(@sbb_train)
           @sbb_train.variant = '5H'
           @sbb_train.buyable = false
+          sbb.shares.select { |s| s.percent == 10 && !s.president }.each { |s| s.double_cert = true }
 
           @all_tiles.each { |t| t.ignore_gauge_walk = true }
           @_tiles.values.each { |t| t.ignore_gauge_walk = true }
@@ -391,6 +393,8 @@ module Engine
           @log << "-- Event: #{EVENTS_TEXT['full_capitalization'][1]} --"
           @full_capitalization = true
           @corporations.select { |corp| corp.type == :historical && !corp.floated }.each do |corp|
+            next unless corp.destination_coordinates
+
             hex_by_id(corp.destination_coordinates).remove_assignment!(corp)
             corp.remove_ability(corp.abilities.find { |a| a.description.start_with?('Destination') })
           end
@@ -438,14 +442,12 @@ module Engine
             if num_trains.positive?
               @log << "#{sbb.name} receives #{num_trains} train#{num_trains == 1 ? '' : 's'}:" \
                       " #{corp.trains.map(&:name).join(', ')}"
-            end
-            corp.trains.each do |train|
-              train.owner = sbb
-              sbb.trains << train
+              transfer(:trains, corp, sbb)
             end
 
             sbb_share_exchange!(corp)
 
+            remove_destination_token!(corp)
             close_corporation(corp, quiet: true)
           end
 
@@ -471,11 +473,13 @@ module Engine
         end
 
         def sbb_share_exchange!(corporation)
-          cash_per_share = corporation.share_price.price - sbb.share_price.price
           corporation.share_holders.keys.each do |share_holder|
+            sbb_shares = sbb.shares_of(sbb)
             shares = share_holder.shares_of(corporation).map do |corp_share|
               percent = corp_share.president ? 10 : 5
-              sbb.shares_of(sbb).find { |sbb_share| sbb_share.percent == percent }
+              share = sbb_shares.find { |sbb_share| sbb_share.percent == percent }
+              sbb_shares.delete(share)
+              share
             end
             next if shares.empty?
 
@@ -483,9 +487,9 @@ module Engine
             bundle = ShareBundle.new(shares)
             @share_pool.transfer_shares(bundle, share_holder, allow_president_change: false)
 
-            msg = share_holder.name.to_s
-
+            cash_per_share = corporation.par_price ? corporation.share_price.price - sbb.share_price.price : 0
             cash = cash_per_share * bundle.percent / 5
+            msg = share_holder.name.to_s
             if cash.zero? || share_holder == @share_pool
               msg += ' receives'
             elsif cash.positive?
@@ -557,12 +561,16 @@ module Engine
           privates
         end
 
+        def unowned_purchasable_companies(_entity)
+          @companies.select { |c| c.owner == @bank }
+        end
+
         def next_round!
           @round =
             case @round
-            when init_round.class
+            when Engine::Round::Auction
               init_round_finished
-              reorder_players(:least_cash, log_player_order: true)
+              reorder_players(log_player_order: true)
               new_stock_round
             when Engine::Round::Stock
               apply_interest_to_player_debt!
@@ -600,7 +608,7 @@ module Engine
 
         def new_auction_round
           Engine::Round::Auction.new(self, [
-            Engine::Step::CompanyPendingPar,
+            G1844::Step::CompanyPendingPar,
             Engine::Step::SelectionAuction,
           ])
         end
@@ -614,16 +622,18 @@ module Engine
 
         def operating_round(round_num)
           G1844::Round::Operating.new(self, [
-            Engine::Step::Bankrupt,
-            Engine::Step::DiscardTrain,
             Engine::Step::Exchange,
             G1844::Step::SpecialChoose,
             G1844::Step::SpecialTrack,
             G1844::Step::Destination,
             G1844::Step::BuyCompany,
+            Engine::Step::Bankrupt,
+            Engine::Step::DiscardTrain,
             Engine::Step::HomeToken,
             Engine::Step::Track,
+            G1844::Step::DestinationCheck,
             Engine::Step::Token,
+            G1844::Step::DestinationCheck,
             G1844::Step::Route,
             G1844::Step::Dividend,
             G1844::Step::BuyTrain,
@@ -634,8 +644,13 @@ module Engine
         def new_sbb_formation_round
           @log << '-- SBB Formation Round --'
           G1844::Round::SBBFormation.new(self, [
+            Engine::Step::DiscardTrain,
             G1844::Step::RemoveSBBTokens,
           ])
+        end
+
+        def next_sr_player_order
+          @round.is_a?(Engine::Round::Auction) ? :least_cash : :most_cash
         end
 
         def can_par?(corporation, _parrer)
@@ -689,9 +704,16 @@ module Engine
           return bundles if bundles.empty? || corporation.operated?
 
           bundles.each do |bundle|
-            bundle.share_price = @stock_market.find_share_price(corporation, Array.new(bundle.num_shares) { :down }).price
+            bundle.share_price = @stock_market.find_share_price(corporation, :down).price
           end
           bundles
+        end
+
+        def shares_for_presidency_swap(shares, num_shares)
+          return super unless shares.first.corporation == sbb
+
+          double_share = shares.find { |s| s.percent == sbb.presidents_share.percent }
+          double_share ? [double_share] : shares.take(num_shares)
         end
 
         def after_buy_company(player, company, _price)
@@ -761,11 +783,15 @@ module Engine
         end
 
         def destinated!(corporation)
-          hex_by_id(corporation.destination_coordinates).remove_assignment!(corporation)
+          remove_destination_token!(corporation)
           multiplier = corporation.type == :historical ? 5 : 2
           amount = corporation.par_price.price * multiplier
           @bank.spend(amount, corporation)
           @log << "#{corporation.name} has reached its destination and receives #{format_currency(amount)}"
+        end
+
+        def remove_destination_token!(corporation)
+          hex_by_id(corporation.destination_coordinates).remove_assignment!(corporation)
         end
 
         def must_buy_train?(entity)
@@ -782,6 +808,10 @@ module Engine
 
         def hex_train_name?(name)
           name[-1] == 'H'
+        end
+
+        def express_train?(train)
+          train.name[-1] == 'E'
         end
 
         def route_distance(route)
@@ -807,9 +837,30 @@ module Engine
         end
 
         def check_other(route)
+          if route.stops.any? { |stop| stop.route_revenue(route.phase, route.train).zero? }
+            raise GameError, 'No Mountain Railway to visit'
+          end
           return unless hex_train?(route.train)
 
           raise GameError, 'Cannot visit offboard hexes' if route.stops.any? { |stop| stop.tile.color == :red }
+        end
+
+        def revenue_stops(route)
+          stops = super
+          return stops unless express_train?(route.train)
+
+          distance = route.train.distance.first['pay']
+          return stops if stops.size <= distance
+
+          # Prune the list of stops to improve performance
+          stops_by_revenue = stops.sort_by { |stop| -1 * stop.route_revenue(route.phase, route.train) }
+          stops = stops_by_revenue.slice!(0...distance)
+          unless stops.find { |stop| stop.tokened_by?(route.corporation) }
+            stops.pop
+            tokened_stop = stops_by_revenue.find { |stop| stop.tokened_by?(route.corporation) }
+            stops << tokened_stop if tokened_stop
+          end
+          stops.concat(stops_by_revenue.select { |stop| stop.tile.color == :red })
         end
 
         def revenue_for(route, stops)

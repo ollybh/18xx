@@ -17,7 +17,8 @@ module Engine
         include Entities
         include CitiesPlusTownsRouteDistanceStr
 
-        attr_accessor :draft_finished, :yellow_tracks_restricted, :must_exchange_investor_companies, :train_bought_this_round
+        attr_accessor :draft_finished, :yellow_tracks_restricted, :must_exchange_investor_companies, :train_bought_this_round,
+                      :nationalization_actions_this_round
 
         HOME_TOKEN_TIMING = :float
         TRACK_RESTRICTION = :semi_restrictive
@@ -26,6 +27,7 @@ module Engine
         SELL_MOVEMENT = :down_block
         TILE_RESERVATION_BLOCKS_OTHERS = :always
         CAPITALIZATION = :incremental
+        MUST_SELL_IN_BLOCKS = true
 
         BANK_CASH = 8_000
         CURRENCY_FORMAT_STR = '%sM'
@@ -354,6 +356,9 @@ module Engine
           tile = hex.tile
           tile.cities.first.place_token(l, l.next_token)
 
+          # L's presidency is implicitely drafted in initial auction
+          l.ipoed = true
+
           # Reserve investor shares and add money for them to treasury
           [saar.shares[1], saar.shares[2], hlb.shares[1]].each { |s| s.buyable = false }
           @bank.spend(saar.par_price.price * 2, saar)
@@ -396,6 +401,14 @@ module Engine
 
         def or_round_finished
           @recently_floated = []
+        end
+
+        def after_par(corporation)
+          # Remove the information "ability" when it's no longer relevant
+          ability = corporation.all_abilities.find { |a| a.description&.include?('May not be started until') }
+          corporation.remove_ability(ability)
+
+          super
         end
 
         def after_buy_company(player, company, _price)
@@ -484,6 +497,8 @@ module Engine
 
           shares = (shares || share_holder.shares_of(corporation)).sort_by { |h| [h.president ? 1 : 0, h.percent] }
 
+          return super if shares.none?(&:double_cert)
+
           bundles = (1..shares.size).flat_map do |n|
             shares.combination(n).to_a.map { |ss| Engine::ShareBundle.new(ss) }
           end
@@ -491,7 +506,21 @@ module Engine
           bundles = bundles.uniq do |b|
             [b.shares.count { |s| s.percent == 10 },
              b.presidents_share ? 1 : 0,
-             b.shares.find(&:double_cert) ? 1 : 0]
+             # Player may have two double certs - don't show the same bundles containing a single double cert
+             b.shares.count(&:double_cert) == 1 ? 1 : 0]
+          end
+
+          # May sell president share only if someone else can become new president
+          if corporation.owner == share_holder
+            sh_values = corporation.share_holders.values
+            if sh_values.size == 1
+              # No one else owns shares of the corporation
+              bundles.reject!(&:presidents_share)
+            else
+              sh_values.sort!.reverse!
+              percent_needed_to_change_president = sh_values.first - sh_values[1] + 10
+              bundles.reject! { |b| b.percent < percent_needed_to_change_president && b.presidents_share }
+            end
           end
 
           bundles.sort_by(&:percent)
@@ -537,6 +566,8 @@ module Engine
             ability = corporation.all_abilities.find { |a| a.description&.include?('IPO:') }
             corporation.remove_ability(ability)
             corporation.has_ipo_description_ability = false
+          when Action::SellShares
+            lfk.owner = share_pool if action.bundle.corporation == lfk
           when Action::LayTile
             return if action.hex.id != 'E9' || r.revenue == 50
 

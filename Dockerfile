@@ -1,8 +1,9 @@
-FROM ruby:3.1
+FROM ruby:3.2
 
 ARG RACK_ENV
 RUN mkdir /18xx
 WORKDIR /18xx
+RUN git config --global --add safe.directory /18xx
 
 RUN if [ "$RACK_ENV" = "development" ]; \
     then \

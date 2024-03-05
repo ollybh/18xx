@@ -33,10 +33,10 @@ module Engine
       end
 
       def skip!
-        process_dividend(Action::Dividend.new(current_entity, kind: 'withhold'))
-
-        current_entity.operating_history[[@game.turn, @round.round_num]] =
-          OperatingInfo.new([], @game.actions.last, 0, @round.laid_hexes)
+        # insert a dummy action so the operating history has something to link to
+        action = Action::Dividend.new(current_entity, kind: 'withhold')
+        action.id = @game.actions.last.id if @game.actions.last
+        process_dividend(action)
       end
 
       def dividend_options(entity)
@@ -46,6 +46,22 @@ module Engine
           payout[:divs_to_corporation] = corporation_dividends(entity, payout[:per_share])
           [type, payout.merge(share_price_change(entity, revenue - payout[:corporation]))]
         end
+      end
+
+      def variable_share_multiplier(_corporation)
+        # For variable dividends, multiplier on chosen dividend
+        # (used for games where player chooses an amount per share to pay out rather than a flat dividend amount)
+        1
+      end
+
+      def variable_input_step
+        # For variable dividends, allowed dividend modulo (e.g. 5, 10)
+        1
+      end
+
+      def variable_max
+        # For variable dividends, maximum dividend allowed to be paid out
+        1
       end
 
       def process_dividend(action)
@@ -126,7 +142,7 @@ module Engine
       end
 
       def payout_per_share(entity, revenue)
-        revenue / entity.total_shares
+        revenue / entity.total_shares.to_f
       end
 
       def holder_for_corporation(entity)

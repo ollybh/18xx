@@ -8,12 +8,12 @@ module Engine
       module Meta
         include Game::Meta
 
-        DEV_STAGE = :alpha
+        DEV_STAGE = :beta
 
         GAME_SUBTITLE = nil
         GAME_DESIGNER = 'Federico Vallani and Manlio Manzini'
         GAME_LOCATION = 'Northern Italy'
-        GAME_PUBLISHER = :deep_thought_games
+        GAME_PUBLISHER = %i[deep_thought_games golden_spike].freeze
         GAME_RULES_URL = 'https://boardgamegeek.com/filepage/170630/1841-rules'
         GAME_INFO_URL = 'https://github.com/tobymao/18xx/wiki/1841'
 
