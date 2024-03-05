@@ -15,6 +15,7 @@ module Engine
 
           def actions(entity)
             return [] if @companies.empty?
+            return %w[bid pass] if @auctioning
 
             entity == current_entity ? ACTIONS : []
           end

@@ -84,7 +84,7 @@ module Engine
             Engine::Step::BuyCompany,
             G1867::Step::RedeemShares,
             G18BF::Step::SpecialTrack,
-            G1867::Step::Track,
+            G18BF::Step::Track,
             G1867::Step::Token,
             Engine::Step::Route,
             G1867::Step::Dividend,
@@ -105,12 +105,14 @@ module Engine
         end
 
         def event_u1_available!
-          u1 = @future_companies.delete { |company| company.sym == 'U1' }
+          u1 = @future_companies.find { |company| company.sym == 'U1' }
+          @future_companies.delete(u1)
           @companies << u1
         end
 
         def event_u2_available!
-          u2 = @future_companies.delete { |company| company.sym == 'U2' }
+          u2 = @future_companies.find { |company| company.sym == 'U2' }
+          @future_companies.delete(u2)
           @companies << u2
         end
 
@@ -145,6 +147,19 @@ module Engine
               bonus_london_offboard(train, stops)
             end
           super + bonuses
+        end
+
+        def check_other(route)
+          check_london(route)
+        end
+
+        def check_london(route)
+          # Can only run to London if running to your own token.
+          london_stops = route.visited_stops & @london_cities
+          return if london_stops.all? { |city| city.tokened_by?(current_entity) }
+
+          raise GameError, 'Route may not include London unless running to a ' \
+                           "#{current_entity.id} token."
         end
       end
     end
