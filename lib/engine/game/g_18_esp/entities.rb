@@ -27,6 +27,7 @@ module Engine
                 reachable: true,
                 closed_when_used_up: true,
                 owner_type: 'corporation',
+                special: false,
                 count: 1,
               },
             ],
@@ -56,25 +57,31 @@ module Engine
           {
             sym: 'P4',
             name: 'La Maquinista',
-            value: 100,
-            revenue: 20,
+            value: 130,
+            revenue: 10,
             min_price: 1,
-            desc: 'Provides a tender card. When this private is purchased by a minor '\
-                  'or major company, the tender belongs to the acquiring company. '\
-                  'Then, the director can assign its tender to a train of his choice in each OR. '\
-                  'The same train can carry the tender in two or more consecutive ORs. '\
-                  'A train with a tender can adds a town (not harbor nor mine) to its route, '\
-                  'regardless of the range of the train. The tender is permanent. '\
-                  'If, due to a takeover, a tender in a minor goes into a major, then the major can use the tender.'\
-                  'The company that buys this private can use the tender in the same OR the private was purchased.'\
-                  'It is not able to trade with the tender. This private closes when is purchased.',
+            desc: "Provides five tender cards. The owner of this company (only player) can \
+            sell up to four of these five tenders (to any company). Each tender costs pts80 \
+            (20 goes to the owner and 60 to the bank). The fifth tender remains with the company\
+             until it is bought by a major or minor company. Then the fifth tender belongs to the\
+              company that bought this private. The director of the company that buys this private\
+              or that buys a tender to their owner, can assign its tender to a train of his choice\
+              in each OR. The same train can carry the tender in two or more consecutive ORs. \
+              A train with a tender can adds a town, harbor or mine to its route, regardless of \
+              the range of the train. The tender is permanent. No company may purchase more than one tender.\
+              If, due to an acquisition or because purchasing the private, a company has more than one tender,\
+              it keeps one for itself and must put the other ones up for sale at pts80 in the open market. \
+              Money for these sells goes to the bank.Companies that buy a tender to this private can do it\
+              in any moment during its turn in an OR, and can also use it in the same OR.\
+            It is not able to trade with the tender cars in other way that has been described.
+            This company closes when is acquired by a minor or major company.",
             abilities: [
                       {
                         type: 'base',
                         owner_type: 'corporation',
                         description: 'Tender',
-                        desc_detail: 'Private allows to attach tender to regular trains '\
-                                     'extending their distance by one town.',
+                        desc_detail: 'Allows to attach Tender to regular trains '\
+                                     'extending their distance by one town, harbor or mine.',
                         when: 'owning_corp_or_turn',
                       },
                     ],
@@ -83,8 +90,8 @@ module Engine
           {
             sym: 'P5',
             name: 'Alar del Rey - Santander',
-            value: 130,
-            revenue: 15,
+            value: 100,
+            revenue: 20,
             min_price: 1,
             desc: 'The major owning company (both North and '\
                   'South) can build the mountain pass of Alar del '\
@@ -108,6 +115,15 @@ module Engine
             abilities: [{ type: 'shares', shares: 'CRB_1' }],
           },
           {
+            sym: 'P6',
+            name: 'Ferrocarril Vasco-Navarro',
+            value: 160,
+            revenue: 20,
+            desc: 'It provides a 10% certificate from the Southern company CRB.',
+            color: nil,
+            abilities: [{ type: 'shares', shares: 'random_share' }],
+          },
+          {
             sym: 'P7',
             name: 'Ferrocarril de Carreño',
             value: 190,
@@ -119,7 +135,6 @@ module Engine
           },
         ].freeze
 
-        # corporations with different properties in 1st Edition
         CORPORATIONS = [
           {
             float_percent: 40,
@@ -326,7 +341,6 @@ module Engine
             name: 'Compañía del Ferrocarril de Zaragoza a Pamplona',
             logo: '18_esp/ZP',
             coordinates: 'J20',
-            city: 0,
             color: '#D90072',
             tokens: [0],
             type: 'minor',
@@ -336,6 +350,114 @@ module Engine
             startable: true,
           },
         ].freeze
+
+        EXTRA_CORPORATIONS = [
+        {
+          float_percent: 40,
+          sym: 'SFVA',
+          name: 'Sociedad General de Ferrocarriles Vasco Asturiana',
+          logo: '18_esp/SFVA',
+          coordinates: 'D6',
+          color: '#AD539B',
+          max_ownership_percent: 60,
+          tokens: [0, 50, 50, 50, 50],
+          type: 'major',
+          destination: 'C1',
+        },
+        {
+          float_percent: 40,
+          sym: 'FdC',
+          name: 'Ferrocarril del Cantábrico',
+          logo: '18_esp/FdC',
+          coordinates: 'I5',
+          color: '#F78243',
+          max_ownership_percent: 60,
+          tokens: [0, 50, 50, 50, 50],
+          type: 'major',
+          destination: 'G5',
+        },
+        {
+          float_percent: 40,
+          sym: 'GSSR',
+          name: 'Great Southern of Spain Railway Company Limited',
+          logo: '18_esp/GSSR',
+          coordinates: 'I29',
+          city: 0,
+          max_ownership_percent: 60,
+          tokens: [0, 50, 50, 50, 50, 50],
+          color: '#6D1D7D',
+          type: 'major',
+          destination: 'F32',
+        },
+        {
+          float_percent: 40,
+          sym: 'AVT',
+          name: 'Sociedad de los Ferrocarriles de Almansa a Valencia y Tarragona',
+          logo: '18_esp/AVT',
+          coordinates: 'K25',
+          city: 0,
+          max_ownership_percent: 60,
+          tokens: [0, 50, 50, 50, 50, 50],
+          color: '#000000',
+          type: 'major',
+          destination: 'L22',
+        },
+        {
+          float_percent: 40,
+          sym: 'TBF',
+          name: 'Compañía de los Ferrocarriles de Tarragona a Barcelona y Francia',
+          logo: '18_esp/TBF',
+          coordinates: 'L22',
+          city: 0,
+          max_ownership_percent: 60,
+          tokens: [0, 50, 50, 50, 50, 50],
+          color: '#338242',
+          type: 'major',
+          destination: 'N18',
+        },
+        {
+          sym: 'CSE',
+          name: 'Compañía de los Caminos de Hierro del Sur de España',
+          logo: '18_esp/CSE',
+          coordinates: 'H32',
+          color: '#F5B776',
+          tokens: [0],
+          type: 'minor',
+          shares: [100],
+          float_percent: 100,
+          max_ownership_percent: 100,
+          startable: true,
+        },
+
+        {
+          sym: 'MH',
+          name: 'Ferrocarril de Madrid a Hendaya',
+          logo: '18_esp/MH',
+          coordinates: 'E21',
+          color: '#F9D4FA',
+          tokens: [0],
+          type: 'minor',
+          shares: [100],
+          float_percent: 100,
+          max_ownership_percent: 100,
+          startable: true,
+        },
+
+        {
+          sym: 'CA',
+          name: 'Compañía del Ferrocarril Central de Aragón',
+          logo: '18_esp/CA',
+          coordinates: 'J20',
+          color: '#EAF7B0',
+          tokens: [0],
+          type: 'minor',
+          shares: [100],
+          float_percent: 100,
+          max_ownership_percent: 100,
+          startable: true,
+        },
+
+      ].freeze
       end
     end
   end

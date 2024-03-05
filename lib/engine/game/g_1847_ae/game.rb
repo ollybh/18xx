@@ -17,7 +17,8 @@ module Engine
         include Entities
         include CitiesPlusTownsRouteDistanceStr
 
-        attr_accessor :draft_finished, :yellow_tracks_restricted, :must_exchange_investor_companies, :train_bought_this_round
+        attr_accessor :draft_finished, :yellow_tracks_restricted, :must_exchange_investor_companies, :train_bought_this_round,
+                      :nationalization_actions_this_round
 
         HOME_TOKEN_TIMING = :float
         TRACK_RESTRICTION = :semi_restrictive
@@ -400,6 +401,14 @@ module Engine
 
         def or_round_finished
           @recently_floated = []
+        end
+
+        def after_par(corporation)
+          # Remove the information "ability" when it's no longer relevant
+          ability = corporation.all_abilities.find { |a| a.description&.include?('May not be started until') }
+          corporation.remove_ability(ability)
+
+          super
         end
 
         def after_buy_company(player, company, _price)

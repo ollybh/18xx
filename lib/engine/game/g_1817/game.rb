@@ -188,7 +188,7 @@ module Engine
         POOL_SHARE_DROP = :down_share
         SELL_MOVEMENT = :none
         ALL_COMPANIES_ASSIGNABLE = true
-        SELL_AFTER = :after_ipo
+        SELL_AFTER = :after_sr_floated
         OBSOLETE_TRAINS_COUNT_FOR_LIMIT = true
         BANKRUPTCY_ENDS_GAME_AFTER = :all_but_one
 
@@ -836,7 +836,8 @@ module Engine
         end
 
         def empty_auction_slot
-          @empty_auction_slot ||= Engine::Company.new(sym: '', name: '', value: nil, revenue: nil, desc: '', color: 'LightGrey')
+          @empty_auction_slot ||= Engine::Company.new(sym: '', name: '', value: nil, revenue: nil, desc: "\n" * 3,
+                                                      color: 'LightGrey')
         end
 
         def company_header(company)

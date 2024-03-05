@@ -15,7 +15,7 @@ module Engine
     include Config::Tile
 
     attr_accessor :blocks_lay, :hex, :icons, :index, :legal_rotations, :location_name,
-                  :name, :opposite, :reservations, :upgrades, :color, :future_label, :future_paths
+                  :name, :opposite, :reservations, :upgrades, :color, :future_label, :future_paths, :halts
     attr_reader :borders, :cities, :edges, :junction, :nodes, :labels, :parts, :preprinted, :rotation, :stops, :towns,
                 :offboards, :blockers, :city_towns, :unlimited, :stubs, :partitions, :id, :frame, :stripes, :hidden,
                 :hidden_blockers, :code
@@ -165,7 +165,8 @@ module Engine
                                       hide: params['hide'],
                                       visit_cost: params['visit_cost'],
                                       route: params['route'],
-                                      format: params['format'])
+                                      format: params['format'],
+                                      rows: params['rows'])
         cache << offboard
         offboard
       when 'label'
@@ -240,6 +241,7 @@ module Engine
       @unlimited = opts[:unlimited] || false
       @labels = []
       @future_label = nil
+      @halts = []
       @opposite = nil
       @hidden = opts[:hidden] || false
       @id = "#{@name}-#{@index}"
@@ -624,6 +626,7 @@ module Engine
         elsif part.town?
           @towns << part
           @city_towns << part
+          @halts << part if part.halt?
         elsif part.upgrade?
           @upgrades << part
         elsif part.offboard?
