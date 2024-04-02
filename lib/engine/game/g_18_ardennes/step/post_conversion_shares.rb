@@ -44,10 +44,21 @@ module Engine
             @round.converted = nil
           end
 
-          # Prevent player's shares from being shown as buyable (this is called
-          # from View::Game::BuySellParShares.render_other_player_shares).
-          def can_buy?(_entity, bundle)
-            !bundle.shares.first.owner.player?
+          def can_gain?(player, bundle, exchange: false)
+            return false unless player
+            return false unless bundle
+            return false if bundle.owner.player?
+
+            # Can go over 60% holding in corporation by exchanging.
+            return true if exchange
+
+            # Limited to 60% when buying a share, but can go over the overall
+            # certificate limit.
+            bundle.corporation.holding_ok?(player, bundle.common_percent)
+          end
+
+          def can_buy?(player, bundle)
+            player.cash >= bundle.price && can_gain?(player, bundle)
           end
 
           private
@@ -64,7 +75,9 @@ module Engine
           # Checks whether a player can afford to buy a share in the corporation
           # that has just been converted.
           def can_buy_any?(player)
-            player.cash >= corporation.share_price.price
+            @game.num_certs(corporation) < @game.cert_limit(corporation) &&
+              player.cash >= corporation.share_price.price &&
+              corporation.holding_ok?(player, 10)
           end
 
           # Checks whether a player can afford to exchange one of their minors
