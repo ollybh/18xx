@@ -57,17 +57,17 @@ module Engine
         def next_round!
           @round =
             case @round
-            when Round::Auction
-              if @turn == 1
-                init_round_finished
-                reorder_players
-              end
+            when G18Ardennes::Round::Auction
               new_stock_round
-            when Round::Stock
+            when Engine::Round::Auction
+              init_round_finished
+              reorder_players
+              new_stock_round
+            when Engine::Round::Stock
               @operating_rounds = @phase.operating_rounds
               reorder_players
               new_operating_round
-            when Round::Operating
+            when Engine::Round::Operating
               if @round.round_num < @operating_rounds
                 or_round_finished
                 new_operating_round(@round.round_num + 1)
@@ -92,7 +92,7 @@ module Engine
         end
 
         def major_auction_round
-          Engine::Round::Auction.new(self, [
+          G18Ardennes::Round::Auction.new(self, [
             G18Ardennes::Step::MajorAuction,
           ])
         end
@@ -103,8 +103,9 @@ module Engine
         end
 
         def stock_round
-          Round::Stock.new(self, [
+          Engine::Round::Stock.new(self, [
             G18Ardennes::Step::Exchange,
+            G18Ardennes::Step::ExchangeApproval,
             G18Ardennes::Step::DeclineTokens,
             G18Ardennes::Step::DeclineTrains,
             Engine::Step::DiscardTrain,
@@ -114,7 +115,7 @@ module Engine
         end
 
         def operating_round(round_num)
-          Round::Operating.new(self, [
+          Engine::Round::Operating.new(self, [
             Engine::Step::Bankrupt,
             G18Ardennes::Step::Convert,
             G18Ardennes::Step::Exchange,
@@ -139,7 +140,7 @@ module Engine
 
         # Checks whether a player really is bankrupt.
         def can_go_bankrupt?(player, _corporation)
-          return super if @round.is_a?(Round::Operating)
+          return super if @round.is_a?(Engine::Round::Operating)
 
           # Has the player won the auction for a major company concession
           # that they cannot afford to start?
