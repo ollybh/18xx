@@ -29,6 +29,15 @@ module Engine
             color: '#025aaa',
             coordinates: 'G17',
             type: :minor,
+            abilities: [
+              {
+                description: '10% discount on trains',
+                type: 'train_discount',
+                discount: 0.10,
+                trains: %w[2 3 4 5 6 D],
+                when: 'buying_train',
+              },
+            ],
           },
           {
             float_percent: 60,
@@ -113,8 +122,7 @@ module Engine
             shares: [100],
             logo: '18_norway/NSB',
             simple_logo: '18_norway/NSB',
-            coordinates: [],
-            city: 1,
+            coordinates: %w[G15 A25 C17 A31 B36],
             color: :'#d7555f',
           },
         ].freeze
