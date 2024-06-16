@@ -143,7 +143,7 @@ module Engine
         end
 
         def cube_company?(entity)
-          entity.id == 'P10' || entity.id == 'P11'
+          entity && (entity.id == 'P10' || entity.id == 'P11')
         end
 
         BIDDING_BOX_START_PRIVATE = 'P1'
@@ -540,7 +540,15 @@ module Engine
         end
 
         def acting_for_entity(entity)
-          entity == ndem ? active_players.first : super
+          if entity == ndem
+            if current_entity == ndem
+              active_players.first
+            else
+              players.find { |p| ndem.player_share_holders[p]&.positive? } || players.first
+            end
+          else
+            super
+          end
         end
 
         def set_private_revenues
@@ -647,6 +655,7 @@ module Engine
 
         def upgrades_to?(from, to, special = false, selected_company: nil)
           return true if from.color == :blue && to.color == :blue
+          return false if cube_company?(selected_company) && to.name != 'BC'
 
           super
         end
@@ -734,8 +743,6 @@ module Engine
         def remove_discarded_train?(train)
           train.owner == ndem || super
         end
-
-        def finalize_end_game_values; end
 
         def reduced_bundle_price_for_market_drop(bundle)
           bundle.share_price = @stock_market.find_share_price(bundle.corporation, [:left] * bundle.num_shares).price

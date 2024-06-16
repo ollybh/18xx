@@ -12,7 +12,7 @@ module Engine
   module Game
     module G18Norway
       class Game < Game::Base
-        attr_reader :ferry_graph
+        attr_reader :ferry_graph, :jump_graph
 
         include_meta(G18Norway::Meta)
         include Companies
@@ -40,7 +40,6 @@ module Engine
         POOL_SHARE_DROP = :left_block
         SELL_AFTER = :p_any_operate
         SELL_MOVEMENT = :left_block
-        CERT_LIMIT_COUNTS_BANKRUPTED = true
         HOME_TOKEN_TIMING = :float
 
         EBUY_DEPOT_TRAIN_MUST_BE_CHEAPEST = false
@@ -77,6 +76,11 @@ module Engine
         ASSIGNMENT_TOKENS = {
           'MOUNTAIN_SMALL' => '/icons/hill.svg',
           'MOUNTAIN_BIG' => '/icons/mountain.svg',
+        }.freeze
+
+        EVENTS_TEXT = {
+          'lm_green' => ['green_ferries', 'Mjøsa green ferry lines opens up.'],
+          'lm_brown' => ['brown_ferries', 'Mjøsa brown ferry lines opens up.'],
         }.freeze
 
         def hovedbanen
@@ -120,12 +124,30 @@ module Engine
           'C35' => 'B36',
         }.freeze
 
+        def switcher
+          @switcher ||= corporation_by_id('Ø')
+        end
+
+        def switcher?(corporation)
+          switcher == corporation
+        end
+
         def setup
           MOUNTAIN_BIG_HEXES.each { |hex| hex_by_id(hex).assign!('MOUNTAIN_BIG') }
           MOUNTAIN_SMALL_HEXES.each { |hex| hex_by_id(hex).assign!('MOUNTAIN_SMALL') }
           corporation_by_id('R').add_ability(Engine::Ability::Base.new(
             type: 'free_tunnel',
             description: 'Free tunnel'
+          ))
+
+          switcher.add_ability(Engine::Ability::Base.new(
+            type: 'switcher',
+            description: 'May pass one tokened out city',
+          ))
+
+          corporation_by_id('J').add_ability(Engine::Ability::Base.new(
+            type: 'mail_contract',
+            description: 'Mail contract 10/20/30',
           ))
 
           @corporations.each do |corporation|
@@ -140,6 +162,16 @@ module Engine
             city = hex_by_id(hex_id).tile.cities[0]
             city.place_token(port, token)
           end
+
+          @all_tiles.each { |t| t.ignore_gauge_walk = true }
+          @_tiles.values.each { |t| t.ignore_gauge_walk = true }
+          @hexes.each { |h| h.tile.ignore_gauge_walk = true }
+
+          # Allow to build against Mjosa
+          hex_by_id('H26').neighbors[1] = hex_by_id('G27')
+          hex_by_id('H26').neighbors[5] = hex_by_id('I27')
+          hex_by_id('G27').neighbors[4] = hex_by_id('H26')
+          hex_by_id('I27').neighbors[2] = hex_by_id('H26')
         end
 
         def p4
@@ -166,11 +198,21 @@ module Engine
           big_mountain?(hex) || small_mountain?(hex)
         end
 
-        def route_cost(route)
-          # P2 Thunes mekaniske verksted do not need to pay maintainance
-          return 0 if owns_thunes_mekaniske?(route.train.owner)
+        def mjosa
+          @mjosa ||= hex_by_id('H26')
+        end
 
-          route.all_hexes.count { |hex| mountain?(hex) } * 10
+        def route_cost(route)
+          cost = 0
+          mult = 2
+          mult = 1 if @phase.tiles.include?(:green)
+          mult = 0 if @phase.tiles.include?(:brown)
+          cost += 5 * mult if route.all_hexes.include?(mjosa)
+
+          # P2 Thunes mekaniske verksted do not need to pay maintainance
+          return cost if owns_thunes_mekaniske?(route.train.owner)
+
+          cost + (route.all_hexes.count { |hex| mountain?(hex) } * 10)
         end
 
         def check_other(route)
@@ -184,10 +226,23 @@ module Engine
         end
 
         def revenue_str(route)
-          str = super
+          stop_hexes = route.stops.map(&:hex)
+          str = route.hexes.map { |h| stop_hexes.include?(h) ? h&.name : "(#{h&.name})" }.join('-')
           cost = route_cost(route)
           str += " -Fee(#{cost})" if cost.positive?
           str
+        end
+
+        def routes_revenue(routes)
+          revenue = super(routes)
+          return 0 if revenue.zero?
+          return revenue if routes.empty?
+          return revenue unless abilities(routes.first.train.owner, :mail_contract)
+
+          revenue += 10 if @phase.tiles.include?(:yellow)
+          revenue += 10 if @phase.tiles.include?(:green)
+          revenue += 10 if @phase.tiles.include?(:brown)
+          revenue
         end
 
         def operating_round(round_num)
@@ -302,6 +357,7 @@ module Engine
 
         def init_graph
           @ferry_graph = Graph.new(self, skip_track: :broad)
+          @jump_graph = Graph.new(self, no_blocking: true)
           Graph.new(self, skip_track: :narrow)
         end
 
@@ -355,7 +411,21 @@ module Engine
         def check_connected(route, corporation)
           return if route.ordered_paths.each_cons(2).all? { |a, b| connected?(a, b, corporation) }
 
-          raise GameError, 'Route is not connected'
+          return super unless @round.train_upgrade_assignments[route.train]
+
+          visits = route.visited_stops
+
+          blocked = nil
+
+          if visits.size > 2
+            visits[1..-2].each do |node|
+              next if !node.city? || !node.blocks?(corporation)
+              raise GameError, 'Route can only bypass one tokened-out city' if blocked
+
+              blocked = node
+            end
+          end
+          super(route, nil)
         end
 
         def check_route_token(route, token)
@@ -365,6 +435,30 @@ module Engine
           token = visited.find { |stop| harbor_token?(stop, route.corporation) }
 
           raise NoToken, 'Route must contain token' unless token
+        end
+
+        def after_buy_company(player, company, price)
+          return super if company.id != 'P7'
+
+          h = hovedbanen
+          share_price = @stock_market.par_prices.find { |pp| pp.price * 2 <= price }
+          @stock_market.set_par(h, share_price)
+          @bank.spend(price, h)
+          abilities(company, :shares) do |ability|
+            ability.shares.each do |share|
+              share_pool.buy_shares(player, share, exchange: :free)
+            end
+          end
+        end
+
+        def event_lm_green!
+          @log << '-- Event: Mjøsa green ferry lines opens up. --'
+          mjosa.lay(tile_by_id('LM1-0'))
+        end
+
+        def event_lm_brown!
+          @log << '-- Event: Mjøsa brown ferry lines opens up. --'
+          mjosa.lay(tile_by_id('LM2-0'))
         end
       end
     end
