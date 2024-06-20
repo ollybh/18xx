@@ -404,11 +404,11 @@ module Engine
         MINORS = [
           {
             sym: 'NB',
-            name: 'Nordbahm',
+            name: 'Nordbahn',
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/NB',
+            logo: '18_ch/NB',
             coordinates: %w[H5 G4],
             city: 1,
             abilities: [
@@ -428,7 +428,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/NOB',
+            logo: '18_ch/NOB',
             coordinates: %w[H5 H3],
             city: 0,
             abilities: [
@@ -448,7 +448,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/SCB',
+            logo: '18_ch/SCB',
             coordinates: %w[E4 F5 G6],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[E4 F5 G6], hidden: true },
@@ -467,7 +467,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/VSB',
+            logo: '18_ch/VSB',
             coordinates: %w[J5 K4],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[J5 K4], hidden: true },
@@ -486,7 +486,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/LFB',
+            logo: '18_ch/LFB',
             coordinates: %w[C10 D9],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[C10 D9], hidden: true },
@@ -505,7 +505,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/OS',
+            logo: '18_ch/OS',
             coordinates: %w[A12 B11],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[A12 B11], hidden: true },
@@ -524,7 +524,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/BSB',
+            logo: '18_ch/BSB',
             coordinates: %w[E8],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[E8], hidden: true },
@@ -543,7 +543,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/BB',
+            logo: '18_ch/BB',
             coordinates: %w[F9],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[F9], hidden: true },
@@ -562,7 +562,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/GB',
+            logo: '18_ch/GB',
             coordinates: %w[H9 H11],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[H9 H11], hidden: true },
@@ -581,7 +581,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/BLB',
+            logo: '18_ch/BLB',
             coordinates: %w[H7],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[H7], hidden: true },
@@ -600,7 +600,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_CH/EB',
+            logo: '18_ch/EB',
             coordinates: %w[E6],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[E6], hidden: true },
@@ -617,9 +617,9 @@ module Engine
             sym: 'AFAI',
             name: 'Alta Italia',
             tokens: [],
-            color: :yellow,
+            color: :green,
             text_color: :black,
-            logo: '18_CH/AFAI',
+            logo: '18_ch/AFAI',
             coordinates: %w[I14],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[I14], hidden: true },
@@ -633,12 +633,31 @@ module Engine
             ],
           },
           {
+            sym: 'JN',
+            name: 'Jura neuchatelois',
+            tokens: [],
+            color: :green,
+            text_color: :black,
+            logo: '18_ch/JN',
+            coordinates: %w[D7],
+            abilities: [
+              { type: 'blocks_hexes', hexes: %w[D7], hidden: true },
+              {
+                type: 'exchange',
+                owner_type: 'player',
+                when: 'owning_player_sr_turn',
+                corporations: 'ipoed',
+                from: 'ipo',
+              },
+            ],
+          },
+          {
             sym: 'VZ',
             name: 'Visp-Zermatt',
             tokens: [],
-            color: :yellow,
+            color: :green,
             text_color: :black,
-            logo: '18_CH/VZ',
+            logo: '18_ch/VZ',
             coordinates: %w[D13 E12],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[D13 E12], hidden: true },
@@ -655,9 +674,9 @@ module Engine
             sym: 'S',
             name: 'Simplon',
             tokens: [],
-            color: :yellow,
+            color: :lightblue,
             text_color: :black,
-            logo: '18_CH/S',
+            logo: '18_ch/S',
             coordinates: %w[G14],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[G14], hidden: true },
@@ -674,9 +693,9 @@ module Engine
             sym: 'L',
             name: 'Lotchsberg',
             tokens: [],
-            color: :yellow,
+            color: :lightblue,
             text_color: :black,
-            logo: '18_CH/L',
+            logo: '18_ch/L',
             coordinates: %w[F11],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[F11], hidden: true },
@@ -693,9 +712,9 @@ module Engine
             sym: 'ChA',
             name: 'Chur-Arosa',
             tokens: [],
-            color: :yellow,
+            color: :lightblue,
             text_color: :black,
-            logo: '18_CH/ChA',
+            logo: '18_ch/ChA',
             coordinates: %w[K8],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[K8], hidden: true },
@@ -714,7 +733,7 @@ module Engine
             tokens: [],
             color: :lightblue,
             text_color: :black,
-            logo: '18_CH/FOB',
+            logo: '18_ch/FOB',
             coordinates: %w[G12 H11 I10],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[G12 I10], hidden: true },
