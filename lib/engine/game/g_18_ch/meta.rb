@@ -19,7 +19,7 @@ module Engine
         GAME_INFO_URL = 'https://github.com/tobymao/18xx/wiki/18CH'
         GAME_IMPLEMENTER = 'Oliver Burnett-Hall'
 
-        PLAYER_RANGE = [3, 6].freeze
+        PLAYER_RANGE = [2, 4].freeze
       end
     end
   end
