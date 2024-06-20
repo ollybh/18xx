@@ -268,24 +268,9 @@ module Engine
             ],
           },
           {
-            sym: 'S',
-            name: 'Simplon',
-            desc: 'P10. Revenue 11/18, face value 55. Home hexes are F13 and G14. ' \
-                  'Cannot be used to start a public company.',
-            value: 55,
-            discount: 10,
-            revenue: 11,
-            color: :yellow,
-            text_color: :black,
-            abilities: [
-              { type: 'no_buy' },
-              { type: 'revenue_change', revenue: 18, on_phase: '3' },
-            ],
-          },
-          {
             sym: 'BLB',
             name: 'Bern-Luzern-Bahn',
-            desc: 'P11. Revenue 19/29, face value 95. Home hex is H7. ' \
+            desc: 'P10. Revenue 19/29, face value 95. Home hex is H7. ' \
                   'Can be used to start a public company in Luzern.',
             value: 95,
             discount: 20,
@@ -308,19 +293,22 @@ module Engine
           {
             sym: 'EB',
             name: 'Emmentalbahn',
-            desc: 'P12. Revenue 18, face value 60. Home hex is E6. ' \
+            desc: 'P11. Revenue 11/17, face value 55. Home hex is E6. ' \
                   'Cannot be used to start a public company.',
-            value: 60,
-            discount: 0,
-            revenue: 18,
-            color: :green,
+            value: 55,
+            discount: 10,
+            revenue: 11,
+            color: :yellow,
             text_color: :black,
-            abilities: [{ type: 'no_buy' }],
+            abilities: [
+              { type: 'no_buy' },
+              { type: 'revenue_change', revenue: 17, on_phase: '3' },
+            ],
           },
           {
             sym: 'AFAI',
             name: 'Alta Italia',
-            desc: 'P13. Revenue 36, face value 120. Home hex is I14. ' \
+            desc: 'P12. Revenue 36, face value 120. Home hex is I14. ' \
                   'Can be used to start a public company in Lugano.',
             value: 120,
             discount: 0,
@@ -342,7 +330,7 @@ module Engine
           {
             sym: 'JN',
             name: 'Jura neuchatelois',
-            desc: 'P14. Revenue 20, face value 65. Home hex is D7. ' \
+            desc: 'P13. Revenue 20, face value 65. Home hex is D7. ' \
                   'Cannot be used to start a public company.',
             value: 65,
             discount: 0,
@@ -354,7 +342,7 @@ module Engine
           {
             sym: 'VZ',
             name: 'Visp-Zermatt',
-            desc: 'P15. Revenue 18, face value 55. Home hexes are D13 and E12. ' \
+            desc: 'P14. Revenue 18, face value 55. Home hexes are D13 and E12. ' \
                   'Cannot be used to start a public company.',
             value: 55,
             discount: 0,
@@ -364,13 +352,25 @@ module Engine
             abilities: [{ type: 'no_buy' }],
           },
           {
+            sym: 'S',
+            name: 'Simplon',
+            desc: 'P15. Revenue 11/18, face value 55. Home hex is G14. ' \
+                  'Cannot be used to start a public company.',
+            value: 55,
+            discount: 0,
+            revenue: 22,
+            color: :lightblue,
+            text_color: :black,
+            abilities: [{ type: 'no_buy' }],
+          },
+          {
             sym: 'L',
             name: 'Lotchsberg',
-            desc: 'P16. Revenue 20, face value 65. Home hex is F11. ' \
+            desc: 'P16. Revenue 26, face value 65. Home hex is F11. ' \
                   'Cannot be used to start a public company.',
             value: 65,
             discount: 0,
-            revenue: 20,
+            revenue: 26,
             color: :lightblue,
             text_color: :black,
             abilities: [{ type: 'no_buy' }],
@@ -383,6 +383,18 @@ module Engine
             value: 60,
             discount: 0,
             revenue: 18,
+            color: :lightblue,
+            text_color: :black,
+            abilities: [{ type: 'no_buy' }],
+          },
+          {
+            sym: 'FOB',
+            name: 'Furka Oberalpbahn',
+            desc: 'P18. Revenue 28, face value 70. Home hexes are G12, H11 and I10. ' \
+                  'Cannot be used to start a public company.',
+            value: 70,
+            discount: 0,
+            revenue: 28,
             color: :lightblue,
             text_color: :black,
             abilities: [{ type: 'no_buy' }],
@@ -564,25 +576,6 @@ module Engine
             ],
           },
           {
-            sym: 'S',
-            name: 'Simplon',
-            tokens: [],
-            color: :yellow,
-            text_color: :black,
-            logo: '1858/SJC',
-            coordinates: %w[F13 G14],
-            abilities: [
-              { type: 'blocks_hexes', hexes: %w[F13 G14], hidden: true },
-              {
-                type: 'exchange',
-                owner_type: 'player',
-                when: 'owning_player_sr_turn',
-                corporations: 'ipoed',
-                from: 'ipo',
-              },
-            ],
-          },
-          {
             sym: 'BLB',
             name: 'Bern-Luzern-Bahn',
             tokens: [],
@@ -659,6 +652,25 @@ module Engine
             ],
           },
           {
+            sym: 'S',
+            name: 'Simplon',
+            tokens: [],
+            color: :yellow,
+            text_color: :black,
+            logo: '1858/SJC',
+            coordinates: %w[G14],
+            abilities: [
+              { type: 'blocks_hexes', hexes: %w[G14], hidden: true },
+              {
+                type: 'exchange',
+                owner_type: 'player',
+                when: 'owning_player_sr_turn',
+                corporations: 'ipoed',
+                from: 'ipo',
+              },
+            ],
+          },
+          {
             sym: 'L',
             name: 'Lotchsberg',
             tokens: [],
@@ -696,6 +708,25 @@ module Engine
               },
             ],
           },
+          {
+            sym: 'FOB',
+            name: 'Furka Overalpbahn',
+            tokens: [],
+            color: :lightblue,
+            text_color: :black,
+            logo: '1858/BCR',
+            coordinates: %w[G12 H11 I10],
+            abilities: [
+              { type: 'blocks_hexes', hexes: %w[G12 I10], hidden: true },
+              {
+                type: 'exchange',
+                owner_type: 'player',
+                when: 'owning_player_sr_turn',
+                corporations: 'ipoed',
+                from: 'ipo',
+              },
+            ],
+          },
         ].freeze
 
         PRIVATE_ORDER = {
@@ -708,14 +739,15 @@ module Engine
           'BSB' => 7,
           'BB' => 8,
           'GB' => 9,
-          'S' => 10,
-          'BLB' => 11,
-          'EB' => 12,
-          'AFAI' => 13,
-          'JN' => 14,
-          'VZ' => 15,
+          'BLB' => 10,
+          'EB' => 11,
+          'AFAI' => 12,
+          'JN' => 13,
+          'VZ' => 14,
+          'S' => 15,
           'L' => 16,
           'ChA' => 17,
+          'FOB' => 18,
         }.freeze
       end
     end

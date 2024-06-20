@@ -9,11 +9,12 @@ module Engine
         LOCATION_NAMES = {
           'A12' => 'Genève',
           'A14' => 'South France',
-          'C4' => 'North France',
+          'B7' => 'Central France',
           'C6' => 'Le Chaux de Fonds',
           'C8' => 'Yverdon',
           'C10' => 'Lausanne',
           'C12' => 'Vevey & Montreux',
+          'D3' => 'North France',
           'D7' => 'Neuchatel',
           'D9' => 'Fribourg',
           'D11' => 'Bulle',
@@ -163,8 +164,6 @@ module Engine
                     'border=type:province,edge:3;',
             %w[F13] =>
                     'town=revenue:0;' \
-                    'path=track:future,a:5,b:_0;' \
-                    'icon=image:18_ch/S,sticky:1;' \
                     'upgrade=cost:40,terrain:mountain;',
             %w[F15] =>
                     'upgrade=cost:120,terrain:mountain;',
@@ -172,7 +171,7 @@ module Engine
                     'town=revenue:0;town=revenue:0;' \
                     'path=track:future,a:5,b:_0;' \
                     'icon=image:18_ch/NB,sticky:1;' \
-                    'border=type:province,edge:3;' \
+                    'border=type:province,edge:0;' \
                     'border=type:province,edge:4;' \
                     'border=type:province,edge:5;',
             %w[G6] =>
@@ -195,11 +194,12 @@ module Engine
                     'border=type:province,edge:4;' \
                     'border=type:province,edge:5;',
             %w[G12] =>
+                    'junction;path=track:future,a:4,b:_0;' \
+                    'icon=image:18_ch/FOB,sticky:1;' \
                     'upgrade=cost:120,terrain:mountain;' \
                     'border=type:province,edge:4;' \
                     'border=type:province,edge:5;',
             %w[G14] =>
-                    'junction;path=track:future,a:2,b:_0;' \
                     'icon=image:18_ch/S,sticky:1;' \
                     'upgrade=cost:120,terrain:mountain;' \
                     'border=type:province,edge:4;',
@@ -223,15 +223,6 @@ module Engine
                     'border=type:province,edge:1;' \
                     'border=type:province,edge:2;' \
                     'border=type:province,edge:3;' \
-                    'border=type:province,edge:4;' \
-                    'border=type:province,edge:5;',
-            %w[H11] =>
-                    'junction;path=track:future,a:3,b:_0;' \
-                    'icon=image:18_ch/GB,sticky:1;' \
-                    'upgrade=cost:120,terrain:mountain;' \
-                    'border=type:province,edge:0;' \
-                    'border=type:province,edge:1;' \
-                    'border=type:province,edge:2;' \
                     'border=type:province,edge:4;' \
                     'border=type:province,edge:5;',
             %w[H13] =>
@@ -258,6 +249,8 @@ module Engine
                     'border=type:province,edge:3;' \
                     'border=type:province,edge:4;',
             %w[I10] =>
+                    'junction;path=track:future,a:1,b:_0;' \
+                    'icon=image:18_ch/FOB,sticky:1;' \
                     'upgrade=cost:120,terrain:mountain;' \
                     'border=type:province,edge:0;' \
                     'border=type:province,edge:1;' \
@@ -347,19 +340,19 @@ module Engine
                     'offboard=revenue:yellow_20|green_30|brown_40|gray_50;' \
                     'path=a:3,b:_0,track:dual;',
 
-            # North France
-            %w[B5] =>
-                    'border=edge:0;border=edge:4;',
+            # Central France
             %w[B7] =>
-                    'offboard=revenue:yellow_30|green_40|brown_50|gray_60,groups:France,hide:1;' \
+                    'offboard=revenue:yellow_30|green_40|brown_50|gray_60;' \
                     'path=a:0,b:_0,track:dual;path=a:4,b:_0,track:dual;path=a:5,b:_0,track:dual;' \
                     'border=edge:3;',
+
+            # North France
             %w[C4] =>
-                    'offboard=revenue:yellow_30|green_40|brown_50|gray_60,groups:France;' \
+                    'offboard=revenue:yellow_30|green_40|brown_50|gray_60,groups:France,hide:1;' \
                     'path=a:5,b:_0,track:dual;' \
                     'border=edge:1;border=edge:4;',
             %w[D3] =>
-                    'offboard=revenue:yellow_30|green_40|brown_50|gray_60,groups:France,hide:1;' \
+                    'offboard=revenue:yellow_30|green_40|brown_50|gray_60,groups:France;' \
                     'path=a:0,b:_0,track:dual;path=a:5,b:_0,track:dual;' \
                     'border=edge:1;border=edge:4;',
             %w[E2] =>
@@ -396,6 +389,20 @@ module Engine
                     'offboard=revenue:yellow_20|green_30|brown_40|gray_50,groups:Austria;' \
                     'path=a:2,b:_0,track:dual;' \
                     'border=edge:3;',
+          },
+
+
+          gray: {
+            %w[H11] =>
+                    'path=track:broad,a:3,b:5;' \
+                    'path=track:narrow,a:1,b:4;' \
+                    'icon=image:18_ch/FOB,sticky:1;' \
+                    'icon=image:18_ch/GB,sticky:1;' \
+                    'border=type:province,edge:0;' \
+                    'border=type:province,edge:1;' \
+                    'border=type:province,edge:2;' \
+                    'border=type:province,edge:4;' \
+                    'border=type:province,edge:5;',
           },
         }.freeze
       end
