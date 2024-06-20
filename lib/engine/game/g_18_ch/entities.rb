@@ -408,7 +408,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/BM',
+            logo: '18_CH/NB',
             coordinates: %w[H5 G4],
             city: 1,
             abilities: [
@@ -428,7 +428,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/MA',
+            logo: '18_CH/NOB',
             coordinates: %w[H5 H3],
             city: 0,
             abilities: [
@@ -448,7 +448,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/PL',
+            logo: '18_CH/SCB',
             coordinates: %w[E4 F5 G6],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[E4 F5 G6], hidden: true },
@@ -467,7 +467,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/VJ',
+            logo: '18_CH/VSB',
             coordinates: %w[J5 K4],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[J5 K4], hidden: true },
@@ -486,7 +486,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/RT',
+            logo: '18_CH/LFB',
             coordinates: %w[C10 D9],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[C10 D9], hidden: true },
@@ -505,7 +505,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/LC',
+            logo: '18_CH/OS',
             coordinates: %w[A12 B11],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[A12 B11], hidden: true },
@@ -524,7 +524,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/MV',
+            logo: '18_CH/BSB',
             coordinates: %w[E8],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[E8], hidden: true },
@@ -543,7 +543,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/MZ',
+            logo: '18_CH/BB',
             coordinates: %w[F9],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[F9], hidden: true },
@@ -562,7 +562,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/CS',
+            logo: '18_CH/GB',
             coordinates: %w[H9 H11],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[H9 H11], hidden: true },
@@ -581,7 +581,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/ZP',
+            logo: '18_CH/BLB',
             coordinates: %w[H7],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[H7], hidden: true },
@@ -600,7 +600,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/CB',
+            logo: '18_CH/EB',
             coordinates: %w[E6],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[E6], hidden: true },
@@ -619,7 +619,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/CM',
+            logo: '18_CH/AFAI',
             coordinates: %w[I14],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[I14], hidden: true },
@@ -638,7 +638,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/MC',
+            logo: '18_CH/VZ',
             coordinates: %w[D13 E12],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[D13 E12], hidden: true },
@@ -657,7 +657,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/SJC',
+            logo: '18_CH/S',
             coordinates: %w[G14],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[G14], hidden: true },
@@ -676,7 +676,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/AS',
+            logo: '18_CH/L',
             coordinates: %w[F11],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[F11], hidden: true },
@@ -695,7 +695,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '1858/BCR',
+            logo: '18_CH/ChA',
             coordinates: %w[K8],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[K8], hidden: true },
@@ -714,7 +714,7 @@ module Engine
             tokens: [],
             color: :lightblue,
             text_color: :black,
-            logo: '1858/BCR',
+            logo: '18_CH/FOB',
             coordinates: %w[G12 H11 I10],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[G12 I10], hidden: true },
