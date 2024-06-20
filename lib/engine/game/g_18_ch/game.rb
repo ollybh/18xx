@@ -55,6 +55,19 @@ module Engine
           TRAIN_COUNTS[train[:name]]
         end
 
+        def operating_round(round_num = 1)
+          @round_num = round_num
+          Engine::Round::Operating.new(self, [
+            G1858::Step::Track,
+            G18CH::Step::Token,
+            G1858::Step::Route,
+            G1858::Step::Dividend,
+            G1858::Step::DiscardTrain,
+            G1858::Step::BuyTrain,
+            G1858::Step::IssueShares,
+          ], round_num: round_num)
+        end
+
         BONUS_HEXES = {
           north: %w[C4 D3 E2 H1 I2],
           south: %w[H15 I16],
