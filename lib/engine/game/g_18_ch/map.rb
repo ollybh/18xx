@@ -10,6 +10,7 @@ module Engine
           'A12' => 'Genève',
           'A14' => 'South France',
           'B7' => 'Central France',
+          'B16' => 'North South bonus',
           'C6' => 'Le Chaux de Fonds',
           'C8' => 'Yverdon',
           'C10' => 'Lausanne',
@@ -45,6 +46,7 @@ module Engine
           'K4' => 'Rorschach',
           'K8' => 'Chur',
           'L7' => 'Austria',
+          'L16' => 'East West bonus',
         }.freeze
 
         HEXES = {
@@ -403,6 +405,8 @@ module Engine
                     'border=type:province,edge:2;' \
                     'border=type:province,edge:4;' \
                     'border=type:province,edge:5;',
+            %w[B16] => 'offboard=revenue:yellow_0|green_0|brown_50|gray_60;',
+            %w[L16] => 'offboard=revenue:yellow_0|green_0|brown_60|gray_80;',
           },
         }.freeze
       end

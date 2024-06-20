@@ -54,6 +54,51 @@ module Engine
         def num_trains(train)
           TRAIN_COUNTS[train[:name]]
         end
+
+        BONUS_HEXES = {
+          north: %w[C4 D3 E2 H1 I2],
+          south: %w[H15 I16],
+          east: %w[L5 L7],
+          west: %w[A14 B7],
+          revenue_ns: 'B16',
+          revenue_ew: 'L16',
+        }.freeze
+
+        def revenue_for(route, stops)
+          super + north_south_bonus(route, stops) + east_west_bonus(route, stops)
+        end
+
+        private
+
+        def hexes_by_id(coordinates)
+          coordinates.map { |coord| hex_by_id(coord) }
+        end
+
+        def r2r_bonus(route, stops, zone1, zone2, bonus)
+          @bonus_nodes ||= {
+            north: hexes_by_id(BONUS_HEXES[:north]).map(&:tile).flat_map(&:offboards),
+            south: hexes_by_id(BONUS_HEXES[:south]).map(&:tile).flat_map(&:offboards),
+            east: hexes_by_id(BONUS_HEXES[:east]).map(&:tile).flat_map(&:offboards),
+            west: hexes_by_id(BONUS_HEXES[:west]).map(&:tile).flat_map(&:offboards),
+          }
+          @bonus_revenue ||= {
+            north_south: hex_by_id(BONUS_HEXES[:revenue_ns]).tile.offboards.first,
+            east_west: hex_by_id(BONUS_HEXES[:revenue_ew]).tile.offboards.first,
+          }
+          return 0 unless stops.intersect?(@bonus_nodes[zone1])
+          return 0 unless stops.intersect?(@bonus_nodes[zone2])
+
+          revenue = @bonus_revenue[bonus].route_revenue(@phase, route.train)
+          revenue / (route.train.obsolete ? 2 : 1)
+        end
+
+        def north_south_bonus(route, stops)
+          r2r_bonus(route, stops, :north, :south, :north_south)
+        end
+
+        def east_west_bonus(route, stops)
+          r2r_bonus(route, stops, :east, :west, :east_west)
+        end
       end
     end
   end
