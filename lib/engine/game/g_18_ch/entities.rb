@@ -125,11 +125,11 @@ module Engine
           {
             sym: 'SCB',
             name: 'Centralbahn',
-            desc: 'P3. Revenue 25/35, face value 115. Home hexes are E4, F5 and G6. ' \
+            desc: 'P3. Revenue 23/35, face value 115. Home hexes are E4, F5 and G6. ' \
                   'Can be used to start a public company in Basel.',
             value: 115,
             discount: 25,
-            revenue: 25,
+            revenue: 23,
             color: :yellow,
             text_color: :black,
             abilities: [
@@ -342,11 +342,11 @@ module Engine
           {
             sym: 'VZ',
             name: 'Visp-Zermatt',
-            desc: 'P14. Revenue 18, face value 55. Home hexes are D13 and E12. ' \
+            desc: 'P14. Revenue 17, face value 55. Home hexes are D13 and E12. ' \
                   'Cannot be used to start a public company.',
             value: 55,
             discount: 0,
-            revenue: 18,
+            revenue: 17,
             color: :green,
             text_color: :black,
             abilities: [{ type: 'no_buy' }],

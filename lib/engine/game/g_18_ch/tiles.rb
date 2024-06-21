@@ -154,32 +154,6 @@ module Engine
               'path=a:0,b:_0,track:narrow;path=a:1,b:_0,track:narrow;' \
               'path=a:3,b:_0,track:narrow;path=a:5,b:_0,track:narrow',
           },
-          'X4a' =>
-          {
-            'count' => 1,
-            'color' => 'brown',
-            'code' =>
-              'city=revenue:70,slots:3;label=Z;' \
-              'path=a:0,b:_0,track:dual;path=a:1,b:_0,track:dual;' \
-              'path=a:3,b:_0,track:dual;path=a:4,b:_0,track:dual;path=a:5,b:_0,track:dual;',
-          },
-          'X5a' =>
-          {
-            'count' => 1,
-            'color' => 'brown',
-            'code' =>
-              'city=revenue:50,slots:2;label=G;' \
-              'path=a:0,b:_0,track:dual;path=a:3,b:_0,track:dual;path=a:4,b:_0,track:dual;',
-          },
-          'X6a' =>
-          {
-            'count' => 1,
-            'color' => 'gray',
-            'code' =>
-              'city=revenue:90,slots:3;label=Z;' \
-              'path=a:0,b:_0,track:dual;path=a:1,b:_0,track:dual;path=a:2,b:_0,track:dual;' \
-              'path=a:3,b:_0,track:dual;path=a:4,b:_0,track:dual;path=a:5,b:_0,track:dual;',
-          },
           'X7' =>
           {
             'count' => 1,
@@ -224,6 +198,32 @@ module Engine
               'city=revenue:50,slots:2;' \
               'path=a:0,b:_0,track:dual;path=a:1,b:_0,track:dual;path=a:2,b:_0,track:dual;' \
               'path=a:3,b:_0,track:dual;path=a:4,b:_0,track:dual;path=a:5,b:_0,track:dual;label=Y',
+          },
+          'X13' =>
+          {
+            'count' => 1,
+            'color' => 'brown',
+            'code' =>
+              'city=revenue:70,slots:3;label=Z;' \
+              'path=a:0,b:_0,track:dual;path=a:1,b:_0,track:dual;' \
+              'path=a:3,b:_0,track:dual;path=a:4,b:_0,track:dual;path=a:5,b:_0,track:dual;',
+          },
+          'X14' =>
+          {
+            'count' => 1,
+            'color' => 'brown',
+            'code' =>
+              'city=revenue:50,slots:2;label=G;' \
+              'path=a:0,b:_0,track:dual;path=a:3,b:_0,track:dual;path=a:4,b:_0,track:dual;',
+          },
+          'X15' =>
+          {
+            'count' => 1,
+            'color' => 'gray',
+            'code' =>
+              'city=revenue:90,slots:3;label=Z;' \
+              'path=a:0,b:_0,track:dual;path=a:1,b:_0,track:dual;path=a:2,b:_0,track:dual;' \
+              'path=a:3,b:_0,track:dual;path=a:4,b:_0,track:dual;path=a:5,b:_0,track:dual;',
           },
         }.freeze
       end

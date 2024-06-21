@@ -101,8 +101,7 @@ module Engine
           return 0 unless stops.intersect?(@bonus_nodes[zone1])
           return 0 unless stops.intersect?(@bonus_nodes[zone2])
 
-          revenue = @bonus_revenue[bonus].route_revenue(@phase, route.train)
-          revenue / (route.train.obsolete ? 2 : 1)
+          @bonus_revenue[bonus].route_revenue(@phase, route.train)
         end
 
         def north_south_bonus(route, stops)
