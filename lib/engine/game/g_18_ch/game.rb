@@ -15,7 +15,7 @@ module Engine
         include Map
         include Tiles
 
-        CURRENCY_FORMAT_STR = '%sfr'
+        CURRENCY_FORMAT_STR = '%ssfr'
 
         BANK_CASH = 8_000
         STARTING_CASH = { 2 => 500, 3 => 335, 4 => 250 }.freeze
