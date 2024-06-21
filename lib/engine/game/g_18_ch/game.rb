@@ -44,6 +44,7 @@ module Engine
           '6E' => 10,
           '5D' => 5,
         }.freeze
+        GREY_TRAINS = %w[6E 5M 5D].freeze
 
         def game_trains
           trains = super
@@ -55,6 +56,13 @@ module Engine
 
         def num_trains(train)
           TRAIN_COUNTS[train[:name]]
+        end
+
+        @phase3_train_trigger = 2
+        @phase4_train_trigger = 4
+        def maybe_rust_wounded_trains!(grey_trains_bought, purchased_train)
+          rust_wounded_trains!(%[4H 2M], purchased_train) if grey_trains_bought == @phase3_train_trigger
+          super
         end
 
         def operating_round(round_num = 1)
