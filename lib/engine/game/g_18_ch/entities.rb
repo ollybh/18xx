@@ -78,7 +78,7 @@ module Engine
             sym: 'NB',
             name: 'Nordbahn',
             desc: 'P1. Revenue 13/20, face value 65. Home hexes are G4 and H5. ' \
-                  'Can be used to start a public company in Zürich.',
+                  'Cannot be used to start a public company.',
             value: 65,
             discount: 15,
             revenue: 13,
@@ -89,13 +89,6 @@ module Engine
               { type: 'no_buy' },
               { type: 'revenue_change', revenue: 20, on_phase: '3' },
               { type: 'reservation', hex: 'H5', city: 1 },
-              {
-                type: 'exchange',
-                owner_type: 'player',
-                when: 'owning_player_sr_turn',
-                corporations: 'any',
-                from: 'ipo',
-              },
             ],
           },
           {
@@ -354,7 +347,7 @@ module Engine
           {
             sym: 'S',
             name: 'Simplon',
-            desc: 'P15. Revenue 11/18, face value 55. Home hex is G14. ' \
+            desc: 'P15. Revenue 22, face value 55. Home hex is G14. ' \
                   'Cannot be used to start a public company.',
             value: 55,
             discount: 0,
@@ -378,11 +371,11 @@ module Engine
           {
             sym: 'ChA',
             name: 'Chur-Arosa',
-            desc: 'P17. Revenue 18, face value 60. Home hex is K8. ' \
+            desc: 'P17. Revenue 24, face value 60. Home hex is K8. ' \
                   'Cannot be used to start a public company.',
             value: 60,
             discount: 0,
-            revenue: 18,
+            revenue: 24,
             color: :lightblue,
             text_color: :black,
             abilities: [{ type: 'no_buy' }],
