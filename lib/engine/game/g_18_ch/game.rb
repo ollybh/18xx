@@ -81,6 +81,12 @@ module Engine
           super + north_south_bonus(route, stops) + east_west_bonus(route, stops)
         end
 
+        def private_colors_available(phase)
+          colors = super
+          colors.concat(%i[green blue]) if phase.status.include?('blue_privates')
+          colors
+        end
+
         private
 
         def hexes_by_id(coordinates)
