@@ -316,11 +316,9 @@ module Engine
 
           yellow: {
             %w[H5] =>
-                    'city=revenue:40,groups:Zürich;' \
-                    'city=revenue:40,groups:Zürich;' \
+                    'city=revenue:40,groups:Zürich,loc:4.5;' \
+                    'city=revenue:40,groups:Zürich,loc:1.5;' \
                     'path=a:0,b:_0;path=a:3,b:_0;path=a:2,b:_1;' \
-                    'icon=image:18_ch/NB,sticky:1;' \
-                    'icon=image:18_ch/NOB,sticky:1;' \
                     'border=type:province,edge:0;' \
                     'border=type:province,edge:1;' \
                     'border=type:province,edge:2;' \
