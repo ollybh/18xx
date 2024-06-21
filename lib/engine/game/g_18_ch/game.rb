@@ -47,6 +47,8 @@ module Engine
 
         def game_trains
           trains = super
+          trains[4][:price] = 700
+          trains[4][:variants][0][:price] = 600
           trains.last[:available_on] = '6'
           trains
         end
