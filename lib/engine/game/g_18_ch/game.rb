@@ -24,15 +24,53 @@ module Engine
         PHASES = G1858::Trains::PHASES.reject { |phase| phase['name'] == '7' }
         STATUS_TEXT = G1858::Trains::STATUS_TEXT.merge(
           'green_privates' => ['Yellow and green privates available',
-                               'The first and second batches of private companies can be auctioned'],
-          'blue_privates' => ['All privates available',
-                               'The first, second and third batches of private companies can be auctioned'],
+             'The first and second batches of private companies can be auctioned'],
+          'all_privates' => ['All privates available',
+             'The first, second and third batches of private companies can be auctioned'],
+          'blue_privates' => ['Blue privates available',
+             'The third batch of private companies can be auctioned'],
         ).freeze
+        EVENTS_TEXT = G1858::Trains::EVENTS_TEXT.merge(
+            'blue_privates_available' => ['Blue privates can start',
+                                           'The third set of private companies becomes available'],
+            'privates_close' => ['Yellow/green private companies close',
+                                 'The first private closure round takes place at the end of the ' \
+                                 'operating round in which the first 5E/4M train is bought'],
+            'privates_close2' => ['Blue private companies close',
+                                 'The second private closure round takes place at the end of the ' \
+                                 'operating round in which the first 6E/5M train is bought'],
+          ).freeze
 
         def game_phases
           phases = super
-          phases[2][:status] = %w[blue_privates narrow_gauge]
+          phases[2][:status] = %w[all_privates narrow_gauge]
+          phases[3][:status] = %w[blue_privates public_companies dual_gauge]
+          phases[4][:tiles] = %i[yellow green brown gray]
           phases
+        end
+
+        def timeline
+          @timeline = ['5D trains are available after the first 6E/5M train has been bought.',
+                       '4H/2M trains rust when the second 6E/5M/5D train is bought.',
+                       '6H/3M trains rust when the fourth 6E/5M/5D train is bought.']
+        end
+
+        def event_blue_privates_available!
+          @log << '-- Event: Blue private companies can be started --'
+          # Don't need to change anything, the check in buyable_bank_owned_companies
+          # will let these companies be auctioned in future stock rounds.
+        end
+
+        def event_privates_close!
+          @log << '-- Event: Yellow and green private companies will close ' \
+                  'at the end of this operating round --'
+          @private_closure_round = :next
+        end
+
+        def event_privates_close2!
+          @log << '-- Event: Blue private companies will close at the end ' \
+                  'of this operating round --'
+          @private_closure_round = :next
         end
 
         TRAINS = G1858::Trains::TRAINS.reject { |train| train['name'] == '7E' }
@@ -48,6 +86,9 @@ module Engine
 
         def game_trains
           trains = super
+          trains[2][:obsolete_on] = '6E'
+          trains[2][:events] = [{ 'type' => 'blue_privates_available' }]
+          trains[4][:events] = [{ 'type' => 'privates_close2' }]
           trains[4][:price] = 700
           trains[4][:variants][0][:price] = 600
           trains.last[:available_on] = '6'
@@ -92,9 +133,17 @@ module Engine
         end
 
         def private_colors_available(phase)
-          colors = super
-          colors.concat(%i[green blue]) if phase.status.include?('blue_privates')
-          colors
+          if phase.status.include?('yellow_privates')
+            %i[yellow]
+          elsif phase.status.include?('green_privates')
+            %i[yellow green]
+          elsif phase.status.include?('all_privates')
+            %i[yellow green blue]
+          elsif phase.status.include?('blue_privates')
+            %i[blue]
+          else
+            []
+          end
         end
 
         private
