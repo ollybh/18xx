@@ -340,11 +340,13 @@ module Engine
             # South France
             %w[A14] =>
                     'offboard=revenue:yellow_20|green_30|brown_40|gray_50;' \
+                    'icon=image:18_ch/west;' \
                     'path=a:3,b:_0;',
 
             # Central France
             %w[B7] =>
                     'offboard=revenue:yellow_30|green_40|brown_50|gray_60;' \
+                    'icon=image:18_ch/west;' \
                     'path=a:0,b:_0;path=a:4,b:_0;path=a:5,b:_0;' \
                     'border=edge:3;',
 
@@ -355,6 +357,7 @@ module Engine
                     'border=edge:1;border=edge:4;',
             %w[D3] =>
                     'offboard=revenue:yellow_30|green_40|brown_50|gray_60,groups:France;' \
+                    'icon=image:18_ch/north;' \
                     'path=a:0,b:_0;path=a:5,b:_0;' \
                     'border=edge:1;border=edge:4;',
             %w[E2] =>
@@ -369,12 +372,14 @@ module Engine
                     'border=edge:5;',
             %w[I2] =>
                     'offboard=revenue:yellow_30|green_40|brown_50|gray_70,groups:Germany;' \
+                    'icon=image:18_ch/north;' \
                     'path=a:0,b:_0;path=a:1,b:_0;' \
                     'border=edge:2;',
 
             # Italy
             %w[H15] =>
                     'offboard=revenue:yellow_20|green_30|brown_50|gray_60,groups:Italy;' \
+                    'icon=image:18_ch/south;' \
                     'path=a:2,b:_0;path=a:4,b:_0;' \
                     'border=edge:5;',
             %w[I16] =>
@@ -389,6 +394,7 @@ module Engine
                     'border=edge:0;',
             %w[L7] =>
                     'offboard=revenue:yellow_20|green_30|brown_40|gray_50,groups:Austria;' \
+                    'icon=image:18_ch/east;' \
                     'path=a:2,b:_0;' \
                     'border=edge:3;',
           },
