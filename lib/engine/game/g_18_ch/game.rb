@@ -119,6 +119,14 @@ module Engine
           ], round_num: round_num)
         end
 
+        def closure_round(round_num)
+          G18CH::Round::Closure.new(self, [
+            G1858::Step::ExchangeApproval,
+            G1858::Step::HomeToken,
+            G1858::Step::PrivateClosure,
+          ], round_num: round_num)
+        end
+
         BONUS_HEXES = {
           north: %w[C4 D3 E2 H1 I2],
           south: %w[H15 I16],
