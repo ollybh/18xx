@@ -111,11 +111,12 @@ module Engine
           TRAIN_COUNTS[train[:name]]
         end
 
-        @phase3_train_trigger = 2
-        @phase4_train_trigger = 4
+        PHASE3_TRAIN_TRIGGER = 2 # 4H/2M trains rust after second grey train is bought.
+        PHASE4_TRAIN_TRIGGER = 4 # 6H/3M trains rust after fourth grey train is bought.
+
         def maybe_rust_wounded_trains!(grey_trains_bought, purchased_train)
-          rust_wounded_trains!(%[4H 2M], purchased_train) if grey_trains_bought == @phase3_train_trigger
-          super
+          rust_wounded_trains!(%w[4H 2M], purchased_train) if grey_trains_bought == PHASE3_TRAIN_TRIGGER
+          rust_wounded_trains!(%w[6H 3M], purchased_train) if grey_trains_bought == PHASE4_TRAIN_TRIGGER
         end
 
         def operating_round(round_num = 1)
