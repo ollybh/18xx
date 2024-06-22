@@ -158,9 +158,9 @@ module Engine
           elsif phase.status.include?('green_privates')
             %i[yellow green]
           elsif phase.status.include?('all_privates')
-            %i[yellow green blue]
+            %i[yellow green lightblue]
           elsif phase.status.include?('blue_privates')
-            %i[blue]
+            %i[lightblue]
           else
             []
           end
