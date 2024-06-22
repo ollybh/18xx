@@ -119,19 +119,6 @@ module Engine
           rust_wounded_trains!(%w[6H 3M], purchased_train) if grey_trains_bought == PHASE4_TRAIN_TRIGGER
         end
 
-        def operating_round(round_num = 1)
-          @round_num = round_num
-          Engine::Round::Operating.new(self, [
-            G1858::Step::Track,
-            G18CH::Step::Token,
-            G1858::Step::Route,
-            G1858::Step::Dividend,
-            G1858::Step::DiscardTrain,
-            G1858::Step::BuyTrain,
-            G1858::Step::IssueShares,
-          ], round_num: round_num)
-        end
-
         def closure_round(round_num)
           G18CH::Round::Closure.new(self, [
             G1858::Step::ExchangeApproval,
