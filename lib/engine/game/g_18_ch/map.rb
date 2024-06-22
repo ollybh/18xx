@@ -397,7 +397,6 @@ module Engine
                     'border=edge:3;',
           },
 
-
           gray: {
             %w[H11] =>
                     'path=track:broad,a:3,b:5;' \

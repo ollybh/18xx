@@ -23,22 +23,34 @@ module Engine
 
         PHASES = G1858::Trains::PHASES.reject { |phase| phase['name'] == '7' }
         STATUS_TEXT = G1858::Trains::STATUS_TEXT.merge(
-          'green_privates' => ['Yellow and green privates available',
-             'The first and second batches of private companies can be auctioned'],
-          'all_privates' => ['All privates available',
-             'The first, second and third batches of private companies can be auctioned'],
-          'blue_privates' => ['Blue privates available',
-             'The third batch of private companies can be auctioned'],
+          'green_privates' => [
+            'Yellow and green privates available',
+            'The first and second batches of private companies can be auctioned',
+          ],
+          'all_privates' => [
+            'All privates available',
+            'The first, second and third batches of private companies can be auctioned',
+          ],
+          'blue_privates' => [
+            'Blue privates available',
+            'The third batch of private companies can be auctioned',
+          ],
         ).freeze
         EVENTS_TEXT = G1858::Trains::EVENTS_TEXT.merge(
-            'blue_privates_available' => ['Blue privates can start',
-                                           'The third set of private companies becomes available'],
-            'privates_close' => ['Yellow/green private companies close',
-                                 'The first private closure round takes place at the end of the ' \
-                                 'operating round in which the first 5E/4M train is bought'],
-            'privates_close2' => ['Blue private companies close',
-                                 'The second private closure round takes place at the end of the ' \
-                                 'operating round in which the first 6E/5M train is bought'],
+            'blue_privates_available' => [
+              'Blue privates can start',
+              'The third set of private companies becomes available',
+            ],
+            'privates_close' => [
+              'Yellow/green private companies close',
+              'The first private closure round takes place at the end of the ' \
+              'operating round in which the first 5E/4M train is bought',
+            ],
+            'privates_close2' => [
+              'Blue private companies close',
+              'The second private closure round takes place at the end of the ' \
+              'operating round in which the first 6E/5M train is bought',
+            ],
           ).freeze
 
         def game_phases
