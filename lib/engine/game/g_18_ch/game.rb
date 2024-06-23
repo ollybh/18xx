@@ -21,7 +21,7 @@ module Engine
         STARTING_CASH = { 2 => 500, 3 => 335, 4 => 250 }.freeze
         CERT_LIMIT = { 2 => 20, 3 => 13, 4 => 10 }.freeze
 
-        PHASES = G1858::Trains::PHASES.reject { |phase| phase['name'] == '7' }
+        PHASES = G1858::Trains::PHASES.reject { |phase| phase[:name] == '7' }
         STATUS_TEXT = G1858::Trains::STATUS_TEXT.merge(
           'green_privates' => [
             'Yellow and green privates available',
@@ -92,7 +92,7 @@ module Engine
           @private_closure_round = :next
         end
 
-        TRAINS = G1858::Trains::TRAINS.reject { |train| train['name'] == '7E' }
+        TRAINS = G1858::Trains::TRAINS.reject { |train| train[:name] == '7E' }
         TRAIN_COUNTS = {
           '2H' => 4,
           '4H' => 3,
