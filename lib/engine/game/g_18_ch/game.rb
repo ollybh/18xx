@@ -55,9 +55,10 @@ module Engine
 
         def game_phases
           phases = super
-          phases[2][:status] = %w[all_privates narrow_gauge]
-          phases[3][:status] = %w[blue_privates public_companies dual_gauge]
-          phases[4][:tiles] = %i[yellow green brown gray]
+          _phase2, _phase3, phase4, phase5, phase6 = phases
+          phase4[:status] = %w[all_privates narrow_gauge]
+          phase5[:status] = %w[blue_privates public_companies dual_gauge]
+          phase6[:tiles] = %i[yellow green brown gray]
           phases
         end
 
@@ -98,12 +99,13 @@ module Engine
 
         def game_trains
           trains = super
-          trains[2][:obsolete_on] = '6E'
-          trains[2][:events] = [{ 'type' => 'blue_privates_available' }]
-          trains[4][:events] = [{ 'type' => 'privates_close2' }]
-          trains[4][:price] = 700
-          trains[4][:variants][0][:price] = 600
-          trains.last[:available_on] = '6'
+          _train_2h, _train_4h, train_6h, _train_5e, train_6e, train_5d = trains
+          train_6h[:obsolete_on] = '6E'
+          train_6h[:events] = [{ 'type' => 'blue_privates_available' }]
+          train_6e[:events] = [{ 'type' => 'privates_close2' }]
+          train_6e[:price] = 700
+          train_6e[:variants][0][:price] = 600
+          train_5d[:available_on] = '6'
           trains
         end
 
