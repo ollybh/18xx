@@ -212,6 +212,10 @@ module Engine
           entity.assign!(MOUNTAIN_RAILWAY_ASSIGNMENT)
         end
 
+        # This method is called to remove some private railways from 1858 when
+        # there are two players. This does not happen in 18CH.
+        def setup_unbuyable_privates; end
+
         private
 
         def hexes_by_id(coordinates)
