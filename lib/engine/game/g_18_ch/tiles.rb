@@ -224,6 +224,15 @@ module Engine
               'path=a:0,b:_0,track:dual;path=a:1,b:_0,track:dual;path=a:2,b:_0,track:dual;' \
               'path=a:3,b:_0,track:dual;path=a:4,b:_0,track:dual;path=a:5,b:_0,track:dual;',
           },
+          'X28' =>
+          {
+            'count' => 3,
+            'color' => 'gray',
+            'code' =>
+              'offboard=revenue:green_30|brown_30|gray_30;' \
+              'icon=image:18_ch/mountain,loc:2.5;' \
+              'path=a:0,b:_0,track:dual;',
+          },
         }.freeze
       end
     end

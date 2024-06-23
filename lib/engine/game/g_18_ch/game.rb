@@ -35,6 +35,10 @@ module Engine
             'Blue privates available',
             'The third batch of private companies can be auctioned',
           ],
+          'mountain_railways' => [
+            'Mountain railways available',
+            'Mountain railway tiles (X28) can be built',
+          ],
         ).freeze
         EVENTS_TEXT = G1858::Trains::EVENTS_TEXT.merge(
             'blue_privates_available' => [
@@ -56,9 +60,10 @@ module Engine
         def game_phases
           phases = super
           _phase2, _phase3, phase4, phase5, phase6 = phases
-          phase4[:status] = %w[all_privates narrow_gauge]
-          phase5[:status] = %w[blue_privates public_companies dual_gauge]
+          phase4[:status] = %w[all_privates narrow_gauge mountain_railways]
+          phase5[:status] = %w[blue_privates public_companies dual_gauge mountain_railways]
           phase6[:tiles] = %i[yellow green brown gray]
+          phase6[:status] = %w[public_companies dual_gauge mountain_railways]
           phases
         end
 
@@ -165,6 +170,48 @@ module Engine
           end
         end
 
+        MOUNTAIN_RAILWAY_TILE = 'X28'
+        MOUNTAIN_RAILWAY_ASSIGNMENT = '+40'
+        MOUNTAIN_RAILWAY_BONUS = 40
+        ASSIGNMENT_TOKENS = {
+          MOUNTAIN_RAILWAY_ASSIGNMENT => '/icons/18_ch/mountain.svg',
+        }.freeze
+
+        def submit_revenue_str(routes, _show_subsidy)
+          mountain_revenue = mountain_bonus(current_entity, routes)
+          return super if mountain_revenue.zero?
+
+          train_revenue = routes_revenue(routes)
+          "#{format_revenue_currency(train_revenue)} + " \
+            "#{format_revenue_currency(mountain_revenue)} mountain railway bonus"
+        end
+
+        def extra_revenue(entity, routes)
+          mountain_bonus(entity, routes)
+        end
+
+        def mountain_bonus(entity, routes)
+          return 0 if routes.empty?
+
+          mountain_railway_built?(entity) ? MOUNTAIN_RAILWAY_BONUS : 0
+        end
+
+        def upgrades_to?(from, to, special, selected_company: nil)
+          valid = super
+          return valid unless current_entity.corporation?
+          return valid unless phase.status.include?('mountain_railways')
+          return valid if mountain_railway_built?(current_entity)
+          return valid unless mountain_hex?(from)
+
+          valid || to.name == MOUNTAIN_RAILWAY_TILE
+        end
+
+        def after_lay_tile(_hex, tile, entity)
+          return unless tile.name == MOUNTAIN_RAILWAY_TILE
+
+          entity.assign!(MOUNTAIN_RAILWAY_ASSIGNMENT)
+        end
+
         private
 
         def hexes_by_id(coordinates)
@@ -194,6 +241,16 @@ module Engine
 
         def east_west_bonus(route, stops)
           r2r_bonus(route, stops, :east, :west, :east_west)
+        end
+
+        def mountain_hex?(tile)
+          tile.color == :white && tile.upgrades.any? { |u| u.cost == 120 }
+        end
+
+        def mountain_railway_built?(entity)
+          return false unless entity.corporation?
+
+          entity.assignments.key?(MOUNTAIN_RAILWAY_ASSIGNMENT)
         end
       end
     end
