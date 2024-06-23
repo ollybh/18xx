@@ -65,6 +65,7 @@ module Engine
         def timeline
           @timeline = ['5D trains are available after the first 6E/5M train has been bought.',
                        '4H/2M trains rust when the second 6E/5M/5D train is bought.',
+                       '6H/3M trains are wounded when the second 6E/5M/5D train is bought.',
                        '6H/3M trains rust when the fourth 6E/5M/5D train is bought.']
         end
 
@@ -100,7 +101,7 @@ module Engine
         def game_trains
           trains = super
           _train_2h, _train_4h, train_6h, _train_5e, train_6e, train_5d = trains
-          train_6h[:obsolete_on] = '6E'
+          train_6h.delete(:obsolete_on) # Wounded on second grey train, handled in code
           train_6h[:events] = [{ 'type' => 'blue_privates_available' }]
           train_6e[:events] = [{ 'type' => 'privates_close2' }]
           train_6e[:price] = 700
@@ -113,12 +114,20 @@ module Engine
           TRAIN_COUNTS[train[:name]]
         end
 
-        PHASE3_TRAIN_TRIGGER = 2 # 4H/2M trains rust after second grey train is bought.
-        PHASE4_TRAIN_TRIGGER = 4 # 6H/3M trains rust after fourth grey train is bought.
+        PHASE4_TRAINS_OBSOLETE = 2 # 6H/3M trains wounded after second grey train is bought.
+        PHASE3_TRAINS_RUST = 2 # 4H/2M trains rust after second grey train is bought.
+        PHASE4_TRAINS_RUST = 4 # 6H/3M trains rust after fourth grey train is bought.
 
         def maybe_rust_wounded_trains!(grey_trains_bought, purchased_train)
-          rust_wounded_trains!(%w[4H 2M], purchased_train) if grey_trains_bought == PHASE3_TRAIN_TRIGGER
-          rust_wounded_trains!(%w[6H 3M], purchased_train) if grey_trains_bought == PHASE4_TRAIN_TRIGGER
+          obsolete_trains!(%w[6H 3M], purchased_train) if grey_trains_bought == PHASE4_TRAINS_OBSOLETE
+          rust_wounded_trains!(%w[4H 2M], purchased_train) if grey_trains_bought == PHASE3_TRAINS_RUST
+          rust_wounded_trains!(%w[6H 3M], purchased_train) if grey_trains_bought == PHASE4_TRAINS_RUST
+        end
+
+        def obsolete_trains!(train_names, purchased_train)
+          trains.select { |train| train_names.include?(train.name) }
+                .each { |train| train.obsolete_on = purchased_train.sym }
+          rust_trains!(purchased_train, purchased_train.owner)
         end
 
         def closure_round(round_num)
