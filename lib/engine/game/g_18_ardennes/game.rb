@@ -36,11 +36,13 @@ module Engine
 
         SELL_BUY_ORDER = :sell_buy
         SELL_AFTER = :operate
+        SELL_MOVEMENT = :left_block_pres
 
         CAPITALIZATION = :incremental
         HOME_TOKEN_TIMING = :par
 
         MUST_BUY_TRAIN = :always # Just for majors, minors are handled in #must_buy_train?
+        EBUY_DEPOT_TRAIN_MUST_BE_CHEAPEST = false
         BANKRUPTCY_ALLOWED = true
         BANKRUPTCY_ENDS_GAME_AFTER = :all_but_one
 
@@ -51,6 +53,7 @@ module Engine
           super
 
           setup_tokens
+          setup_icons
           @pledged_minors = major_corporations.to_h { |corp| [corp, nil] }
         end
 
@@ -62,7 +65,7 @@ module Engine
             when Engine::Round::Auction
               init_round_finished
               reorder_players
-              new_stock_round
+              new_operating_round
             when G18Ardennes::Round::Stock
               @operating_rounds = @phase.operating_rounds
               reorder_players
