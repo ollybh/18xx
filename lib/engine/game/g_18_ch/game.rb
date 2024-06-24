@@ -35,10 +35,6 @@ module Engine
             'Blue privates available',
             'The third batch of private companies can be auctioned',
           ],
-          'mountain_railways' => [
-            'Mountain railways available',
-            'Mountain railway tiles (X28) can be built',
-          ],
         ).freeze
         EVENTS_TEXT = G1858::Trains::EVENTS_TEXT.merge(
             'blue_privates_available' => [
@@ -60,10 +56,9 @@ module Engine
         def game_phases
           phases = super
           _phase2, _phase3, phase4, phase5, phase6 = phases
-          phase4[:status] = %w[all_privates narrow_gauge mountain_railways]
-          phase5[:status] = %w[blue_privates public_companies dual_gauge mountain_railways]
+          phase4[:status] = %w[all_privates narrow_gauge]
+          phase5[:status] = %w[blue_privates public_companies dual_gauge]
           phase6[:tiles] = %i[yellow green brown gray]
-          phase6[:status] = %w[public_companies dual_gauge mountain_railways]
           phases
         end
 
@@ -201,6 +196,12 @@ module Engine
           mountain_railway_built?(entity) ? MOUNTAIN_RAILWAY_BONUS : 0
         end
 
+        def all_potential_upgrades(tile, tile_manifest: false, selected_company: nil)
+          return super unless mountain_hex?(tile)
+
+          super + [@tiles.find { |tile| tile.name == MOUNTAIN_RAILWAY_TILE }]
+        end
+
         def upgrades_to?(from, to, special, selected_company: nil)
           valid = super
           return valid unless current_entity.corporation?
@@ -208,12 +209,6 @@ module Engine
           return valid unless mountain_hex?(from)
 
           valid || to.name == MOUNTAIN_RAILWAY_TILE
-        end
-
-        def tile_valid_for_phase?(tile, hex: nil, phase_color_cache: nil)
-          return super unless tile.name == MOUNTAIN_RAILWAY_TILE
-
-          phase.status.include?('mountain_railways')
         end
 
         def after_lay_tile(_hex, tile, entity)

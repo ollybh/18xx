@@ -227,8 +227,9 @@ module Engine
           'X28' =>
           {
             'count' => 3,
-            'color' => 'gray',
+            'color' => 'green',
             'code' =>
+              'stripes=color:yellow;' \
               'offboard=revenue:green_30|brown_30|gray_30;' \
               'icon=image:18_ch/mountain,loc:2.5;' \
               'path=a:0,b:_0,track:dual;',
