@@ -199,11 +199,16 @@ module Engine
         def upgrades_to?(from, to, special, selected_company: nil)
           valid = super
           return valid unless current_entity.corporation?
-          return valid unless phase.status.include?('mountain_railways')
           return valid if mountain_railway_built?(current_entity)
           return valid unless mountain_hex?(from)
 
           valid || to.name == MOUNTAIN_RAILWAY_TILE
+        end
+
+        def tile_valid_for_phase?(tile, hex: nil, phase_color_cache: nil)
+          return super unless tile.name == MOUNTAIN_RAILWAY_TILE
+
+          phase.status.include?('mountain_railways')
         end
 
         def after_lay_tile(_hex, tile, entity)
