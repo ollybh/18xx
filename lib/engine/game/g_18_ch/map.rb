@@ -149,8 +149,8 @@ module Engine
                     'border=type:province,edge:5;',
             %w[F7] =>
                     'upgrade=cost:40,terrain:mountain;' \
-                    'border=type:province,edge:3' \
-                    'border=type:province,edge:4' \
+                    'border=type:province,edge:3;' \
+                    'border=type:province,edge:4;' \
                     'border=type:province,edge:5;',
             %w[F9] =>
                     'town=revenue:0;' \
@@ -234,7 +234,7 @@ module Engine
                     'border=type:province,edge:3;',
             %w[I4] =>
                     'city=revenue:0;' \
-                    'border=type:province,edge:3;' \
+                    'border=type:province,edge:0;' \
                     'border=type:province,edge:4;' \
                     'border=type:province,edge:5;',
             %w[I6] =>
