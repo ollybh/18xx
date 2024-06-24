@@ -37,21 +37,21 @@ module Engine
           ],
         ).freeze
         EVENTS_TEXT = G1858::Trains::EVENTS_TEXT.merge(
-            'blue_privates_available' => [
-              'Blue privates can start',
-              'The third set of private companies becomes available',
-            ],
-            'privates_close' => [
-              'Yellow/green private companies close',
-              'The first private closure round takes place at the end of the ' \
-              'operating round in which the first 5E/4M train is bought',
-            ],
-            'privates_close2' => [
-              'Blue private companies close',
-              'The second private closure round takes place at the end of the ' \
-              'operating round in which the first 6E/5M train is bought',
-            ],
-          ).freeze
+          'blue_privates_available' => [
+            'Blue privates can start',
+            'The third set of private companies becomes available',
+          ],
+          'privates_close' => [
+            'Yellow/green private companies close',
+            'The first private closure round takes place at the end of the ' \
+            'operating round in which the first 5E/4M train is bought',
+          ],
+          'privates_close2' => [
+            'Blue private companies close',
+            'The second private closure round takes place at the end of the ' \
+            'operating round in which the first 6E/5M train is bought',
+          ],
+        ).freeze
 
         def game_phases
           phases = super
