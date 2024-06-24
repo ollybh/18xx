@@ -25,7 +25,7 @@ module Engine
           'E8' => 'Bern',
           'F5' => 'Olten',
           'F9' => 'Thun',
-          'F11' => 'Lötchsberg',
+          'F11' => 'Lötschberg',
           'F13' => 'Brig',
           'G4' => 'Baden & Brugg',
           'G14' => 'Simplon',
