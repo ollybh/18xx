@@ -18,7 +18,7 @@ module Engine
 
         attr_accessor :gold_shipped, :local_jeweler_cash
         attr_reader :gold_corp, :steel_corp, :available_steel, :gold_cubes, :indebted, :debt_corp,
-                    :treaty_of_boston, :hanging_bridge_lease_payment_due
+                    :treaty_of_boston, :hanging_bridge_lease_payment_due, :sf_debt
 
         CURRENCY_FORMAT_STR = '$%s'
         BANK_CASH = 99_999
@@ -68,12 +68,14 @@ module Engine
 
         PRESIDENT_SALES_TO_MARKET = Set['CF&I', 'VGC'].freeze
 
+        COMPANIES_CLOSE_PHASE_5 = %w[Y2 Y3 Y4 Y5 Y6 G2 G3 G5 G6 B3 B4 B5].freeze
+
         EVENTS_TEXT = Base::EVENTS_TEXT.merge(
           green_phase: ['Green Phase Begins'],
           brown_phase: ['Brown Phase Begins'],
           gray_phase: ['Gray Phase Begins'],
           treaty_of_boston: ['Treaty of Boston'],
-          close_gold_miner: ['Close Gold Miner (B4)'],
+          close_companies: ["Close private companies (#{COMPANIES_CLOSE_PHASE_5.join(',')})"],
         )
 
         DEBT_PENALTY = {
@@ -103,7 +105,7 @@ module Engine
         SULPHUR_SPRINGS_BROWN_REVENUE = 50
 
         ST_CLOUD_START_HEX = 'G17'
-        ST_CLOUD_BROWN_HEX = 'H14'
+        ST_CLOUD_BROWN_HEX = 'H12'
         ST_CLOUD_BONUS = 20
         ST_CLOUD_BONUS_STR = ' (St. Cloud Hotel)'
         ST_CLOUD_ICON_NAME = 'SCH'
@@ -120,12 +122,12 @@ module Engine
         }.freeze
         GAME_END_REASONS_TEXT = {
           bankrupt: 'Player is bankrupt',
-          custom: '6-train is bought/exported',
+          custom: '6x2-train is bought/exported',
           stock_market: 'Corporation enters end game trigger on stock market',
         }.freeze
         GAME_END_DESCRIPTION_REASON_MAP_TEXT = {
           bankrupt: 'Bankruptcy',
-          custom: '6-train was bought/exported',
+          custom: '6x2-train was bought/exported',
           stock_market: 'Company hit max stock value',
         }.freeze
 
@@ -134,8 +136,8 @@ module Engine
         end
 
         def game_companies
-          YELLOW_COMPANIES.sort_by { rand }.take(2).sort_by { |c| c[:sym] } +
-            GREEN_COMPANIES.sort_by { rand }.take(2).sort_by { |c| c[:sym] } +
+          YELLOW_COMPANIES.sort_by { rand }.take(2).sort_by { |c| c[:value] } +
+            GREEN_COMPANIES.sort_by { rand }.take(2).sort_by { |c| c[:value] } +
             BROWN_COMPANIES.sort_by { rand }.take(1)
         end
 
@@ -299,11 +301,15 @@ module Engine
           update_cache(:share_prices)
         end
 
-        def event_close_gold_miner!
-          return unless gold_miner
+        def event_close_companies!
+          @log << '-- Event: private companies close  --'
 
-          @log << "-- Event: #{gold_miner.name} closes --"
-          gold_miner.close!
+          COMPANIES_CLOSE_PHASE_5.each do |id|
+            next unless (company = company_by_id(id))
+
+            @log << "#{company.name} closes"
+            company.close!
+          end
         end
 
         def event_st_cloud_moves!
@@ -362,13 +368,13 @@ module Engine
 
         def update_sulphur_springs_company_revenue!
           return if @updated_sulphur_springs_company_revenue
+          return if %w[Yellow Green].include?(@phase.name)
           return unless sulphur_springs&.owner&.player?
 
           @updated_sulphur_springs_company_revenue = true
           revenue = SULPHUR_SPRINGS_BROWN_REVENUE
           sulphur_springs.revenue = revenue
           @log << "-- Event: Sulphur Springs (B2)'s revenue increases to #{format_currency(revenue)} --"
-          puts "Sulphur Springs (B2)'s revenue increases to #{format_currency(revenue)}"
         end
 
         def event_treaty_of_boston!
@@ -376,7 +382,7 @@ module Engine
           @log << 'RG is indebted to SF'
           @log << 'SF is indebted to Doc Holliday'
 
-          sf_debt = Company.new(
+          @sf_debt = Company.new(
             sym: 'SF-D',
             name: 'Indebted to Doc Holliday',
             value: 0,
@@ -391,7 +397,7 @@ module Engine
             choices: { 'pay_debt' => 'Pay Doc Holliday for one DEBT token' },
             count: 2,
             count_per_or: 1,
-            closed_when_used_up: true,
+            remove_when_used_up: true,
           )
           sf_debt.add_ability(ability)
           sf_debt.owner = santa_fe
@@ -414,7 +420,7 @@ module Engine
             choices: { 'pay_debt' => 'Pay Santa Fe for one DEBT token' },
             count: 4,
             count_per_or: 1,
-            closed_when_used_up: true,
+            remove_when_used_up: true,
           )
           rg_debt.add_ability(ability)
           rg_debt.owner = rio_grande
@@ -484,11 +490,13 @@ module Engine
               # reorder as normal first so that if there is a tie for most cash,
               # the player who would be first with :after_last_to_act turn order
               # gets the tiebreaker
-              reorder_players
+              reorder_players(silent: true)
 
               # most cash goes first, but keep same relative order; don't
               # reorder by descending cash
               @players.rotate!(@players.index(@players.max_by(&:cash)))
+
+              @log << "#{@players.first.name} has priority deal"
 
               new_stock_round
             end
@@ -539,9 +547,13 @@ module Engine
         end
 
         def or_round_finished
+          return unless @treaty_of_boston
+
           # debt increases
           old_price = @debt_corp.share_price
           @stock_market.move_right(@debt_corp)
+          @debt_corp.cash = @debt_corp.share_price.price
+
           log_share_price(@debt_corp, old_price, 1)
         end
 
@@ -856,10 +868,16 @@ module Engine
               hex = action.hex
 
               hex.original_tile.icons.each do |icon|
-                if icon.name == 'mine'
-                  action.hex.tile.icons << Part::Icon.new('../icons/18_royal_gorge/gold_cube', 'gold')
-                  @gold_cubes[hex.id] += 1
-                end
+                next unless icon.name == 'mine'
+
+                action.hex.tile.icons << Part::Icon.new(
+                  '../icons/18_royal_gorge/gold_cube',
+                  'gold', # name
+                  true, # sticky
+                  nil, # blocks_lay
+                  false, # preprinted
+                )
+                @gold_cubes[hex.id] += 1
               end
             end
             if !@updated_sulphur_springs_company_revenue && sulphur_springs&.owner&.player?
@@ -890,7 +908,8 @@ module Engine
         def init_debt_corp(corporation)
           corporation.ipoed = true
           corporation.floated = true
-          price = @stock_market.share_price([0, 1])
+          price = @stock_market.share_price([0, 6])
+          corporation.cash = price.price
           @stock_market.set_par(corporation, price)
           bundle = ShareBundle.new(corporation.shares_of(corporation))
           @share_pool.transfer_shares(bundle, @share_pool)
@@ -1037,6 +1056,11 @@ module Engine
         def end_game!(player_initiated: false)
           return if @finished
 
+          if !@manually_ended && @round.finished?
+            handle_metal_payout(@steel_corp)
+            handle_metal_payout(@gold_corp)
+          end
+
           logged_drop = false
           @indebted.each do |corporation, (_, amount)|
             next unless corporation.floated?
@@ -1070,8 +1094,8 @@ module Engine
 
         def move_jeweler_cash!
           return unless @local_jeweler_cash.positive?
+          return unless (player = local_jeweler&.player)
 
-          player = local_jeweler&.player
           @log << "#{player.name} receives #{format_currency(@local_jeweler_cash)} from #{local_jeweler.name}"
           player.cash += @local_jeweler_cash
           @local_jeweler_cash = 0
@@ -1183,10 +1207,10 @@ module Engine
           return unless entity == coal_depot&.owner
           return unless entity == coal_creek_mines&.owner
 
-          depot_ability = entity.abilities.find { |a| a.type == 'coal_depot' }
-          depot_ability.description = depot_ability.description.sub('Cubes:', 'Cubes (depot):')
+          return unless (depot_ability = entity.abilities.find { |a| a.type == 'coal_depot' })
+          return unless (mines_ability = entity.abilities.find { |a| a.type == 'coal_mines' })
 
-          mines_ability = entity.abilities.find { |a| a.type == 'coal_mines' }
+          depot_ability.description = depot_ability.description.sub('Cubes:', 'Cubes (depot):')
           mines_ability.description = mines_ability.description.sub('Cubes:', 'Cubes (mines):')
         end
 
@@ -1213,7 +1237,7 @@ module Engine
 
           company.abilities[0].use!
 
-          ability = company.owner.abilities.find { |a| a.type == 'coal_mines' }
+          ability = company.owner.abilities.find { |a| a.type == :coal_mines }
           ability.add_count!(1)
           ability.description = ability.description.sub(/\d+/, ability.count.to_s)
 
@@ -1241,6 +1265,14 @@ module Engine
                          .select { |bundle| bundle.can_dump?(player) && @share_pool&.fit_in_bank?(bundle) }
                          .max_by(&:price)
           max_bundle&.price || 0
+        end
+
+        def rust(train)
+          if (amount = train.salvage || 0).positive?
+            @bank.spend(amount, train.owner)
+            @log << "#{train.owner.name} salvages a #{train.name} train for #{format_currency(amount)}"
+          end
+          super
         end
       end
     end

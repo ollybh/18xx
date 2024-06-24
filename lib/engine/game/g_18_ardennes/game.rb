@@ -63,7 +63,7 @@ module Engine
               init_round_finished
               reorder_players
               new_stock_round
-            when Engine::Round::Stock
+            when G18Ardennes::Round::Stock
               @operating_rounds = @phase.operating_rounds
               reorder_players
               new_operating_round
@@ -75,7 +75,11 @@ module Engine
                 @turn += 1
                 or_round_finished
                 or_set_finished
-                new_major_auction_round
+                if @phase.name == '2' || concession_companies.all?(&:closed?)
+                  new_stock_round
+                else
+                  new_major_auction_round
+                end
               end
             end
         end
@@ -103,7 +107,7 @@ module Engine
         end
 
         def stock_round
-          Engine::Round::Stock.new(self, [
+          G18Ardennes::Round::Stock.new(self, [
             G18Ardennes::Step::Exchange,
             G18Ardennes::Step::ExchangeApproval,
             G18Ardennes::Step::DeclineTokens,
@@ -140,7 +144,7 @@ module Engine
 
         # Checks whether a player really is bankrupt.
         def can_go_bankrupt?(player, _corporation)
-          return super if @round.is_a?(Engine::Round::Operating)
+          return super if @round.operating?
 
           # Has the player won the auction for a major company concession
           # that they cannot afford to start?

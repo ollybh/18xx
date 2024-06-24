@@ -32,7 +32,7 @@ module Engine
             return false unless entity.corporation?
             return false unless entity.type == :minor
 
-            @round.is_a?(Engine::Round::Stock) ? !bought? : !@round.converted.nil?
+            @round.stock? ? !bought? : !@round.converted.nil?
           end
 
           def process_buy_shares(action)
@@ -52,7 +52,7 @@ module Engine
             else
               transfer = treasury_share?(share) ? :choose : :none
               exchange_minor(@round.minor, bundle, transfer)
-              @round.current_actions << action if @round.is_a?(Engine::Round::Stock)
+              @round.current_actions << action if @round.stock?
             end
           end
 
