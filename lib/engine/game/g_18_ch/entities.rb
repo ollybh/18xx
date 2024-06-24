@@ -358,7 +358,7 @@ module Engine
           },
           {
             sym: 'L',
-            name: 'Lötchsberg',
+            name: 'Lötschberg',
             desc: 'P16. Revenue 26, face value 65. Home hex is F11. ' \
                   'Cannot be used to start a public company.',
             value: 65,
@@ -684,7 +684,7 @@ module Engine
           },
           {
             sym: 'L',
-            name: 'Lötchsberg',
+            name: 'Lötschberg',
             tokens: [],
             color: :lightblue,
             text_color: :black,
