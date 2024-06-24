@@ -123,6 +123,11 @@ module Engine
         PHASE3_TRAINS_RUST = 2 # 4H/2M trains rust after second grey train is bought.
         PHASE4_TRAINS_RUST = 4 # 6H/3M trains rust after fourth grey train is bought.
 
+        def setup
+          super
+          @phase4_train_trigger = PHASE4_TRAINS_RUST
+        end
+
         def maybe_rust_wounded_trains!(grey_trains_bought, purchased_train)
           obsolete_trains!(%w[6H 3M], purchased_train) if grey_trains_bought == PHASE4_TRAINS_OBSOLETE
           rust_wounded_trains!(%w[4H 2M], purchased_train) if grey_trains_bought == PHASE3_TRAINS_RUST
