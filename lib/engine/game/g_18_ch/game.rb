@@ -199,7 +199,7 @@ module Engine
         def all_potential_upgrades(tile, tile_manifest: false, selected_company: nil)
           return super unless mountain_hex?(tile)
 
-          super + [@tiles.find { |tile| tile.name == MOUNTAIN_RAILWAY_TILE }]
+          super + [@tiles.find { |t| t.name == MOUNTAIN_RAILWAY_TILE }]
         end
 
         def upgrades_to?(from, to, special, selected_company: nil)
