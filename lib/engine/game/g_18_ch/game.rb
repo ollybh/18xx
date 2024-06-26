@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'entities'
+require_relative 'graph'
 require_relative 'map'
 require_relative 'meta'
 require_relative 'tiles'
@@ -15,6 +16,7 @@ module Engine
         include Map
         include Tiles
 
+        GRAPH_CLASS = G18CH::Graph
         CURRENCY_FORMAT_STR = '%ssfr'
 
         BANK_CASH = 8_000
