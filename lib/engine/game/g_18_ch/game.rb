@@ -235,6 +235,19 @@ module Engine
           @gb_minor ||= minor_by_id('GB')
         end
 
+        def home_hex?(operator, hex, gauge = nil)
+          home_hex = super
+          return home_hex if !home_hex || hex != gotthard
+
+          # Gotthard (H11) is different from other hexes. A public company
+          # doesn't just to have to have a connection to anywhere on the hex to
+          # be able to absorb a private railway. To absorb the GB private it
+          # needs to have a connection to the broad gauge track, to absorb the
+          # FOB it needs to have a connection to the metre (narrow) gauge track.
+          (operator == fob_minor && gauge == :narrow) ||
+            (operator == gb_minor && gauge == :broad)
+        end
+
         private
 
         def hexes_by_id(coordinates)
