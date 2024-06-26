@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'entities'
+require_relative 'graph'
 require_relative 'map'
 require_relative 'meta'
 require_relative 'tiles'
@@ -15,6 +16,7 @@ module Engine
         include Map
         include Tiles
 
+        GRAPH_CLASS = G18CH::Graph
         CURRENCY_FORMAT_STR = '%ssfr'
 
         BANK_CASH = 8_000
@@ -199,7 +201,7 @@ module Engine
         def all_potential_upgrades(tile, tile_manifest: false, selected_company: nil)
           return super unless mountain_hex?(tile)
 
-          super + [@tiles.find { |t| t.name == MOUNTAIN_RAILWAY_TILE }]
+          super + Array(@tiles.find { |t| t.name == MOUNTAIN_RAILWAY_TILE })
         end
 
         def upgrades_to?(from, to, special, selected_company: nil)
@@ -220,6 +222,31 @@ module Engine
         # This method is called to remove some private railways from 1858 when
         # there are two players. This does not happen in 18CH.
         def setup_unbuyable_privates; end
+
+        def gotthard
+          @gotthard ||= hex_by_id('H11')
+        end
+
+        def fob_minor
+          @fob_minor ||= minor_by_id('FOB')
+        end
+
+        def gb_minor
+          @gb_minor ||= minor_by_id('GB')
+        end
+
+        def home_hex?(operator, hex, gauge = nil)
+          home_hex = super
+          return home_hex if !home_hex || hex != gotthard
+
+          # Gotthard (H11) is different from other hexes. A public company
+          # doesn't just to have to have a connection to anywhere on the hex to
+          # be able to absorb a private railway. To absorb the GB private it
+          # needs to have a connection to the broad gauge track, to absorb the
+          # FOB it needs to have a connection to the metre (narrow) gauge track.
+          (operator == fob_minor && gauge == :narrow) ||
+            (operator == gb_minor && gauge == :broad)
+        end
 
         private
 
