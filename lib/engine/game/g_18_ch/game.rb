@@ -223,6 +223,18 @@ module Engine
         # there are two players. This does not happen in 18CH.
         def setup_unbuyable_privates; end
 
+        def gotthard
+          @gotthard ||= hex_by_id('H11')
+        end
+
+        def fob_minor
+          @fob_minor ||= minor_by_id('FOB')
+        end
+
+        def gb_minor
+          @gb_minor ||= minor_by_id('GB')
+        end
+
         private
 
         def hexes_by_id(coordinates)
