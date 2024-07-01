@@ -149,6 +149,12 @@ module Engine
           major_corporations.select(&:ipoed).sort
         end
 
+        def liquidity(player, emergency: false)
+          return player.cash unless sellable_turn?
+
+          super + player.companies.sum(&:value)
+        end
+
         # Checks whether a player really is bankrupt.
         def can_go_bankrupt?(player, _corporation)
           return super if @round.operating?
