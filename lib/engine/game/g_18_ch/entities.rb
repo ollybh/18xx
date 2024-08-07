@@ -77,17 +77,17 @@ module Engine
           {
             sym: 'NB',
             name: 'Nordbahn',
-            desc: 'P1. Revenue 13/20, face value 65. Home hexes are G4 and H5. ' \
-                  'Cannot be used to start a public company.',
-            value: 65,
+            desc: 'P1. Revenue 14/21, face value 70. Home hexes are G4 and H5. ' \
+                  'Can be used to start a public company in Zürich.',
+            value: 70,
             discount: 15,
-            revenue: 13,
+            revenue: 14,
             color: :yellow,
             text_color: :black,
             city: 1,
             abilities: [
               { type: 'no_buy' },
-              { type: 'revenue_change', revenue: 20, on_phase: '3' },
+              { type: 'revenue_change', revenue: 21, on_phase: '3' },
               { type: 'reservation', hex: 'H5', city: 1 },
             ],
           },
@@ -187,16 +187,16 @@ module Engine
           {
             sym: 'OS',
             name: 'Ouest Suisse',
-            desc: 'P6. Revenue 18/27, face value 90. Home hexes are A12 and B11. ' \
+            desc: 'P6. Revenue 16/24, face value 80. Home hexes are A12 and B11. ' \
                   'Can be used to start a public company in Genève.',
-            value: 90,
-            discount: 20,
-            revenue: 18,
+            value: 80,
+            discount: 15,
+            revenue: 16,
             color: :yellow,
             text_color: :black,
             abilities: [
               { type: 'no_buy' },
-              { type: 'revenue_change', revenue: 27, on_phase: '3' },
+              { type: 'revenue_change', revenue: 24, on_phase: '3' },
               { type: 'reservation', hex: 'A12', slot: 0 },
               {
                 type: 'exchange',
@@ -233,22 +233,7 @@ module Engine
           {
             sym: 'BB',
             name: 'Bodelibahn',
-            desc: 'P8. Revenue 10/15, face value 50. Home hex is F9. ' \
-                  'Cannot be used to start a public company.',
-            value: 50,
-            discount: 10,
-            revenue: 10,
-            color: :yellow,
-            text_color: :black,
-            abilities: [
-              { type: 'no_buy' },
-              { type: 'revenue_change', revenue: 15, on_phase: '3' },
-            ],
-          },
-          {
-            sym: 'GB',
-            name: 'Gotthardbahn',
-            desc: 'P9. Revenue 12/18, face value 60. Home hexes are H9 and H11. ' \
+            desc: 'P8. Revenue 12/18, face value 60. Home hex is F9. ' \
                   'Cannot be used to start a public company.',
             value: 60,
             discount: 10,
@@ -261,18 +246,33 @@ module Engine
             ],
           },
           {
-            sym: 'BLB',
-            name: 'Bern-Luzern-Bahn',
-            desc: 'P10. Revenue 19/29, face value 95. Home hex is H7. ' \
-                  'Can be used to start a public company in Luzern.',
-            value: 95,
-            discount: 20,
-            revenue: 19,
+            sym: 'GB',
+            name: 'Gotthardbahn',
+            desc: 'P9. Revenue 13/20, face value 65. Home hexes are H9 and H11. ' \
+                  'Cannot be used to start a public company.',
+            value: 65,
+            discount: 10,
+            revenue: 13,
             color: :yellow,
             text_color: :black,
             abilities: [
               { type: 'no_buy' },
-              { type: 'revenue_change', revenue: 29, on_phase: '3' },
+              { type: 'revenue_change', revenue: 20, on_phase: '3' },
+            ],
+          },
+          {
+            sym: 'BLB',
+            name: 'Bern-Luzern-Bahn',
+            desc: 'P10. Revenue 18/27, face value 90. Home hex is H7. ' \
+                  'Can be used to start a public company in Luzern.',
+            value: 90,
+            discount: 20,
+            revenue: 18,
+            color: :yellow,
+            text_color: :black,
+            abilities: [
+              { type: 'no_buy' },
+              { type: 'revenue_change', revenue: 27, on_phase: '3' },
               { type: 'reservation', hex: 'H7' },
               {
                 type: 'exchange',
@@ -301,11 +301,11 @@ module Engine
           {
             sym: 'AFAI',
             name: 'Alta Italia',
-            desc: 'P12. Revenue 36, face value 120. Home hex is I14. ' \
+            desc: 'P12. Revenue 40, face value 135. Home hex is I14. ' \
                   'Can be used to start a public company in Lugano.',
-            value: 120,
+            value: 135,
             discount: 0,
-            revenue: 36,
+            revenue: 40,
             color: :green,
             text_color: :black,
             abilities: [
@@ -323,11 +323,11 @@ module Engine
           {
             sym: 'JN',
             name: 'Jura neuchatelois',
-            desc: 'P13. Revenue 20, face value 65. Home hex is D7. ' \
+            desc: 'P13. Revenue 25, face value 85. Home hex is D7. ' \
                   'Cannot be used to start a public company.',
-            value: 65,
+            value: 85,
             discount: 0,
-            revenue: 20,
+            revenue: 25,
             color: :green,
             text_color: :black,
             abilities: [{ type: 'no_buy' }],
@@ -335,11 +335,11 @@ module Engine
           {
             sym: 'VZ',
             name: 'Visp-Zermatt',
-            desc: 'P14. Revenue 17, face value 55. Home hexes are D13 and E12. ' \
+            desc: 'P14. Revenue 22, face value 75. Home hexes are D13 and E12. ' \
                   'Cannot be used to start a public company.',
-            value: 55,
+            value: 75,
             discount: 0,
-            revenue: 17,
+            revenue: 22,
             color: :green,
             text_color: :black,
             abilities: [{ type: 'no_buy' }],
