@@ -251,7 +251,7 @@ module Engine
             desc: 'P9. Revenue 13/20, face value 65. Home hexes are H9 and H11. ' \
                   'Cannot be used to start a public company.',
             value: 65,
-            discount: 10,
+            discount: 15,
             revenue: 13,
             color: :yellow,
             text_color: :black,
