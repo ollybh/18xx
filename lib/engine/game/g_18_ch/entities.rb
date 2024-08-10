@@ -89,6 +89,13 @@ module Engine
               { type: 'no_buy' },
               { type: 'revenue_change', revenue: 21, on_phase: '3' },
               { type: 'reservation', hex: 'H5', city: 1 },
+              {
+                type: 'exchange',
+                owner_type: 'player',
+                when: 'owning_player_sr_turn',
+                corporations: 'any',
+                from: 'ipo',
+              },
             ],
           },
           {
