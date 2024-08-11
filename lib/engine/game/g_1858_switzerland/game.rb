@@ -9,14 +9,14 @@ require_relative '../g_1858/game'
 
 module Engine
   module Game
-    module G18CH
+    module G1858Switzerland
       class Game < G1858::Game
-        include_meta(G18CH::Meta)
+        include_meta(G1858Switzerland::Meta)
         include Entities
         include Map
         include Tiles
 
-        GRAPH_CLASS = G18CH::Graph
+        GRAPH_CLASS = G1858Switzerland::Graph
         CURRENCY_FORMAT_STR = '%ssfr'
 
         BANK_CASH = 8_000
@@ -138,7 +138,7 @@ module Engine
         end
 
         def closure_round(round_num)
-          G18CH::Round::Closure.new(self, [
+          G1858Switzerland::Round::Closure.new(self, [
             G1858::Step::ExchangeApproval,
             G1858::Step::HomeToken,
             G1858::Step::PrivateClosure,
@@ -176,7 +176,7 @@ module Engine
         MOUNTAIN_RAILWAY_ASSIGNMENT = '+40'
         MOUNTAIN_RAILWAY_BONUS = 40
         ASSIGNMENT_TOKENS = {
-          MOUNTAIN_RAILWAY_ASSIGNMENT => '/icons/18_ch/mountain.svg',
+          MOUNTAIN_RAILWAY_ASSIGNMENT => '/icons/1858_switzerland/mountain.svg',
         }.freeze
 
         def submit_revenue_str(routes, _show_subsidy)

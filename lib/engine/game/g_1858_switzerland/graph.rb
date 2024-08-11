@@ -4,7 +4,7 @@ require_relative '../g_1858/graph'
 
 module Engine
   module Game
-    module G18CH
+    module G1858Switzerland
       class Graph < G1858::Graph
         private
 
