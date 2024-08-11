@@ -4,7 +4,7 @@ require_relative '../../g_1858/round/closure'
 
 module Engine
   module Game
-    module G18CH
+    module G1858Switzerland
       module Round
         class Closure < G1858::Round::Closure
           private

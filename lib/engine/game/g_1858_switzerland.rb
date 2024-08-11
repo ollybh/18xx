@@ -2,7 +2,7 @@
 
 module Engine
   module Game
-    module G18CH
+    module G1858Switzerland
     end
   end
 end

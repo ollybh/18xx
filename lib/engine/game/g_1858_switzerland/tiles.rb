@@ -2,7 +2,7 @@
 
 module Engine
   module Game
-    module G18CH
+    module G1858Switzerland
       module Tiles
         TILE_TYPE = :lawson
 
@@ -231,7 +231,7 @@ module Engine
             'code' =>
               'stripes=color:yellow;' \
               'offboard=revenue:green_30|brown_30|gray_30;' \
-              'icon=image:18_ch/mountain,loc:2.5;' \
+              'icon=image:1858_switzerland/mountain,loc:2.5;' \
               'path=a:0,b:_0,track:dual;',
           },
         }.freeze

@@ -2,7 +2,7 @@
 
 module Engine
   module Game
-    module G18CH
+    module G1858Switzerland
       module Entities
         CORPORATIONS = [
           {
@@ -10,7 +10,7 @@ module Engine
             name: 'Appenzeller Bahn',
             color: 'green',
             text_color: 'white',
-            logo: '18_ch/AB',
+            logo: '1858_switzerland/AB',
             float_percent: 40,
             type: '5-share',
             shares: [40, 20, 20, 20],
@@ -21,7 +21,7 @@ module Engine
           {
             sym: 'STB',
             name: 'Sensetalbahn',
-            logo: '18_ch/STB',
+            logo: '1858_switzerland/STB',
             color: 'blue',
             text_color: 'white',
             float_percent: 40,
@@ -35,7 +35,7 @@ module Engine
           {
             sym: 'RhB',
             name: 'Rhätische Bahn',
-            logo: '18_ch/RhB',
+            logo: '1858_switzerland/RhB',
             color: 'red',
             text_color: 'black',
             float_percent: 40,
@@ -48,7 +48,7 @@ module Engine
           {
             sym: 'BLS',
             name: 'Bern Lötschberg Simplon',
-            logo: '18_ch/BLS',
+            logo: '1858_switzerland/BLS',
             color: 'yellow',
             text_color: 'black',
             float_percent: 40,
@@ -61,7 +61,7 @@ module Engine
           {
             sym: 'MOB',
             name: 'Montreux Oberland Bernois',
-            logo: '18_ch/MOB',
+            logo: '1858_switzerland/MOB',
             color: 'saddlebrown',
             text_color: 'white',
             float_percent: 40,
@@ -408,7 +408,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/NB',
+            logo: '1858_switzerland/NB',
             coordinates: %w[H5 G4],
             city: 1,
             abilities: [
@@ -428,7 +428,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/NOB',
+            logo: '1858_switzerland/NOB',
             coordinates: %w[H5 H3],
             city: 0,
             abilities: [
@@ -448,7 +448,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/SCB',
+            logo: '1858_switzerland/SCB',
             coordinates: %w[E4 F5 G6],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[E4 F5 G6], hidden: true },
@@ -467,7 +467,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/VSB',
+            logo: '1858_switzerland/VSB',
             coordinates: %w[J5 K4],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[J5 K4], hidden: true },
@@ -486,7 +486,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/LFB',
+            logo: '1858_switzerland/LFB',
             coordinates: %w[C10 D9],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[C10 D9], hidden: true },
@@ -505,7 +505,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/OS',
+            logo: '1858_switzerland/OS',
             coordinates: %w[A12 B11],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[A12 B11], hidden: true },
@@ -524,7 +524,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/BSB',
+            logo: '1858_switzerland/BSB',
             coordinates: %w[E8],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[E8], hidden: true },
@@ -543,7 +543,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/BB',
+            logo: '1858_switzerland/BB',
             coordinates: %w[F9],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[F9], hidden: true },
@@ -562,7 +562,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/GB',
+            logo: '1858_switzerland/GB',
             coordinates: %w[H9 H11],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[H9 H11], hidden: true },
@@ -581,7 +581,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/BLB',
+            logo: '1858_switzerland/BLB',
             coordinates: %w[H7],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[H7], hidden: true },
@@ -600,7 +600,7 @@ module Engine
             tokens: [],
             color: :yellow,
             text_color: :black,
-            logo: '18_ch/EB',
+            logo: '1858_switzerland/EB',
             coordinates: %w[E6],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[E6], hidden: true },
@@ -619,7 +619,7 @@ module Engine
             tokens: [],
             color: :green,
             text_color: :black,
-            logo: '18_ch/AFAI',
+            logo: '1858_switzerland/AFAI',
             coordinates: %w[I14],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[I14], hidden: true },
@@ -638,7 +638,7 @@ module Engine
             tokens: [],
             color: :green,
             text_color: :black,
-            logo: '18_ch/JN',
+            logo: '1858_switzerland/JN',
             coordinates: %w[D7],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[D7], hidden: true },
@@ -657,7 +657,7 @@ module Engine
             tokens: [],
             color: :green,
             text_color: :black,
-            logo: '18_ch/VZ',
+            logo: '1858_switzerland/VZ',
             coordinates: %w[D13 E12],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[D13 E12], hidden: true },
@@ -676,7 +676,7 @@ module Engine
             tokens: [],
             color: :lightblue,
             text_color: :black,
-            logo: '18_ch/S',
+            logo: '1858_switzerland/S',
             coordinates: %w[G14],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[G14], hidden: true },
@@ -695,7 +695,7 @@ module Engine
             tokens: [],
             color: :lightblue,
             text_color: :black,
-            logo: '18_ch/L',
+            logo: '1858_switzerland/L',
             coordinates: %w[F11],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[F11], hidden: true },
@@ -714,7 +714,7 @@ module Engine
             tokens: [],
             color: :lightblue,
             text_color: :black,
-            logo: '18_ch/ChA',
+            logo: '1858_switzerland/ChA',
             coordinates: %w[K8],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[K8], hidden: true },
@@ -733,7 +733,7 @@ module Engine
             tokens: [],
             color: :lightblue,
             text_color: :black,
-            logo: '18_ch/FOB',
+            logo: '1858_switzerland/FOB',
             coordinates: %w[G12 H11 I10],
             abilities: [
               { type: 'blocks_hexes', hexes: %w[G12 I10], hidden: true },
