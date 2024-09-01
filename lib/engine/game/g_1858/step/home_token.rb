@@ -52,20 +52,6 @@ module Engine
               # either for the president's certificate or for a share from the
               # public company's treasury. These tokens are free.
               token.price = 0
-
-              # Test for a corner case: if any of the Madrid private railway
-              # companies are being acquired by a public company and one of the
-              # other Madrid slots is empty and unreserved (after another
-              # Madrid private closed without their slot being taken), then the
-              # player can select either the slot for the private being
-              # acquired or the empty slot. Only the first of these is a legal
-              # choice.
-              if @round.pending_tokens.none? { |t| !t.key?(:cities) || t[:cities].include?(city) }
-                raise GameError, "#{action.entity.id} cannot place a token in " \
-                                 "#{city.hex.coordinates} " \
-                                 "(#{city.hex.location_name}) " \
-                                 "city ##{city.index} "
-              end
             end
 
             super
