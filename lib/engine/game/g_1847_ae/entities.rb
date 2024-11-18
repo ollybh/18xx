@@ -10,10 +10,10 @@ module Engine
             name: 'Pfälzische Ludwigsbahn presidency',
             value: 172,
             revenue: 0,
-            desc: 'Comes with the President\'s certificate of Pfälzische Ludwigsbahn (L). '\
+            desc: 'Comes with two shares of Pfälzische Ludwigsbahn (L). '\
                   'Closes immediately.',
             sym: 'PLP',
-            abilities: [{ type: 'shares', shares: 'L_0' }],
+            abilities: [{ type: 'shares', shares: %w[L_4 L_5] }],
           },
           {
             name: 'Saarbrücker Private Railway',
@@ -31,15 +31,10 @@ module Engine
             name: 'Locomotive Firm Krauss & Co.',
             value: 130,
             revenue: 0,
-            desc: 'Every OR, first time a train is purchased from supply, this pays revenue '\
-                  'equal to 10% of the train\'s cost and the stock price marker is moved right. '\
-                  'If no train is purchased from supply in OR, no revenue is paid and the stock '\
-                  'price marker is moved left. '\
-                  'May not be sold to a corporation. '\
-                  'May be sold to or purchased from the market. '\
-                  'Never closes.',
+            desc: 'Comes with the President\'s certificate of Locomotive Firm Krauss & Co. (LFK). '\
+                  'LFK is in fact the private company but it is represented by a corporation for the implementation sake.',
             sym: 'LFKC',
-            abilities: [{ type: 'no_buy' }],
+            abilities: [{ type: 'shares', shares: 'LFK_0' }],
           },
           {
             name: 'Rammelsbach',
@@ -47,7 +42,7 @@ module Engine
             revenue: 30,
             min_price: 100,
             max_price: 200,
-            desc: 'Revenue increases to 50M when a tile is laid in D9. '\
+            desc: 'Revenue increases to 50M when a tile is laid in E9 (the tile may be laid only in Phase 5 or later). '\
                   'May be sold to a corporation for 100 to 200M. '\
                   'Never closes.',
             sym: 'R',
@@ -184,16 +179,18 @@ module Engine
             desc: 'May be exchanged for an Investor share of the Hessische Ludwigsbahn (HLB), '\
                   'instead of buying a share, during a stock round in Phase 3+3 or later. '\
                   'Automatically exchanged at the beginning of the first stock round in Phase 5+5. '\
-                  'May not be sold to a corporation. ',
+                  'May not be sold to a corporation.',
             sym: 'MNR',
-            abilities: [{ type: 'no_buy' },
-                        {
-                          type: 'exchange',
-                          corporations: ['HLB'],
-                          owner_type: 'player',
-                          when: 'owning_player_sr_turn',
-                          from: %w[reserved],
-                        }],
+            abilities: [
+              { type: 'no_buy' },
+              {
+                type: 'exchange',
+                corporations: ['HLB'],
+                owner_type: 'player',
+                when: 'owning_player_sr_turn',
+                from: %w[reserved],
+              },
+            ],
           },
           {
             name: 'Saarland Coal Mines',
@@ -204,14 +201,16 @@ module Engine
                   'Automatically exchanged at the beginning of the first stock round in Phase 5+5. '\
                   'May not be sold to a corporation. ',
             sym: 'SCR',
-            abilities: [{ type: 'no_buy' },
-                        {
-                          type: 'exchange',
-                          corporations: ['Saar'],
-                          owner_type: 'player',
-                          when: 'owning_player_sr_turn',
-                          from: %w[reserved],
-                        }],
+            abilities: [
+              { type: 'no_buy' },
+              {
+                type: 'exchange',
+                corporations: ['Saar'],
+                owner_type: 'player',
+                when: 'owning_player_sr_turn',
+                from: %w[reserved],
+              },
+            ],
           },
           {
             name: 'Völklinger Iron Works',
@@ -222,18 +221,52 @@ module Engine
                   'Automatically exchanged at the beginning of the first stock round in Phase 5+5. '\
                   'May not be sold to a corporation. ',
             sym: 'VIW',
-            abilities: [{ type: 'no_buy' },
-                        {
-                          type: 'exchange',
-                          corporations: ['Saar'],
-                          owner_type: 'player',
-                          when: 'owning_player_sr_turn',
-                          from: %w[reserved],
-                        }],
+            abilities: [
+              { type: 'no_buy' },
+              {
+                type: 'exchange',
+                corporations: ['Saar'],
+                owner_type: 'player',
+                when: 'owning_player_sr_turn',
+                from: %w[reserved],
+              },
+            ],
           },
         ].freeze
 
         CORPORATIONS = [
+          # This corporation is in fact the Locomotive Firm Krauss & Co. private company
+          {
+            sym: 'LFK',
+            name: 'Locomotive Firm Krauss & Co.',
+            logo: '1847_ae/LFK',
+            simple_logo: '1847_ae/LFK',
+            tokens: [],
+            float_percent: 100,
+            max_ownership_percent: 100,
+            required_par_price: 100,
+            shares: [100],
+            forced_share_percent: 100,
+            second_share_double: false,
+            last_share_double: false,
+            text_color: 'black',
+            color: 'white',
+            has_ipo_description_ability: false,
+            abilities: [
+              {
+                type: 'base',
+                description: 'Click to see details',
+                desc_detail: 'This is the Locomotive Firm Krauss & Co. private company. '\
+                             'Every OR, first time a train is purchased from supply, this corporation pays revenue '\
+                             'equal to 10% of the train\'s cost to its president and the stock price marker is moved right. '\
+                             'If no train is purchased from supply in OR, no revenue is paid and the stock '\
+                             'price marker is moved left. '\
+                             'May not be sold to a corporation. '\
+                             'May be sold to or purchased from the market. '\
+                             'Never closes.',
+              },
+            ],
+          },
           {
             sym: 'L',
             name: 'Pfälzische Ludwigsbahn',
@@ -249,10 +282,11 @@ module Engine
             second_share_double: false,
             last_share_double: false,
             color: '#4682b4',
+            has_ipo_description_ability: false,
             abilities: [
               {
                 type: 'base',
-                description: 'Builds in blue hexes in yellow phase',
+                description: 'Builds in blue (B) hexes in yellow phase',
                 remove: '4',
               },
             ],
@@ -263,7 +297,7 @@ module Engine
             logo: '1847_ae/Saar',
             simple_logo: '1847_ae/Saar',
             tokens: [0, 60, 80, 100],
-            float_percent: 30,
+            float_percent: 50,
             max_ownership_percent: 100,
             coordinates: 'H6',
             required_par_price: 84,
@@ -271,12 +305,18 @@ module Engine
             shares: [20, 10, 10, 10, 10, 10, 10, 20],
             second_share_double: false,
             last_share_double: true,
+            float_includes_reserved: true,
             color: '#ff4040',
+            has_ipo_description_ability: true,
             abilities: [
               {
                 type: 'base',
-                description: 'Builds in pink hexes in yellow phase',
+                description: 'Builds in pink (P) hexes in yellow phase',
                 remove: '4',
+              },
+              {
+                type: 'base',
+                description: 'IPO: last cert is double',
               },
             ],
           },
@@ -286,7 +326,7 @@ module Engine
             logo: '1847_ae/HLB',
             simple_logo: '1847_ae/HLB',
             tokens: [0, 0, 80, 100],
-            float_percent: 40,
+            float_percent: 50,
             max_ownership_percent: 100,
             coordinates: %w[D18 C21],
             required_par_price: 80,
@@ -294,11 +334,13 @@ module Engine
             shares: [20, 10, 10, 10, 10, 10, 10, 20],
             second_share_double: false,
             last_share_double: true,
+            float_includes_reserved: true,
             color: '#dda0dd',
+            has_ipo_description_ability: true,
             abilities: [
               {
                 type: 'base',
-                description: 'Builds in green hexes in yellow phase',
+                description: 'Builds in green (G) hexes in yellow phase',
                 remove: '4',
               },
               {
@@ -308,6 +350,10 @@ module Engine
               {
                 type: 'base',
                 description: 'Two home stations (D18 and C21)',
+              },
+              {
+                type: 'base',
+                description: 'IPO: last cert is double',
               },
             ],
             text_color: 'black',
@@ -328,15 +374,20 @@ module Engine
             required_par_price: 74,
             hex_color: 'blue',
             color: '#61b229',
+            has_ipo_description_ability: true,
             abilities: [
               {
                 type: 'base',
-                description: 'Builds in blue hexes in yellow phase',
+                description: 'Builds in blue (B) hexes in yellow phase',
                 remove: '4',
               },
               {
                 type: 'base',
                 description: 'May not be started until HLB floats',
+              },
+              {
+                type: 'base',
+                description: 'IPO: 2nd and last certs are double',
               },
             ],
           },
@@ -356,15 +407,20 @@ module Engine
             last_share_double: true,
             color: '#fafa37',
             text_color: 'black',
+            has_ipo_description_ability: true,
             abilities: [
               {
                 type: 'base',
-                description: 'Builds in blue hexes in yellow phase',
+                description: 'Builds in blue (B) hexes in yellow phase',
                 remove: '4',
               },
               {
                 type: 'base',
                 description: 'May not be started until HLB floats',
+              },
+              {
+                type: 'base',
+                description: 'IPO: last cert is double',
               },
             ],
           },
@@ -383,16 +439,22 @@ module Engine
             last_share_double: true,
             required_par_price: 66,
             hex_color: 'blue',
-            color: '#ff9966',
+            color: '#ffc04d',
+            text_color: 'black',
+            has_ipo_description_ability: true,
             abilities: [
               {
                 type: 'base',
-                description: 'Builds in blue hexes in yellow phase',
+                description: 'Builds in blue (B) hexes in yellow phase',
                 remove: '4',
               },
               {
                 type: 'base',
                 description: 'May not be started until HLB floats',
+              },
+              {
+                type: 'base',
+                description: 'IPO: 2nd and last cert are double',
               },
             ],
           },
@@ -412,15 +474,21 @@ module Engine
             required_par_price: 66,
             hex_color: 'pink',
             color: '#ffc0cb',
+            text_color: 'black',
+            has_ipo_description_ability: true,
             abilities: [
               {
                 type: 'base',
-                description: 'Builds in pink hexes in yellow phase',
+                description: 'Builds in pink (P) hexes in yellow phase',
                 remove: '4',
               },
               {
                 type: 'base',
                 description: 'May not be started until HLB floats',
+              },
+              {
+                type: 'base',
+                description: 'IPO: 2nd and last cert are double',
               },
             ],
           },

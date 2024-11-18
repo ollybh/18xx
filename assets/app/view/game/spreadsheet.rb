@@ -63,6 +63,7 @@ module View
             h(:thead),
             h('tbody#player_details', [
               render_player_cash,
+              render_player_loans,
               render_player_value,
               render_player_liquidity,
               render_player_shares,
@@ -649,6 +650,15 @@ module View
         h('td.padded_number', num_certs > cert_limit ? props : '', num_certs)
       end
 
+      def render_player_loans
+        return '' unless @game.respond_to?(:player_loans)
+
+        h(:tr, tr_default_props, [
+          h('th.left', 'Loans'),
+          *@game.players.map { |p| h('td.padded_number', @game.player_loans(p)) },
+        ])
+      end
+
       def tr_default_props
         {
           style: {
@@ -680,7 +690,13 @@ module View
       private
 
       def num_ipo_shares(corporation)
-        num_shares_of(@game.separate_treasury? ? @game.bank : corporation, corporation) - num_reserved_shares(corporation)
+        if @game.separate_treasury?
+          num_shares_of(@game.bank, corporation) - num_reserved_shares(corporation)
+        elsif corporation.respond_to?(:num_ipo_shares)
+          corporation.num_ipo_shares - num_reserved_shares(corporation)
+        else
+          num_shares_of(corporation, corporation) - num_reserved_shares(corporation)
+        end
       end
 
       def num_reserved_shares(corporation)

@@ -4,6 +4,7 @@ require 'lib/settings'
 require 'view/game/part/blocker'
 require 'view/game/part/borders'
 require 'view/game/part/cities'
+require 'view/game/part/debug_region_weights'
 require 'view/game/part/label'
 require 'view/game/part/location_name'
 require 'view/game/part/revenue'
@@ -89,13 +90,19 @@ module View
         revenue = render_tile_part(Part::Revenue) if render_revenue
         @tile.labels.each { |l| children << render_tile_part(Part::Label, label: l) }
 
-        render_tile_parts_by_loc(Part::Upgrades, parts: @tile.upgrades).each { |p| children << p }
+        render_tile_parts_by_loc(
+          Part::Upgrades,
+          parts: @tile.upgrades,
+          formatter: @game && @game.class::FORMAT_UPGRADES_ON_HEXES ? ->(cost) { @game.format_currency(cost) } : nil,
+        ).each { |p| children << p }
         children << render_tile_part(Part::Blocker)
 
         if @tile.location_name && (@tile.cities.size <= 1) && !@tile.hex.hide_location_name
           rendered_loc_name = render_tile_part(Part::LocationName)
         end
-        @tile.reservations.each { |r| children << render_tile_part(Part::Reservation, reservation: r) }
+        @tile.reservations.each do |r|
+          children << render_tile_part(Part::Reservation, reservation: r) if @game.render_hex_reservation?(r)
+        end
 
         large, normal = @tile.icons.partition(&:large)
         render_tile_parts_by_loc(Part::Icons, parts: normal).each { |i| children << i }
@@ -113,6 +120,7 @@ module View
         # can be hidden
         children << rendered_loc_name if rendered_loc_name && setting_for(:show_location_names, @game)
         children << render_coords if @show_coords
+        children << render_tile_part(Part::DebugRegionWeights) if Lib::Params['grid']
 
         children.flatten!
 

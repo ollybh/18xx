@@ -6,6 +6,7 @@ require 'view/game/par'
 require 'view/game/par_chart'
 require 'view/game/players'
 require 'view/game/stock_market'
+require 'view/game/blind_bid'
 
 module View
   module Game
@@ -41,10 +42,12 @@ module View
             h(:div, [
               render_turn_bid,
               render_show_button,
+              render_confirm_selections,
               *render_companies,
               *render_minors,
               *render_corporations,
               render_par_corporations,
+              render_tile_laying_corporations,
               render_players,
               render_map,
               render_stock_market,
@@ -107,6 +110,25 @@ module View
           h(:button, props, "#{hidden? ? 'Show' : 'Hide'} #{@step.visible? ? 'Player' : 'Companies'}")
         end
 
+        def render_confirm_selections
+          return nil if hidden? && !@step.visible?
+          return nil unless @current_actions.include?('select_multiple_companies')
+
+          mutiple_companies = lambda do
+            hide!
+            process_action(Engine::Action::SelectMultipleCompanies.new(
+              @current_entity,
+              companies: @step.selected_companies
+            ))
+          end
+          select_button = [h(:button, { on: { click: mutiple_companies } }, 'Confirm Selections')]
+
+          children = []
+          children << h(:div, @step.selection_note.map { |text_block| h(:p, text_block) })
+          children << h(:div, select_button) if @step.selections_completed?
+          h(:div, children)
+        end
+
         def render_companies
           return [] if hidden? && !@step.visible?
           return [] if !@current_actions.include?('bid') &&
@@ -132,7 +154,11 @@ module View
             },
           }
 
-          children = [h(Company, company: company, bids: @step.bids[company])]
+          children = if show_bids?(company)
+                       [h(Company, company: company, bids: @step.bids[company])]
+                     else
+                       [h(Company, company: company)]
+                     end
           children << render_input(company) if @selected_company == company
           h(:div, props, children)
         end
@@ -175,8 +201,15 @@ module View
 
           buttons = []
           if @step.may_bid?(company) && @step.min_bid(company) <= @step.max_place_bid(@current_entity, company)
-            bid_str = @step.respond_to?(:bid_str) ? @step.bid_str(company) : 'Place Bid'
-            buttons << h(:button, { on: { click: -> { create_bid(company, input) } } }, bid_str)
+            if @step.respond_to?(:bid_choices) && (choices = @step.bid_choices(company))
+              choices.map do |choice, label|
+                bid_lambda = -> { create_assigned_bid(company, choice, input) }
+                buttons << h(:button, { on: { click: bid_lambda } }, label)
+              end
+            else
+              bid_str = @step.respond_to?(:bid_str) ? @step.bid_str(company) : 'Place Bid'
+              buttons << h(:button, { on: { click: -> { create_bid(company, input) } } }, bid_str)
+            end
           end
           buttons.concat(render_move_bid_buttons(company, input))
 
@@ -204,6 +237,7 @@ module View
         end
 
         def render_turn_bid
+          return h(BlindBid) if @current_actions.include?('blind_bid')
           return if !@current_actions.include?('bid') || @step.auctioning != :turn
 
           if @step.respond_to?(:bid_choices)
@@ -266,7 +300,7 @@ module View
           }
 
           @step.available.select(&:minor?).map do |minor|
-            children = [h(Corporation, corporation: minor)]
+            children = [h(Corporation, corporation: minor, bids: @step&.bids&.dig(minor))]
             children << render_minor_input(minor) if @selected_corporation == minor
             h(:div, props, children)
           end
@@ -351,8 +385,33 @@ module View
           h(:div, props, corporations)
         end
 
+        def render_tile_laying_corporations
+          return nil unless @current_actions.include?('lay_tile')
+
+          props = {
+            style: {
+              display: 'inline-block',
+              verticalAlign: 'top',
+            },
+          }
+
+          corporations = []
+          @step.available.each do |corporation|
+            children = []
+            children << h(Corporation, corporation: corporation)
+            corporations << h(:div, props, children)
+          end
+          h(:div, props, corporations)
+        end
+
         def render_ipo_input
-          h('div.margined_bottom', { style: { width: '20rem' } }, [h(Par, corporation: @selected_corporation)])
+          type = @step.respond_to?(:ipo_type) ? @step.ipo_type(@selected_corporation) : :par
+          case type
+          when :par
+            h('div.margined_bottom', { style: { width: '20rem' } }, [h(Par, corporation: @selected_corporation)])
+          when :bid
+            h(Bid, entity: @current_entity, biddable: @selected_corporation)
+          end
         end
 
         def render_corp_choose_input
@@ -406,6 +465,27 @@ module View
           process_action(Engine::Action::Bid.new(
             @current_entity,
             company: target,
+            price: price,
+          ))
+          store(:selected_company, nil, skip: true)
+        end
+
+        # Creates and processes an Action::Bid where a company is being
+        # auctioned and a corporation is associated with the bid.  Used by
+        # {Engine::Game::G18Ardennes::Step::MajorAuction} for the auctions where
+        # players bid for the right to start a major (a company of type
+        # +:concession+) in exchange for a minor (a corporation of type
+        # +:minor+).
+        # @param company [Engine::Company] The company being bid for.
+        # @param corporation [Engine::Corporation] The corporation associated with the bid.
+        # @param input [Snabberb::Component] The input element containing the bid price.
+        def create_assigned_bid(company, corporation, input)
+          hide!
+          price = input.JS['elm'].JS['value'].to_i
+          process_action(Engine::Action::Bid.new(
+            @current_entity,
+            company: company,
+            corporation: corporation,
             price: price,
           ))
           store(:selected_company, nil, skip: true)
@@ -466,12 +546,16 @@ module View
           store(:selected_company, nil, skip: true)
         end
 
-        # show the map if there are minors to pick from
+        # show the map if there are minors to pick from or a tile is to be laid
         def render_map
-          show = @step.available.any?(&:minor?) || (@step.respond_to?(:show_map) && @step.show_map)
+          show = @step.available.any?(&:minor?) ||
+                 @current_actions.include?('lay_tile') ||
+                 (@step.respond_to?(:show_map) && @step.show_map)
           return nil unless show
 
-          h(Game::Map, game: @game, opacity: 1.0)
+          opts = {}
+          opts[:opacity] = 1.0 unless @current_actions.include?('lay_tile')
+          h(Game::Map, game: @game, **opts)
         end
 
         def render_stock_market
@@ -479,6 +563,10 @@ module View
           return nil unless show
 
           h(StockMarket, game: @game, show_bank: false)
+        end
+
+        def show_bids?(company)
+          @step.respond_to?(:show_bids?) ? @step.show_bids?(company) : true
         end
       end
     end

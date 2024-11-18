@@ -45,6 +45,12 @@ module Engine
       mayfair: {
         name: 'Mayfair Games',
         url: 'https://boardgamegeek.com/boardgamepublisher/10/mayfair-games',
+        hidden: true,
+      },
+      mercury: {
+        name: 'Mercury Games',
+        url: 'https://www.mercurygames.com/',
+        hidden: true,
       },
       oo_games: {
         name: 'Double-O Games',
@@ -64,6 +70,10 @@ module Engine
       traxx: {
         name: 'TraXX',
         url: 'https://traxx-denver.com/games/',
+      },
+      wood_18: {
+        name: '18Wood',
+        url: 'https://www.etsy.com/shop/18WOOD',
       },
       zman_games: {
         name: 'Z-MAN Games',

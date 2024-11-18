@@ -9,26 +9,26 @@ TEST_CASES = [
    [[6, 'stock_round', 'Pass (Share)'],
     [13, 'float', 'KO receives ¥700'],
     [21, 'lay_track', '1889: Phase 2 - Operating Round 1.1 (of 1) - Lay/Upgrade Track'],
-    [22, 'buy_train',
+    [23, 'buy_train',
      ['KO must buy an available train',
       '!!johnhawkhaines must contribute']],
-    [46, 'run_routes', '1889: Phase 2 - Operating Round 2.1 (of 1) - Run Routes'],
-    [47, 'dividends', '1889: Phase 2 - Operating Round 2.1 (of 1) - Pay or Withhold Dividends'],
-    [78,
+    [48, 'run_routes', '1889: Phase 2 - Operating Round 2.1 (of 1) - Run Routes'],
+    [49, 'dividends', '1889: Phase 2 - Operating Round 2.1 (of 1) - Pay or Withhold Dividends'],
+    [80,
      'buy_company',
      ['1889: Phase 3 - Operating Round 3.1 (of 1) - Buy Companies',
       'Owning corporation may ignore building cost for mountain hexes']],
-    [81,
+    [83,
      'track_and_buy_company',
      ['1889: Phase 3 - Operating Round 3.1 (of 1) - Lay/Upgrade Track',
       'Show companies from other players']],
-    [87,
+    [89,
      'special_track',
      ['1889: Phase 3 - Operating Round 3.1 (of 1) - Lay Track for Ehime Railway',
       'Blocks C4 while owned by a player.']],
-    [336, 'discard_train', 'Discard Trains'],
-    [346, 'buy_train_emr', 'TR must buy an available train'],
-    [445,
+    [338, 'discard_train', 'Discard Trains'],
+    [349, 'buy_train_emr', 'TR must buy an available train'],
+    [448,
      'buy_train_emr_shares',
      ['KO has ¥582',
       'johnhawkhaines must contribute ¥518 for KO to afford a train from the Depot',
@@ -66,8 +66,7 @@ TEST_CASES = [
      'assign',
      ['1846: Phase II - Operating Round 2.1 (of 2) - Assign Steamboat Company',
       'Blondie may assign Steamboat Company to a new hex and/or corporation or minor.',
-      'Add $20 per port symbol to all routes run to the assigned location '\
-      'by the owning/assigned corporation/minor.']],
+      'Add a bonus to the value of one port city']],
     [nil, 'endgame', '1846: Phase IV - Operating Round 6.2 (of 2) - Game Over - Bank Broken']]],
   ['1846', 'hs_cvjhogoy_1599504419', [[49, 'buy_train_emr_shares', 'has $60 in sellable shares']]],
   ['1846', 'hs_sudambau_1600037415', [[37, 'buy_train', ['GT has $280', '!!can issue shares']]]],
@@ -124,7 +123,12 @@ TEST_CASES = [
      ['Convert',
       'Merge',
       'Pittsburgh, Shawmut and Northern Railroad',
-      'Corporations that can merge with J']]]],
+      'Corporations that can merge with J']],
+    [1502,
+     'stock',
+     ['Stock Round 7',
+      'Final phase was reached',
+      'buys a 10% share of Bess from the market for $165']]]],
   ['1817',
    16_852,
    [[889, 'cash_crisis', ['Random Guy owes the bank $294 and must raise cash if possible.']]]],
@@ -199,6 +203,31 @@ TEST_CASES = [
     [nil,
      'endgame',
      ['1860: Phase 9 - Operating Round 8.4 (Nationalization) - Game Over - Nationalization complete']]]],
+
+  ['1822CA',
+   2,
+   [[nil,
+     'endgame',
+     ['GWR (P10) places a token on N16 (Winnipeg)',
+      'P10 (Winnipeg Station) closes',
+      '1822CA: Phase 7 - Operating Round 8.1 (of 2) - Game Over']]]],
+  ['1868 Wyoming',
+   144_719,
+   [[433,
+     'double headed trains',
+     ['Operating Round 3.2 (of 2)',
+      '3+2 [5+4]']]]],
+  ['1841',
+   132_002,
+   [[939,
+     'endgame',
+     ['1841: Phase 8 - Operating Round 7.1 (of 3) - Game Over - Company hit max stock value']]]],
+  ['18NY',
+   108_746,
+   [[130,
+     'stock',
+     ['Stock Round 3',
+      '10 receives $110 in its Treasury']]]],
 ].freeze
 
 AUTO_ACTIONS_TEST_CASES = [
@@ -228,11 +257,11 @@ describe 'Assets' do
 
   describe '#html' do
     it 'renders logged out' do
-      expect(render).to include('Welcome!')
+      expect(render).to include('18xx.Games')
     end
 
     it 'renders home logged in' do
-      expect(render(user: { name: 'toby', settings: { consent: true } })).to include('Welcome toby!')
+      expect(render(user: { name: 'toby', settings: { consent: true } })).to include('Profile (toby)')
     end
 
     it 'consent logged in' do

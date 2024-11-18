@@ -46,9 +46,9 @@ module Engine
       @fraction_shares = if opts.key?(:fraction_shares)
                            opts[:fraction_shares]
                          else
-                           corp_shares.find do |s|
-                             (s.percent % 10).positive?
-                           end
+                           whole_percents = corp_shares[0..1].map(&:percent) # president and regular percents
+                           corp_shares.size > 1 &&
+                             corp_shares.group_by(&:percent).keys.any? { |percent| !whole_percents.include?(percent) }
                          end
 
       @presidents_share = corp_shares.first
@@ -243,6 +243,8 @@ module Engine
 
     # Is it legal to hold percent shares in this corporation?
     def holding_ok?(share_holder, extra_percent = 0)
+      return true if share_holder == self
+
       common_percent = share_holder.common_percent_of(self) + extra_percent
       %i[multiple_buy unlimited].include?(@share_price&.type) || common_percent <= @max_ownership_percent
     end
@@ -260,7 +262,7 @@ module Engine
     end
 
     def remove_ability(ability)
-      return super if ability.owner == self
+      return super if ability&.owner == self
 
       @companies.each { |company| company.remove_ability(ability) }
     end

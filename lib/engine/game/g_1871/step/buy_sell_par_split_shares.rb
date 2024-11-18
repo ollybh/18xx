@@ -167,6 +167,7 @@ module Engine
             entity = action.entity
             raise GameError, "#{corporation.name} cannot be split" unless @game.can_split?(corporation, entity)
 
+            entity.unpass!
             # Set data needed for splitting
             @round.split_start(corporation)
 
@@ -185,6 +186,12 @@ module Engine
             !bought? && @game.corporations.any? do |c|
               @game.can_par?(c, entity) && can_buy?(entity, @game.share_by_id("#{c.name}_0")&.to_bundle)
             end
+          end
+
+          # handle auto-floating, since we can only buy from market
+          def activate_program_buy_shares(entity, program)
+            program.from_market = true
+            super
           end
         end
       end

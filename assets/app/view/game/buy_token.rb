@@ -11,8 +11,8 @@ module View
         needs :selected_token, default: nil, store: true
 
         def render
-          step = @game.active_step
-          max_price = step.max_price(@entity)
+          @step = @game.active_step
+          max_price = @step.max_price(@entity)
 
           children = []
 
@@ -61,6 +61,7 @@ module View
                 slot: slot,
                 price: price,
               ))
+              store(:selected_token, nil)
             end
 
             if other_owner

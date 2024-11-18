@@ -11,7 +11,8 @@ module Engine
             revenue: 10,
             desc: "The owner of the LB has priority for starting the LNWR. No other player may buy the Director's " \
                   'Certificate of the LNWR, and the owner of the London & Birmingham may not buy shares in any other ' \
-                  "corporation until they have purchased the LNWR Director's Certificate.",
+                  "corporation until they have purchased the LNWR Director's Certificate. " \
+                  'Blocks Birmingham (F21) while open.',
             sym: 'LB',
             color: nil,
             abilities: [
@@ -34,7 +35,8 @@ module Engine
             revenue: 10,
             desc: 'The Arbroath & Forfar allows a corporation to take an extra tile action to lay or upgrade a tile in Perth ' \
                   '(I2). The owner of the AF may use this ability once per game, after the AF has closed, for any ' \
-                  'corporation which they control. A tile placed in Perth as a normal tile lay does not close the AF.',
+                  'corporation which they control. A tile placed in Perth as a normal tile lay does not close the AF. ' \
+                  'Blocks hex K2 while open.',
             sym: 'AF',
             color: nil,
             abilities: [
@@ -71,7 +73,7 @@ module Engine
                   'is free if the corporation can trace a route to York, otherwise it costs £50. The token is in addition to ' \
                   'the standard station tokens of the corporation. After laying the token, the corporation also gains the ' \
                   'ability to lay a green tile in York as one of its standard tile actions, instead of the usual yellow tile, ' \
-                  'even before green tiles are normally available.',
+                  'even before green tiles are normally available. Blocks hex I18 while open.',
             sym: 'GN',
             color: nil,
             abilities: [
@@ -108,7 +110,8 @@ module Engine
             value: 35,
             revenue: 12,
             desc: 'The SD gives a bonus of £10 for Middlesbrough (J13). The owner of the SD may use this bonus for any ' \
-                  'trains owned by corporations that they control, from the time that the SD closes until the end of the game.',
+                  'trains owned by corporations that they control, from the time that the SD closes until the end of the game. ' \
+                  'Blocks hex I12 while open.',
             sym: 'SD',
             color: nil,
             abilities: [
@@ -136,7 +139,8 @@ module Engine
             value: 45,
             revenue: 15,
             desc: 'The LM gives a bonus of £30 for Liverpool (E14). The owner of the LM may use this bonus for any trains ' \
-                  'run by corporations that they control, from the time that the LM closes until the end of the game.',
+                  'run by corporations that they control, from the time that the LM closes until the end of the game. ' \
+                  'Blocks hex F15 while open.',
             sym: 'LM',
             color: nil,
             abilities: [
@@ -164,8 +168,8 @@ module Engine
             value: 30,
             revenue: 10,
             desc: 'The LS allows a corporation to take an extra tile action to lay or upgrade a tile in Leicester (H21). The ' \
-                  'owner of the LS may use this ability once per game, after the LS has closed, for any corporation which '\
-                  'they control.',
+                  'owner of the LS may use this ability once per game, after the LS has closed, for any corporation which ' \
+                  'they control. Blocks Leicester (H21) while open.',
             sym: 'LS',
             color: nil,
             abilities: [
@@ -200,7 +204,7 @@ module Engine
                   'phase, some part of the new track on the new tile must form part of a route for the corporation, and the ' \
                   'corporation must not be Insolvent. The owner of the TV may use this ability after the TV has closed, for ' \
                   'any corporation which they control. If a corporation places the Severn Tunnel tile without using the ' \
-                  'ability of the TV, this does not force the TV to close.',
+                  'ability of the TV, this does not force the TV to close. Blocks hex C20 while open.',
             sym: 'TV',
             color: nil,
             abilities: [
@@ -239,7 +243,7 @@ module Engine
                   'is free if the corporation can trace a route to Carlisle, otherwise it costs £50.  The token is in ' \
                   'addition to the standard station tokens of the corporation. After laying the token, the corporation also ' \
                   'gains the ability to lay a green tile in Carlisle as one of its standard tile actions, instead of the ' \
-                  'usual yellow tile, even before green tiles are normally available.',
+                  'usual yellow tile, even before green tiles are normally available. Blocks hex G10 while open.',
             sym: 'MC',
             color: nil,
             abilities: [
@@ -276,7 +280,8 @@ module Engine
             value: 30,
             revenue: 10,
             desc: 'The CH gives a bonus income of £20 for Holyhead (C14). The owner of the CH may use this bonus for any ' \
-                  'trains run by corporations that they control, from the time that the CH closes until the end of the game.',
+                  'trains run by corporations that they control, from the time that the CH closes until the end of the game. ' \
+                  'Blocks hex E16 while open.',
             sym: 'CH',
             color: nil,
             abilities: [
@@ -312,7 +317,6 @@ module Engine
             tokens: [0, 0],
             coordinates: 'G4',
             color: '#0a70b3',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -334,7 +338,6 @@ module Engine
             tokens: [0, 50],
             coordinates: 'J25',
             color: '#37b2e2',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -368,7 +371,6 @@ module Engine
             tokens: [0, 50],
             coordinates: 'F5',
             color: '#ec767c',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -401,7 +403,6 @@ module Engine
             tokens: [0, 50],
             coordinates: 'D23',
             color: '#008f4f',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -424,7 +425,6 @@ module Engine
             coordinates: 'F21',
             color: '#0a0a0a',
             text_color: '#ffffff',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -447,7 +447,6 @@ module Engine
             coordinates: 'D25',
             color: '#fcea18',
             text_color: '#000000',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -470,7 +469,6 @@ module Engine
             coordinates: 'H15',
             color: '#baa4cb',
             text_color: '#000000',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -492,7 +490,6 @@ module Engine
             tokens: [0, 50],
             coordinates: 'H19',
             color: '#dd0030',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -525,7 +522,6 @@ module Engine
             tokens: [0],
             coordinates: 'H17',
             color: '#881a1e',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -547,7 +543,6 @@ module Engine
             tokens: [0, 50],
             coordinates: 'I6',
             color: '#eb6f0e',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -569,7 +564,6 @@ module Engine
             tokens: [0, 50],
             coordinates: 'J13',
             color: '#7bb137',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [
@@ -603,7 +597,6 @@ module Engine
             coordinates: 'A20',
             color: '#9a9a9d',
             text_color: '#000000',
-            reservation_color: nil,
             always_market_price: true,
             max_ownership_percent: 100,
             abilities: [

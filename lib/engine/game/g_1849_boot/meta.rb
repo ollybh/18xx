@@ -9,11 +9,10 @@ module Engine
         include Game::Meta
 
         DEV_STAGE = :production
-        PROTOTYPE = true
         DEPENDS_ON = '1849'
 
         GAME_DESIGNER = 'Scott Petersen (Based on 1849 by Federico Vellani)'
-        GAME_INFO_URL = 'https://github.com/tobymao/18xx/wiki/1849#variants-and-optional-rules'
+        GAME_INFO_URL = 'https://github.com/tobymao/18xx/wiki/1849:-Kingdom-of-the-Two-Sicilies'
         GAME_LOCATION = 'Southern Italy'
         GAME_RULES_URL = {
           '1849 Rules' => 'https://boardgamegeek.com/filepage/206628/1849-rules',

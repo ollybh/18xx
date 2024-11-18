@@ -11,7 +11,7 @@ module Engine
             return unless @round.corp_started
 
             corp = @round.corp_started
-            if @game.historical?(corp) && corp.name != 'SFMA'
+            if @game.historical?(corp) && (corp.name != 'SFMA' || @game.version == 1)
               @game.place_home_token(corp)
               post_token_lay_step!
             else
@@ -53,6 +53,8 @@ module Engine
                     end
             @round.buy_tokens << {
               entity: corp,
+              type: :start,
+              first_price: price,
               price: price,
               min: min,
               max: max,

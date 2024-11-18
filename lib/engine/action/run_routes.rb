@@ -6,11 +6,13 @@ require_relative '../route'
 module Engine
   module Action
     class RunRoutes < Base
-      attr_reader :routes
+      attr_reader :routes, :extra_revenue, :subsidy
 
-      def initialize(entity, routes:)
+      def initialize(entity, routes:, extra_revenue: 0, subsidy: 0)
         super(entity)
         @routes = routes
+        @extra_revenue = extra_revenue
+        @subsidy = subsidy
       end
 
       def self.h_to_args(h, game)
@@ -37,7 +39,11 @@ module Engine
           )
         end
 
-        { routes: routes }
+        {
+          routes: routes,
+          extra_revenue: h['extra_revenue'],
+          subsidy: h['subsidy'],
+        }
       end
 
       def args_to_h
@@ -55,7 +61,11 @@ module Engine
           }.select { |_, v| v }
         end
 
-        { 'routes' => routes }
+        {
+          'routes' => routes,
+          'extra_revenue' => extra_revenue,
+          'subsidy' => subsidy,
+        }
       end
     end
   end

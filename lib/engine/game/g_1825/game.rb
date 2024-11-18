@@ -350,6 +350,7 @@ module Engine
         TILE_LAYS = [{ lay: true, upgrade: true }, { lay: :not_if_upgraded, upgrade: false }].freeze
         GAME_END_CHECK = { bank: :current_or, stock_market: :immediate }.freeze
         TRAIN_PRICE_MIN = 10
+        TRAIN_PRICE_MULTIPLE = 10
         IMPASSABLE_HEX_COLORS = %i[blue sepia red].freeze
         TILE_200 = '200'
 
@@ -683,8 +684,8 @@ module Engine
         # find first player from PD not a director
         # o.w. PD
         def acting_for_entity(entity)
-          return entity if entity.player?
-          return entity.owner if entity.owner.player?
+          return entity if entity&.player?
+          return entity.owner if entity&.owner&.player?
 
           acting = @players.find { |p| !director?(p) }
           acting || @players.first

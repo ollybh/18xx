@@ -46,6 +46,8 @@ module View
           6 => 2.0,
         }.freeze
 
+        ICON_RADIUS = 16
+
         def render_part
           color = ((@reservation&.corporation? || @reservation&.minor?) &&
                     @reservation&.reservation_color) ||
@@ -53,7 +55,7 @@ module View
 
           radius = @radius
           show_player_colors = setting_for(:show_player_colors, @game)
-          if show_player_colors && (owner = @token&.corporation&.owner) && @game&.players&.include?(owner)
+          if show_player_colors && (owner = @token&.corporation&.player) && @game&.players&.include?(owner)
             color = player_colors(@game.players)[owner]
             radius -= 4
           end
@@ -72,11 +74,14 @@ module View
             token_attrs[:stroke] = 'black'
             token_attrs[:'stroke-width'] = '3px'
             token_attrs[:'stroke-dasharray'] = '4'
+          elsif @city&.outline
+            token_attrs[:'fill-opacity'] = '0'
           end
 
           children = [h(:circle, attrs: token_attrs)]
           children << reservation if @reservation && !@token
           children << render_boom if @city&.boom
+          children << render_slot_icon if @city&.slot_icons&.[](@slot_index)
           children << h(Token, token: @token, radius: radius, game: @game) if @token
 
           props = {
@@ -95,7 +100,30 @@ module View
           h(:g, props, children)
         end
 
+        def reservation_ability
+          return unless @game
+
+          Array(@game.abilities(@reservation, :reservation)).find do |ability|
+            (ability.tile == @city.tile) &&
+            (ability.slot == @slot_index) &&
+            (ability.city == @city.tile.cities.index(@city))
+          end
+        end
+
         def reservation
+          ability = reservation_ability
+          if ability&.icon
+            return h(
+              :image, attrs: {
+                href: ability.icon,
+                x: -@radius,
+                y: -@radius,
+                height: (2 * @radius),
+                width: (2 * @radius),
+              }
+            )
+          end
+
           text = @reservation.id
 
           non_home = @reservation.corporation? && !Array(@reservation.coordinates).include?(@city.hex.coordinates)
@@ -186,6 +214,19 @@ module View
               r: @boom_radius ||= 10 * (radius_addend + (route_prop(0, :width).to_i / 40)),
               'stroke-width': 2,
               'stroke-dasharray': 6,
+            })
+        end
+
+        def render_slot_icon
+          icon = @city&.slot_icons&.[](@slot_index)
+
+          h(:image,
+            attrs: {
+              href: icon.image,
+              x: -ICON_RADIUS,
+              y: -ICON_RADIUS,
+              width: "#{ICON_RADIUS * 2}px",
+              height: "#{ICON_RADIUS * 2}px",
             })
         end
       end

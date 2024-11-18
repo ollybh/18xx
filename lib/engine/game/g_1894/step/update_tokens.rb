@@ -40,7 +40,8 @@ module Engine
           end
 
           def description
-            "Choose city for token in #{@game.saved_tokens_hex.name}"
+            "Choose city for token in #{@game.saved_tokens_hex.name}"\
+              ' (either city may be chosen, even the one already containing a token)'
           end
 
           def available_hex(_entity, hex)
@@ -60,7 +61,7 @@ module Engine
 
             cheater = action.city.tokens.count { |t| !t.nil? }
             action.city.place_token(action.entity, token, free: true, check_tokenable: false, cheater: cheater)
-            @log << "#{corporation.id} places a token on #{hex_id} (#{hex.location_name})"
+            @log << "#{action.entity.id} places a token on #{hex.id} (#{hex.location_name})"
             saved_tokens = @game.saved_tokens
             saved_tokens.shift
             @game.save_tokens(saved_tokens)

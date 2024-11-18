@@ -18,8 +18,11 @@ module View
       needs :tile_selector, default: nil, store: true
       needs :display, default: 'inline-block'
       needs :layout, default: nil
+      needs :interactive, default: true
 
       def selected?
+        return @step.company_selected?(@company) if @step.respond_to?(:company_selected?)
+
         @company == @selected_company
       end
 
@@ -31,6 +34,11 @@ module View
         if selected_company && @game.round.actions_for(entity).include?('assign') &&
           (@game.class::ALL_COMPANIES_ASSIGNABLE || entity.respond_to?(:assign!))
           return process_action(Engine::Action::Assign.new(entity, target: selected_company))
+        end
+
+        if @game.round.actions_for(entity).include?('select_multiple_companies')
+          @step.select_company(entity, @company)
+          return store(:selected_company, nil)
         end
 
         store(:tile_selector, nil, skip: true)
@@ -65,7 +73,7 @@ module View
             }
             h(:tr, props, [
               h('td.left', bid.entity.name.truncate(20)),
-              h('td.right', @game.format_currency(bid.price)),
+              h('td.right', bid.price >= 0 ? @game.format_currency(bid.price) : '--'),
             ])
           end
 
@@ -80,6 +88,7 @@ module View
       end
 
       def render
+        @step = @game.round.active_step
         # use alternate view of corporation if needed
         if @game.respond_to?(:company_view) && (view = @game.company_view(@company))
           return send("render_#{view}")
@@ -103,6 +112,7 @@ module View
             fontSize: '80%',
             textAlign: 'left',
             fontWeight: 'normal',
+            whiteSpace: 'pre-line',
           }
 
           value_style = {
@@ -156,17 +166,15 @@ module View
           ]
           children << h(:div, { style: value_style }, "Value: #{@game.format_currency(@company.value)}") if @company.value
           children << h(:div, { style: revenue_style }, "Revenue: #{revenue_str}") if @company.revenue
-          children << render_bidders if @bids&.any?
-
           unless @company.discount.zero?
-            children << h(
-            :div,
-            { style: { float: 'center' } },
-            "Price: #{@game.format_currency(@company.value - @company.discount)}"
-          )
+            children << h(:div, { style: { float: 'center' } }, "Price: #{@game.format_currency(@company.min_bid)}")
           end
+          children << render_bidders if @bids && !@bids.empty?
 
-          children << h('div.nowrap', { style: bidders_style }, "Owner: #{@company.owner.name}") if @company.owner
+          if @company.owner && @game.show_company_owners?
+            children << h('div.nowrap', { style: bidders_style },
+                          "Owner: #{@company.owner.name}")
+          end
           if @game.company_status_str(@company)
             status_style = {
               marginTop: '0.5rem',
@@ -178,6 +186,12 @@ module View
               color: color_for(:font2),
             }
             children << h(:div, { style: status_style }, @game.company_status_str(@company))
+          end
+
+          unless @interactive
+            factor = color_for(:bg2).to_s[1].to_i(16) > 7 ? 0.3 : 0.6
+            props[:style][:backgroundColor] = convert_hex_to_rgba(color_for(:bg2), factor)
+            props[:style][:border] = '1px dashed'
           end
 
           h('div.company.card', props, children)
@@ -218,7 +232,8 @@ module View
           },
           on: { click: ->(event) { toggle_desc(event, company) } },
         }
-        is_possessed = @company.owner&.player? || @game.players.any? { |p| p.unsold_companies.include?(@company) }
+        is_possessed = @company.owner&.player? || @game.players.any? { |p| p.unsold_companies.include?(@company) } ||
+                       @game.show_value_of_companies?(@company.owner)
         hidden_props = {
           style: {
             display: 'none',

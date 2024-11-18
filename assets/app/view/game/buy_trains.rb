@@ -16,7 +16,7 @@ module View
       needs :active_shell, default: nil, store: true
 
       def render_president_contributions
-        player = @corporation.owner
+        player = corp_owner(@corporation)
         owner = nil
         if @game.class::EBUY_OWNER_MUST_HELP
           owner = @game.acting_for_entity(player)
@@ -32,7 +32,7 @@ module View
                                else
                                  discounted_train(@depot.min_depot_train, @depot.min_depot_price).first
                                end
-        cash = @corporation.cash + player.cash
+        cash = available_cash(@corporation) + player.cash
         share_funds_required = cheapest_train_price - cash
         share_funds_allowed = if @game.class::EBUY_DEPOT_TRAIN_MUST_BE_CHEAPEST
                                 share_funds_required
@@ -89,7 +89,7 @@ module View
                  "contribute towards #{@corporation.name} buying a train "\
                  'from the Depot. '
 
-          if @game.class::ALLOW_TRAIN_BUY_FROM_OTHERS
+          if @game.can_buy_train_from_others?
             text += "#{@corporation.name} must buy a "\
                     'train from another corporation, or '
           end
@@ -190,7 +190,7 @@ module View
 
         available = @step.buyable_trains(@corporation).group_by(&:owner)
         depot_trains = available.delete(@depot) || []
-        other_corp_trains = available.sort_by { |c, _| c.owner == @corporation.owner ? 0 : 1 }
+        other_corp_trains = available.sort_by { |c, _| corp_owner(c) == corp_owner(@corporation) ? 0 : 1 }
         children = []
 
         @must_buy_train = @step.must_buy_train?(@corporation)
@@ -214,15 +214,36 @@ module View
 
         if (@step.can_buy_train?(@corporation, @active_shell) && @step.room?(@corporation, @active_shell)) ||
            @must_buy_train
-          children << h(:div, "#{@corporation.name} must buy an available train") if @must_buy_train
-          if @should_buy_train == :liquidation
-            children << h(:div, "#{@corporation.name} must buy a train or it will be liquidated")
+          if @must_buy_train
+            children << if @step.must_issue_before_ebuy?(@corporation)
+                          h(:div, "#{@corporation.name} must buy a train from another corporation, "\
+                                  'or issue shares and then buy an available train ')
+                        else
+                          h(:div, "#{@corporation.name} must buy an available train")
+                        end
           end
+
+          case @should_buy_train
+          when :liquidation
+            children << h(:div, "#{@corporation.name} must buy a train or it will be liquidated")
+          when :close_corp
+            children << h(:div, "#{@corporation.name}'s president must either sell shares to afford train, "\
+                                'or close the corporation without compensation.')
+          end
+
           children << h(:h3, 'Available Trains')
           children << h(:div, div_props, [
             *from_depot(depot_trains, @corporation),
             *render_warranty(depot_trains),
             *other_corp_trains.any? ? other_trains(other_corp_trains, @corporation) : '',
+          ])
+        end
+
+        if @step.respond_to?(:sellable_trains) && !@step.sellable_trains(@corporation).empty?
+          corp_trains = @step.sellable_trains(@corporation)
+          children << h(:h3, 'Sellable Trains')
+          children << h(:div, div_props, [
+            *sell_corp_trains(corp_trains, @corporation),
           ])
         end
 
@@ -263,12 +284,13 @@ module View
         children << h(:h3, 'Remaining Trains')
         children << remaining_trains
 
-        children << h(:div, "#{@corporation.name} has #{@game.format_currency(@corporation.cash)}.")
+        children << h(:div, "#{@corporation.name} has #{available_cash_str(@corporation)}.")
         if @step.issuable_shares(@corporation).any? &&
            (issuable_cash = @game.emergency_issuable_cash(@corporation)).positive?
           issue_verb = 'issue'
           issue_verb = @step.issue_verb(@corporation) if @step.respond_to?(:issue_verb)
-          issue_str = "#{@corporation.name} can #{issue_verb} shares to raise up to #{@game.format_currency(issuable_cash)}"
+          issue_str = "#{issuing_corporation(@corporation).name} can #{issue_verb} shares"\
+                      " to raise up to #{@game.format_currency(issuable_cash)}"
           if @step.must_issue_before_ebuy?(@corporation)
             issue_str += " (the corporation must #{issue_verb} shares before the president may contribute)"
           end
@@ -301,7 +323,7 @@ module View
       def discounted_train(train, price)
         entity = @corporation
 
-        if @selected_company && [@corporation, @corporation.owner].include?(@selected_company.owner) \
+        if @selected_company && [@corporation, corp_owner(@corporation)].include?(@selected_company.owner) \
           && @step.respond_to?(:ability_timing)
           @game.abilities(@selected_company, :train_discount, time: @step.ability_timing) do |ability|
             if ability.trains.empty? || ability.trains.include?(train.name)
@@ -360,9 +382,32 @@ module View
         end
       end
 
+      def sell_corp_trains(corp_trains, corporation)
+        corp_trains.flat_map do |train|
+          price = @step.train_sale_price(train) || train.salvage || 0
+          entity = corporation
+          name = train.name
+
+          sell_train = lambda do
+            process_action(Engine::Action::SellTrain.new(
+              entity,
+              train: train,
+              price: price,
+            ))
+          end
+          train_props = { style: {} }
+          source = corporation.name
+
+          [h(:div, train_props, name),
+           h('div.nowrap', train_props, source),
+           h('div.right', train_props, @game.format_currency(price)),
+           h('button.no_margin', { on: { click: sell_train } }, 'Sell')]
+        end
+      end
+
       def render_warranty(depot_trains)
         @warranty_input = nil
-        return if depot_trains.empty? || !@step.respond_to?(:warranty_max)
+        return [] if depot_trains.empty? || !@step.respond_to?(:warranty_max)
 
         @warranty_input =
           h(
@@ -438,7 +483,7 @@ module View
                 ))
               end
 
-              if other_owner(other) == @corporation.owner
+              if other_owner(other) == corp_owner(@corporation)
                 if !@corporation.loans.empty? &&
                    !@game.interest_paid?(@corporation) &&
                    !@game.can_pay_interest?(@corporation, -price)
@@ -460,7 +505,7 @@ module View
 
             count = group.size
 
-            real_name = other_owner(other) != other.owner ? " [#{other_owner(other).name}]" : ''
+            real_name = other_owner(other) != corp_owner(other) ? " [#{other_owner(other).name}]" : ''
 
             train_props = { style: {} }
             unless @game.able_to_operate?(corporation, group[0], name)
@@ -468,10 +513,10 @@ module View
               train_props[:style][:backgroundColor] = color
               train_props[:style][:color] = contrast_on(color)
             end
-            line = if @show_other_players || other_owner(other) == @corporation.owner
+            line = if @show_other_players || other_owner(other) == corp_owner(@corporation)
                      [h(:div, train_props, name),
                       h('div.nowrap', train_props,
-                        "#{other.name} (#{count > 1 ? "#{count}, " : ''}#{other.owner.name}#{real_name})"),
+                        "#{other.name} (#{count > 1 ? "#{count}, " : ''}#{corp_owner(other).name}#{real_name})"),
                       input,
                       h('button.no_margin', { on: { click: buy_train_click } }, 'Buy')]
                    else
@@ -528,6 +573,22 @@ module View
         @step.respond_to?(:real_owner) ? @step.real_owner(other) : other.owner
       end
 
+      def corp_owner(corp)
+        @step.respond_to?(:corp_owner) ? @step.corp_owner(corp) : corp.owner
+      end
+
+      def available_cash(corp)
+        @step.respond_to?(:available_cash) ? @step.available_cash(corp) : corp.cash
+      end
+
+      def available_cash_str(corp)
+        @step.respond_to?(:available_cash_str) ? @step.available_cash_str(corp) : @game.format_currency(corp.cash)
+      end
+
+      def issuing_corporation(corp)
+        @step.respond_to?(:issuing_corporation) ? @step.issuing_corporation(corp) : corp
+      end
+
       def price_range(train)
         if @step.must_buy_at_face_value?(train, @corporation)
           {
@@ -559,7 +620,7 @@ module View
           },
         }
 
-        rows = @depot.upcoming.group_by(&:name).flat_map do |_, trains|
+        rows = @depot.upcoming.reject(&:reserved).group_by(&:name).flat_map do |_, trains|
           [h(:div, @game.info_train_name(trains.first)),
            h(:div, @game.info_train_price(trains.first)),
            h(:div, trains.size)]

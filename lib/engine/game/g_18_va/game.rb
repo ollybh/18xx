@@ -223,7 +223,6 @@ module Engine
         CLOSED_CORP_TRAINS_REMOVED = false
         ONLY_HIGHEST_BID_COMMITTED = true
         BANKRUPTCY_ENDS_GAME_AFTER = :all_but_one
-        CERT_LIMIT_COUNTS_BANKRUPTED = true
         MUST_BID_INCREMENT_MULTIPLE = true
         CMD_HEXES = %w[A6 A12].freeze
         MINE_HEXES = %w[B5 B7 B9 B11 B13].freeze
@@ -426,10 +425,6 @@ module Engine
 
         def corporation_opts
           two_player? && @optional_rules&.include?(:two_player_share_limit) ? { max_ownership_percent: 70 } : {}
-        end
-
-        def train_limit(entity)
-          super + Array(abilities(entity, :train_limit)).sum(&:increase)
         end
 
         # 5 => 10 share conversion logic

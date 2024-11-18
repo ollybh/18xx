@@ -17,7 +17,6 @@ module Engine
                   'buying action.  However, once acquired the acquiring company must check whether it as at the '\
                   'train limit and must discard any trains held in excess of limit.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P2-J.S. Ruckle OSNC 4-4-0 (Permanent 2T)',
@@ -36,7 +35,6 @@ module Engine
                   'this also still counts as a normal dividend for share price movement purposes. '\
                   'Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P3-Portland Streetcar (Permanent LT)',
@@ -55,7 +53,6 @@ module Engine
                   'this also still counts as a normal dividend for share price movement purposes. '\
                   'Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P4-South Lake Union Trolley (Permanent LT)',
@@ -74,7 +71,6 @@ module Engine
                   'this also still counts as a normal dividend for share price movement purposes. '\
                   'Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P5-Pullman (Pullman)',
@@ -87,7 +83,6 @@ module Engine
                   'not count toward the train limit. Cannot be sold to another company. Does '\
                   'not close. No company may own more than one Pullman.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P6-Pullman (Pullman)',
@@ -100,7 +95,6 @@ module Engine
                   'not count toward the train limit. Cannot be sold to another company. Does '\
                   'not close. No company may own more than one Pullman.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P7-Dit Crusher (Remove Town)',
@@ -127,7 +121,6 @@ module Engine
               combo_entities: %w[P11],
             },
             ],
-            color: nil,
           },
           {
             name: 'P8-Dit Crusher (Remove Town)',
@@ -154,7 +147,6 @@ module Engine
                 combo_entities: %w[P11],
               },
             ],
-            color: nil,
           },
           {
             name: 'P9-USPS Mail Service (Mail Contract)',
@@ -171,7 +163,6 @@ module Engine
                   'towns. A company that owns more than one Mail Contract may not use '\
                   'more than one on any train.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P10-American Bridge Company (Three Builder Cubes)',
@@ -196,7 +187,6 @@ module Engine
                 tiles: [],
               },
             ],
-            color: nil,
           },
           {
             name: 'P11-Surveyors (Extra Tile Lay)',
@@ -224,7 +214,6 @@ module Engine
                 combo_entities: %w[P7 P8],
               },
             ],
-            color: nil,
           },
           {
             name: 'P12-Dock Upgrades (Small Port)',
@@ -251,7 +240,6 @@ module Engine
                 consume_tile_lay: false,
               },
             ],
-            color: nil,
           },
           {
             name: 'P13-Harbor Improvements (Large Port)',
@@ -278,7 +266,6 @@ module Engine
                 consume_tile_lay: false,
               },
             ],
-            color: nil,
           },
           {
             name: 'P14-Lumber Baron (2x Timber Value)',
@@ -291,7 +278,6 @@ module Engine
                   'connection requirements. Once acquired by a company '\
                   'this private no longer pays its revenue.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P15-Paper Mill (City Revenue)',
@@ -314,7 +300,6 @@ module Engine
                 closed_when_used_up: true,
               },
             ],
-            color: nil,
           },
           {
             name: 'P16-Pacific Portage Company (Special Tile Placement)',
@@ -343,7 +328,6 @@ module Engine
                 tiles: %w[PNW1 PNW2],
               },
             ],
-            color: nil,
           },
           {
             name: 'P17-Ski Haus (Route Enhancement)',
@@ -367,7 +351,6 @@ module Engine
                 closed_when_used_up: true,
               },
             ],
-            color: nil,
           },
           {
             name: 'P18-Boom Town (Special Tile Upgrade)',
@@ -389,7 +372,6 @@ module Engine
                 tiles: %w[PNW3],
               },
             ],
-            color: nil,
           },
           {
             name: 'P19-Rockport Coal Mine (Special Tile Placement)',
@@ -414,11 +396,11 @@ module Engine
                 when: 'track',
                 count: 1,
                 closed_when_used_up: false,
-                hexes: %w[B15 C14 D15 E16 F17 H17 I18 K16 L15],
+                hexes: %w[A16 B15 C14 D15 E16 F17 G4 G18 H5 I6 H17 I18 J17 K16 L15 M14 N13],
                 tiles: %w[PNW4],
+                free: true,
               },
             ],
-            color: nil,
           },
           {
             name: 'P20-Backroom Negotiations (Minor Status Upgrade)',
@@ -436,7 +418,6 @@ module Engine
                   'company and its location becomes the major’s new home '\
                   'token location.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P21-Credit Mobilier (Move Card/Exchange Token)',
@@ -451,7 +432,6 @@ module Engine
                   'a major company to move a station token from exchange to '\
                   'available. Closes when the power is exercised.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'MINOR: 1. Pacific Great Eastern Railway',
@@ -588,7 +568,7 @@ module Engine
             text_color: 'black',
           },
           {
-            name: 'MINOR: 14. Camas Prarie Railroad',
+            name: 'MINOR: 14. Camas Prairie Railroad',
             sym: 'M14',
             value: 100,
             revenue: 0,
@@ -707,7 +687,7 @@ module Engine
           {
             sym: '1',
             name: 'Pacific Great Eastern Railway',
-            logo: '1822/1',
+            logo: '1822_pnw/1',
             tokens: [0],
             type: 'minor',
             always_market_price: true,
@@ -719,7 +699,6 @@ module Engine
             city: 0,
             color: '#EF1D24',
             text_color: 'white',
-            reservation_color: nil,
             abilities: [
               {
                 type: 'description',
@@ -742,7 +721,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '3',
@@ -759,7 +737,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '4',
@@ -776,12 +753,11 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '5',
             name: 'Idaho & Washington Northern Railway',
-            logo: '1822/5',
+            logo: '1822_pnw/5',
             tokens: [0],
             type: 'minor',
             always_market_price: true,
@@ -793,7 +769,6 @@ module Engine
             city: 0,
             color: '#6BCFF7',
             text_color: '#white',
-            reservation_color: nil,
             abilities: [
               {
                 type: 'description',
@@ -816,12 +791,11 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '7',
             name: 'Spokane Falls and Northern Railway',
-            logo: '1822/7',
+            logo: '1822_pnw/7',
             tokens: [0],
             type: 'minor',
             always_market_price: true,
@@ -833,7 +807,6 @@ module Engine
             city: 0,
             color: '#F69B1D',
             text_color: '#white',
-            reservation_color: nil,
             abilities: [
               {
                 type: 'description',
@@ -844,7 +817,7 @@ module Engine
           {
             sym: '8',
             name: 'Puget Sound Shore Railroad',
-            logo: '1822/8',
+            logo: '1822_pnw/8',
             tokens: [0],
             type: 'minor',
             always_market_price: true,
@@ -856,7 +829,6 @@ module Engine
             city: 0,
             color: '#238541',
             text_color: '#black',
-            reservation_color: nil,
             abilities: [
               {
                 type: 'description',
@@ -879,7 +851,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '10',
@@ -896,7 +867,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '11',
@@ -913,7 +883,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '12',
@@ -930,7 +899,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '13',
@@ -947,7 +915,6 @@ module Engine
             city: 1,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '14',
@@ -964,7 +931,6 @@ module Engine
             city: 1,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '15',
@@ -981,7 +947,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '16',
@@ -998,12 +963,11 @@ module Engine
             city: 2,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '17',
             name: 'Oregon Central Railroad',
-            logo: '1822/17',
+            logo: '1822_pnw/17',
             tokens: [0],
             type: 'minor',
             always_market_price: true,
@@ -1015,7 +979,6 @@ module Engine
             city: 0, ## Todo - Check
             color: '#8D061B',
             text_color: '#white',
-            reservation_color: nil,
             abilities: [
               {
                 type: 'description',
@@ -1026,7 +989,7 @@ module Engine
           {
             sym: '18',
             name: 'Portland and Willamette Valley Railway',
-            logo: '1822/18',
+            logo: '1822_pnw/18',
             tokens: [0],
             type: 'minor',
             always_market_price: true,
@@ -1038,7 +1001,6 @@ module Engine
             city: 1, ## Todo - Check
             color: '#3078C1',
             text_color: '#white',
-            reservation_color: nil,
             abilities: [
               {
                 type: 'description',
@@ -1061,12 +1023,11 @@ module Engine
             city: 1,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '20',
             name: 'Walla Walla Valley Railway',
-            logo: '1822/20',
+            logo: '1822_pnw/20',
             tokens: [0],
             type: 'minor',
             always_market_price: true,
@@ -1078,7 +1039,6 @@ module Engine
             city: 0,
             color: '#221E20',
             text_color: 'white',
-            reservation_color: nil,
             abilities: [
               {
                 type: 'description',
@@ -1101,7 +1061,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: 'A',
@@ -1118,7 +1077,6 @@ module Engine
             city: 0,
             color: '#808080',
             text_color: 'white',
-            reservation_color: nil,
           },
           {
             sym: 'B',
@@ -1135,7 +1093,6 @@ module Engine
             city: 0,
             color: '#808080',
             text_color: 'white',
-            reservation_color: nil,
           },
           {
             sym: 'C',
@@ -1152,7 +1109,6 @@ module Engine
             city: 0,
             color: '#808080',
             text_color: 'white',
-            reservation_color: nil,
           },
           {
             sym: 'NP',
@@ -1165,7 +1121,6 @@ module Engine
             coordinates: 'O20',
             city: 4,
             color: '#221E20',
-            reservation_color: nil,
             destination_coordinates: 'I12',
             destination_icon: '1822_pnw/NP_DEST',
           },
@@ -1180,7 +1135,6 @@ module Engine
             coordinates: 'A8',
             city: 2,
             color: '#EF1D24',
-            reservation_color: nil,
             destination_coordinates: 'A22',
             destination_icon: '1822_pnw/CPR_DEST',
           },
@@ -1195,7 +1149,6 @@ module Engine
             coordinates: 'D23',
             color: '#6BCFF7',
             text_color: 'black',
-            reservation_color: nil,
             destination_coordinates: 'D11',
             destination_icon: '1822_pnw/GNR_DEST',
           },
@@ -1210,7 +1163,6 @@ module Engine
             coordinates: 'O8',
             city: 3,
             color: '#3078C1',
-            reservation_color: nil,
             destination_coordinates: 'O20',
             destination_icon: '1822_pnw/ORNC_DEST',
           },
@@ -1224,7 +1176,6 @@ module Engine
             always_market_price: true,
             coordinates: 'O8',
             color: '#8D061B',
-            reservation_color: nil,
             destination_coordinates: 'F23',
             destination_icon: '1822_pnw/SPS_DEST',
           },
@@ -1238,7 +1189,6 @@ module Engine
             always_market_price: true,
             coordinates: 'F23',
             color: '#F69B1D',
-            reservation_color: nil,
             destination_coordinates: 'H11',
             destination_icon: '1822_pnw/CMPS_DEST',
           },
@@ -1253,7 +1203,6 @@ module Engine
             coordinates: 'H11',
             city: 5,
             color: '#238541',
-            reservation_color: nil,
             destination_coordinates: 'O22',
             destination_icon: '1822_pnw/SWW_DEST',
           },

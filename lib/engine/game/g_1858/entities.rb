@@ -116,7 +116,7 @@ module Engine
           {
             sym: 'H&G',
             name: 'Havana and Güines Railway',
-            desc: 'P1. Revenue 30. ' \
+            desc: 'P1. Revenue 10, face value 30. ' \
                   'Cannot be used to start a public company or exchanged for a share.',
             value: 30,
             discount: 0,
@@ -151,7 +151,7 @@ module Engine
           {
             sym: 'M&A',
             name: 'Madrid and Aranjuez Railway',
-            desc: 'P3. Revenue 25/38, face value 125. Home hexes are H9 and H11. ' \
+            desc: 'P3. Revenue 25/38, face value 125. Home hexes are H11 and H13. ' \
                   'Can be used to start a public company in Madrid.',
             value: 125,
             discount: 25,
@@ -198,7 +198,7 @@ module Engine
           {
             sym: 'V&J',
             name: 'Valencia and Jativa Railway',
-            desc: 'P5. Revenue 20/30, face value 100. Home hex is L11. ' \
+            desc: 'P5. Revenue 20/30, face value 100. Home hex is L13. ' \
                   'Can be used to start a public company in Valencia.',
             value: 100,
             discount: 20,
@@ -294,7 +294,7 @@ module Engine
             abilities: [
               { type: 'no_buy' },
               { type: 'revenue_change', revenue: 29, on_phase: '3' },
-              { type: 'reservation', hex: 'L7' },
+              { type: 'reservation', hex: 'L7', icon: '1858/MZ+ZP' },
               {
                 type: 'exchange',
                 owner_type: 'player',
@@ -317,8 +317,8 @@ module Engine
             abilities: [
               { type: 'no_buy' },
               { type: 'revenue_change', revenue: 32, on_phase: '3' },
-              { type: 'reservation', hex: 'E18' },
-              { type: 'reservation', hex: 'G18' },
+              { type: 'reservation', hex: 'E18', icon: '1858/CS+SJC' },
+              { type: 'reservation', hex: 'G18', icon: '1858/CM+CS' },
               {
                 type: 'exchange',
                 owner_type: 'player',
@@ -341,7 +341,7 @@ module Engine
             abilities: [
               { type: 'no_buy' },
               { type: 'revenue_change', revenue: 21, on_phase: '3' },
-              { type: 'reservation', hex: 'E18' },
+              { type: 'reservation', hex: 'E18', icon: '1858/CS+SJC' },
               { type: 'reservation', hex: 'E20' },
               {
                 type: 'exchange',
@@ -365,7 +365,7 @@ module Engine
             abilities: [
               { type: 'no_buy' },
               { type: 'revenue_change', revenue: 24, on_phase: '3' },
-              { type: 'reservation', hex: 'L7' },
+              { type: 'reservation', hex: 'L7', icon: '1858/MZ+ZP' },
               {
                 type: 'exchange',
                 owner_type: 'player',
@@ -411,7 +411,7 @@ module Engine
             abilities: [
               { type: 'no_buy' },
               { type: 'revenue_change', revenue: 26, on_phase: '3' },
-              { type: 'reservation', hex: 'G18' },
+              { type: 'reservation', hex: 'G18', icon: '1858/CM+CS' },
               { type: 'reservation', hex: 'G20' },
               {
                 type: 'exchange',
@@ -425,7 +425,7 @@ module Engine
           {
             sym: 'M&C',
             name: 'Murcia and Cartagena Railway',
-            desc: 'P15. Revenue 14/21, face value 70. Home hex is K18. ' \
+            desc: 'P15. Revenue 14/21, face value 70. Home hexes are K18 and L19. ' \
                   'Can be used to start a public company in Murcia.',
             value: 70,
             discount: 15,
@@ -596,7 +596,7 @@ module Engine
             logo: '1858/BM',
             coordinates: %w[O8],
             abilities: [
-              { type: 'blocks_hexes', hexes: %w[O8] },
+              { type: 'blocks_hexes', hexes: %w[O8], hidden: true },
               {
                 type: 'exchange',
                 owner_type: 'player',
@@ -653,7 +653,7 @@ module Engine
             logo: '1858/VJ',
             coordinates: %w[L13],
             abilities: [
-              { type: 'blocks_hexes', hexes: %w[L13] },
+              { type: 'blocks_hexes', hexes: %w[L13], hidden: true },
               {
                 type: 'exchange',
                 owner_type: 'player',
@@ -672,7 +672,7 @@ module Engine
             logo: '1858/RT',
             coordinates: %w[N9],
             abilities: [
-              { type: 'blocks_hexes', hexes: %w[N9] },
+              { type: 'blocks_hexes', hexes: %w[N9], hidden: true },
               {
                 type: 'exchange',
                 owner_type: 'player',
@@ -806,7 +806,7 @@ module Engine
             logo: '1858/CB',
             coordinates: %w[I2],
             abilities: [
-              { type: 'blocks_hexes', hexes: %w[I2] },
+              { type: 'blocks_hexes', hexes: %w[I2], hidden: true },
               {
                 type: 'exchange',
                 owner_type: 'player',
@@ -920,7 +920,7 @@ module Engine
             logo: '1858/MS',
             coordinates: %w[F9],
             abilities: [
-              { type: 'blocks_hexes', hexes: %w[F9] },
+              { type: 'blocks_hexes', hexes: %w[F9], hidden: true },
               {
                 type: 'exchange',
                 owner_type: 'player',

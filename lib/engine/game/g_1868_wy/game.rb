@@ -54,16 +54,15 @@ module Engine
         include StubsAreRestricted
         include SwapColorAndStripes
 
-        attr_accessor :big_boy_first_chance, :double_headed_trains, :dpr_first_home_status,
-                      :placed_oil_dt_count, :up_double_share_protection
+        attr_accessor :big_boy_first_chance, :big_boy_train_dh_original, :double_headed_trains,
+                      :dpr_first_home_status, :placed_oil_dt_count, :up_double_share_protection
         attr_reader :big_boy_train, :big_boy_train_original, :tile_groups, :unused_tiles,
                     :busters
 
         # overrides
         BANK_CASH = 99_999
-        STARTING_CASH = { 3 => 734, 4 => 550, 5 => 440 }.freeze
-        CERT_LIMIT = { 3 => 20, 4 => 15, 5 => 12 }.freeze
-        SELL_AFTER = :any_time
+        STARTING_CASH = { 2 => 1100, 3 => 734, 4 => 550, 5 => 440 }.freeze
+        CERT_LIMIT = { 2 => 30, 3 => 20, 4 => 15, 5 => 12 }.freeze
         CAPITALIZATION = :incremental
         SELL_BUY_ORDER = :sell_buy
         HOME_TOKEN_TIMING = :par
@@ -611,12 +610,9 @@ module Engine
 
           hex_ids.each do |hex_id|
             hex = hex_by_id(hex_id)
-            hex.tile.icons.find.with_index do |icon, index|
-              if icon.name == 'uranium_early'
-                hex.tile.icons[index] =
-                  Part::Icon.new('1868_wy/uranium', nil, true, false, false, loc: icon.loc)
-              end
-            end
+            index = hex.tile.icons.rindex { |icon| icon&.name == 'uranium_early' }
+            icon = hex.tile.icons[index]
+            hex.tile.icons[index] = Part::Icon.new('1868_wy/uranium', nil, true, false, false, loc: icon.loc)
             increment_development_token_count(hex)
           end
         end
@@ -650,6 +646,7 @@ module Engine
           @log << "Company #{pure_oil.name} closes"
           pure_oil.close!
           @pure_oil_hex&.remove_assignment!(pure_oil.id)
+          @pure_oil_hex&.remove_token(@pure_oil_hex_token) if @pure_oil_hex_token
           to_ghost_town!(@pure_oil_hex)
         end
 
@@ -1013,8 +1010,10 @@ module Engine
         # extends the given array with the string representation of the
         # corporation stacks
         def corp_stacks_str_arr(arr = [])
-          @corp_stacks.each.with_index do |stack, index|
-            arr << "- Railroad Company stack #{index + 1}: #{stack.map(&:name).reverse.join(', ')}" unless stack.empty?
+          if @phase && @phase.name.to_i < 5
+            @corp_stacks.each.with_index do |stack, index|
+              arr << "- Railroad Company stack #{index + 1}: #{stack.map(&:name).reverse.join(', ')}" unless stack.empty?
+            end
           end
           arr
         end
@@ -1163,7 +1162,7 @@ module Engine
           minors = @coal_companies.select { |c| c.floated? && !c.closed? }.sort_by { |m| @players.index(m.owner) }
           oil = @oil_companies.select { |c| c.floated? && !c.closed? }.sort_by { |m| @players.index(m.owner) }
           minors.concat(oil)
-          minors.sort_by! { |m| @players.index(m.owner) } if @optional_rules.include?(:async)
+          minors.sort_by! { |m| @players.index(m.owner) } if @optional_rules.include?(:async_friendly)
           minors
         end
 
@@ -1316,8 +1315,7 @@ module Engine
 
           return unless hex.assigned?(pure_oil.id)
 
-          token = hex.tokens.first
-          hex.remove_token(token)
+          hex.remove_token(@pure_oil_hex_token) if @pure_oil_hex_token
           hex.tile.add_reservation!(pure_oil.owner, 0, 0)
           @graph.clear
         end
@@ -1364,8 +1362,8 @@ module Engine
           (%w[8 9].include?(from.name) && to.label&.to_s == '$20') || super
         end
 
-        def upgrade_cost(tile, hex, entity, spender)
-          super + (%w[16 19 20].include?(tile.name) ? 20 : 0)
+        def upgrade_cost(_old_tile, hex, _entity, _spender)
+          super + (%w[16 19 20].include?(hex.tile.name) ? 20 : 0)
         end
 
         def tile_cost_with_discount(_tile, _hex, _entity, spender, _cost)
@@ -1563,17 +1561,17 @@ module Engine
             boom_bust_autoreplace_tile!(tile, hex.tile)
           end
 
-          return unless hex.assigned?(pure_oil.id)
+          return if pure_oil.closed? || !hex.assigned?(pure_oil.id)
 
           corp = pure_oil.corporation
-          token = Token.new(
+          @pure_oil_hex_token = Token.new(
             corp,
             price: 0,
             logo: corp.logo,
             simple_logo: corp.simple_logo,
             type: :boomcity_reservation,
           )
-          hex.place_token(token, logo: token.simple_logo, preprinted: false)
+          hex.place_token(@pure_oil_hex_token, logo: @pure_oil_hex_token.simple_logo, preprinted: false)
         end
 
         def final_or_in_set?(round)
@@ -1776,10 +1774,12 @@ module Engine
               town = Part::Town.new(revenue, **opts)
               town.tile = hex.tile
               hex.tile.towns << town
+              hex.tile.city_towns << town
             else
               city = Part::City.new(revenue, **opts)
               city.tile = hex.tile
               hex.tile.cities << city
+              hex.tile.city_towns << city
             end
           else
             tile_name = PURE_OIL_CAMP_TILES[hex.tile.name]
@@ -1796,14 +1796,14 @@ module Engine
             case type
             when :boomtown
               corp = pure_oil.corporation
-              token = Token.new(
+              @pure_oil_hex_token = Token.new(
                 corp,
                 price: 0,
                 logo: corp.logo,
                 simple_logo: corp.simple_logo,
                 type: :boomcity_reservation,
               )
-              hex.place_token(token, logo: token.simple_logo, preprinted: false)
+              hex.place_token(@pure_oil_hex_token, logo: @pure_oil_hex_token.simple_logo, preprinted: false)
 
             when :boomcity
               tile.add_reservation!(pure_oil.owner, 0, 0)
@@ -1830,7 +1830,8 @@ module Engine
           update_cache(:trains)
         end
 
-        def attach_big_boy(train, entity)
+        def attach_big_boy(train, entity = nil, log: true, double_head: false)
+          @big_boy_train_dh_original = nil unless double_head
           detached = detach_big_boy(log: false)
 
           @big_boy_train_original = train.dup
@@ -1850,14 +1851,16 @@ module Engine
           ]
           @big_boy_train = train
 
-          @log <<
-            if detached
-              "#{entity.name} moves the [+1+1] token from a #{detached.name} "\
-                "train to a #{@big_boy_train_original.name} train, forming a #{train.name} train"
-            else
-              "#{entity.name} attaches the [+1+1] token to a #{@big_boy_train_original.name} "\
-                "train, forming a #{train.name} train"
-            end
+          if log
+            @log <<
+              if detached
+                "#{entity&.name} moves the [+1+1] token from a #{detached.name} "\
+                  "train to a #{@big_boy_train_original.name} train, forming a #{train.name} train"
+              else
+                "#{entity&.name} attaches the [+1+1] token to a #{@big_boy_train_original.name} "\
+                  "train, forming a #{train.name} train"
+              end
+          end
 
           @big_boy_train
         end
@@ -1878,7 +1881,8 @@ module Engine
         end
 
         def rust_trains!(train, _entity)
-          detach_big_boy if train.sym == @big_boy_train&.rusts_on
+          @big_boy_train_dh_original = nil if train.sym == @big_boy_train_dh_original&.rusts_on
+          detach_big_boy(log: true) if train.sym == @big_boy_train&.rusts_on
           super
         end
 
@@ -1979,7 +1983,11 @@ module Engine
           return if president.cash < (before[:share_price].price * num_buyable)
 
           net_sold = before[:num_shares] - num_buyable
-          share_price = @stock_market.find_relative_share_price(before[:share_price], [:up] * net_sold)
+          share_price = @stock_market.find_relative_share_price(before[:share_price], bundle.corporation, [:up] * net_sold)
+
+          # if UP was ledged before being dumped, the new price after protection
+          # can't be higher than the pre-dump price
+          share_price = before[:share_price] if share_price.price > before[:share_price].price
 
           after = {
             president: president,
@@ -2219,6 +2227,14 @@ module Engine
 
         def event_setup_company_price_up_to_face!
           setup_company_price_up_to_face
+        end
+
+        def check_connected(route, corporation)
+          route.hexes.each do |hex|
+            raise GameError, 'Route is not connected' if hex.tile.color == :purple && hex.id != corporation.coordinates
+          end
+
+          super
         end
       end
     end

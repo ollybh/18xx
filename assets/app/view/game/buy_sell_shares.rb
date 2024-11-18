@@ -11,6 +11,9 @@ module View
       include Actionable
 
       needs :corporation
+      needs :selected_corporation, default: nil, store: true
+      needs :flexible_player, default: nil, store: true
+      needs :flexible_corporation, default: nil, store: true
 
       def render
         @step = @game.round.active_step
@@ -68,8 +71,9 @@ module View
         children.concat(render_other_player_shares)
         children.concat(render_shares_for_others)
         children.concat(render_price_protection)
-        children.concat(render_reduced_price_shares(@ipo_shares, source: @game.ipo_name(@corporation)))
-        children.concat(render_reduced_price_shares(@pool_shares))
+        children.concat(render_swap_shares(@ipo_shares, source: @game.ipo_name(@corporation)))
+        children.concat(render_swap_shares(@pool_shares))
+        children.concat(render_company_discounted_bundles)
 
         children
       end
@@ -81,7 +85,8 @@ module View
       def render_market_shares
         @pool_shares.map do |share|
           next unless @step.can_buy?(@current_entity, share.to_bundle)
-          if share.to_bundle.presidents_share && @pool_shares.size > 1 && !@game.can_buy_presidents_share_directly_from_market?
+          if share.to_bundle.presidents_share && @pool_shares.size > 1 &&
+              !@game.can_buy_presidents_share_directly_from_market?(share.corporation)
             next
           end
 
@@ -135,16 +140,39 @@ module View
       end
 
       def render_other_player_shares
-        @corporation.player_share_holders.keys.reject { |sh| sh == @current_entity }.flat_map do |sh|
-          shares = sh.shares_of(@corporation).select(&:buyable).group_by(&:percent).values.map(&:first)
-          shares.sort_by(&:percent).reverse.map do |share|
-            next unless @step.can_buy?(@current_entity, share.to_bundle)
+        if @step.respond_to?(:flexible_buy?) && @step.flexible_buy?(@current_entity)
+          if @flexible_player && @flexible_corporation != @selected_corporation
+            store(:flexible_corporation, nil, skip: true)
+            store(:flexible_player, nil)
+          end
+          @corporation.player_share_holders.keys.reject { |sh| sh == @current_entity }.select(&:player?).flat_map do |sh|
+            next unless @step.flexible_can_buy_any_shares?(@current_entity, sh.shares_of(@corporation))
 
-            h(Button::BuyShare,
-              share: share,
-              entity: @current_entity,
-              percentages_available: shares.group_by(&:percent).size,
-              source: sh.name)
+            update_player = lambda do
+              store(:flexible_corporation, @corporation, skip: true)
+              store(:flexible_player, sh)
+            end
+
+            button_props = {
+              attrs: {
+                type: :button,
+              },
+              on: { click: update_player },
+            }
+            h(:button, button_props, "Buy Shares from #{sh.name}")
+          end
+        else
+          @corporation.player_share_holders.keys.reject { |sh| sh == @current_entity }.flat_map do |sh|
+            shares = sh.shares_of(@corporation).select(&:buyable).group_by(&:percent).values.map(&:first)
+            shares.sort_by(&:percent).reverse.map do |share|
+              next unless @step.can_buy?(@current_entity, share.to_bundle)
+
+              h(Button::BuyShare,
+                share: share,
+                entity: @current_entity,
+                percentages_available: shares.group_by(&:percent).size,
+                source: sh.name)
+            end
           end
         end
       end
@@ -206,7 +234,7 @@ module View
         [h(:button, { on: { click: protect } }, 'Protect Shares')]
       end
 
-      def render_reduced_price_shares(shares, source: 'Market')
+      def render_swap_shares(shares, source: 'Market')
         shares.map do |share|
           next unless (swap_share = @step.swap_buy(@current_entity, @corporation, share))
 
@@ -216,6 +244,19 @@ module View
             entity: @current_entity,
             percentages_available: shares.group_by(&:percent).size,
             source: source)
+        end
+      end
+
+      def render_company_discounted_bundles
+        return [] unless @step.respond_to?(:company_discounted_bundles)
+
+        @step.company_discounted_bundles(@corporation).map do |company, bundle|
+          h(Button::BuyShare,
+            share: bundle,
+            entity: @current_entity,
+            prefix: "#{company.name}: ",
+            discounter: company,
+            percentages_available: bundle.num_shares,)
         end
       end
 
@@ -231,7 +272,7 @@ module View
       # Allow privates or minors to be exchanged for shares if they have the ability
       def render_exchanges
         children = []
-        source_entities = @game.companies + @game.minors
+        source_entities = @game.exchange_entities
 
         source_entities.each do |entity|
           @game.abilities(entity, :exchange) do |ability|
@@ -248,7 +289,14 @@ module View
                                                     source: 'Presidency'))
             end
 
-            children.concat(render_share_exchange(@pool_shares, entity)) if ability.from.include?(:market)
+            if ability.from.include?(:market)
+              pool_shares = if @step.respond_to?(:exchangeable_pool_shares)
+                              @step.exchangeable_pool_shares(@corporation, ability)
+                            else
+                              @pool_shares
+                            end
+              children.concat(render_share_exchange(pool_shares, entity))
+            end
             if ability.from.include?(:reserved)
               children.concat(render_share_exchange(@reserved_shares[0, 1], entity,
                                                     source: 'Reserved'))

@@ -108,7 +108,15 @@ module Engine
             shares: [20, 10, 10, 10, 10, 10, 10, 20],
             always_market_price: true,
             color: '#ff0000',
-            reservation_color: nil,
+            abilities: [
+              {
+                type: 'description',
+                description: 'Choose home token location',
+                desc_detail: 'When this corporation floats, president must select location for its home token among '\
+                             'Caltanissetta (H8), Messina (B14), Ragusa (M11), Terranova (M9) or Trapani (C1). '\
+                             'If no token slots are available in these cities, AFG cannot be started.',
+              },
+            ],
           },
           {
             float_percent: 20,
@@ -122,7 +130,6 @@ module Engine
             coordinates: 'M13',
             always_market_price: true,
             color: :green,
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -137,7 +144,6 @@ module Engine
             always_market_price: true,
             color: '#f9b231',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -151,7 +157,6 @@ module Engine
             coordinates: 'H12',
             always_market_price: true,
             color: '#0189d1',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -165,7 +170,6 @@ module Engine
             coordinates: 'C5',
             always_market_price: true,
             color: '#f48221',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -180,7 +184,6 @@ module Engine
             always_market_price: true,
             color: :pink,
             text_color: 'black',
-            reservation_color: nil,
           },
         ].freeze
       end

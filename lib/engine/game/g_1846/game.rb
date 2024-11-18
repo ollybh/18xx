@@ -128,13 +128,13 @@ module Engine
               },
             ],
             events: [
-              { 'type' => 'remove_markers' },
+              { 'type' => 'remove_bonuses' },
               { 'type' => 'remove_reservations' },
             ],
           },
         ].freeze
 
-        POOL_SHARE_DROP = :one
+        POOL_SHARE_DROP = :down_block
         SELL_AFTER = :p_any_operate
         SELL_BUY_ORDER = :sell_buy
         SELL_MOVEMENT = :left_block_pres
@@ -143,8 +143,13 @@ module Engine
         MUST_EMERGENCY_ISSUE_BEFORE_EBUY = true
         HOME_TOKEN_TIMING = :float
         MUST_BUY_TRAIN = :always
-        CERT_LIMIT_COUNTS_BANKRUPTED = true
         BANKRUPTCY_ENDS_GAME_AFTER = :all_but_one
+
+        GAME_END_CHECK = {
+          bankrupt: :immediate,
+          bank: :full_or,
+          all_closed: :immediate,
+        }.freeze
 
         ORANGE_GROUP = [
           'Lake Shore Line',
@@ -201,7 +206,7 @@ module Engine
 
         TILE_COST = 20
         EVENTS_TEXT = Base::EVENTS_TEXT.merge(
-          'remove_markers' => ['Remove Markers', 'Remove Steamboat, Meat Packing, and Boomtown markers'],
+          'remove_bonuses' => ['Remove Bonuses', 'Remove Steamboat, Meat Packing, and Boomtown bonuses'],
           'remove_reservations' => ['Remove Reservations', 'Remove reserved token slots for corporations']
         ).freeze
 
@@ -217,14 +222,14 @@ module Engine
         def price_movement_chart
           [
             ['Action', 'Share Price Change'],
-            ['Dividend < 1/2 stock value', '1 ←'],
-            ['Dividend > 1/2 stock value and < stock value', 'none'],
-            ['Dividend ≥ stock value', '1 →'],
-            ['Dividend ≥ 2× stock value', '2 →'],
-            ['Dividend ≥ 3× stock value and stock value is at least 165', '3 →'],
+            ['Dividend < 1/2 stock price', '1 ←'],
+            ['Dividend ≥ 1/2 stock price but < stock price', 'none'],
+            ['Dividend ≥ stock price', '1 →'],
+            ['Dividend ≥ 2X stock price', '2 →'],
+            ['Dividend ≥ 3X stock price and stock price ≥ 165', '3 →'],
             ['Corporation director sells any number of shares', '1 ←'],
-            ['Corporation has any shares in market at end of SR', '1 ←'],
-            ['Corporation is sold out at end of SR', '1 →'],
+            ['Corporation has any shares in the Market at end of an SR', '1 ←'],
+            ['Corporation is sold out at end of an SR', '1 →'],
           ]
         end
 
@@ -268,7 +273,9 @@ module Engine
           @second_tokens_in_green = {}
 
           # When creating a game the game will not have enough to start
-          return unless @players.size.between?(*self.class::PLAYER_RANGE)
+          unless (player_count = @players.size).between?(*self.class::PLAYER_RANGE)
+            raise GameError, "#{self.class::GAME_TITLE} does not support #{player_count} players"
+          end
 
           if first_edition?
             remove_icons(self.class::BOOMTOWN_HEXES, self.class::ABILITY_ICONS['BT'])
@@ -643,11 +650,11 @@ module Engine
           @minors.dup.each { |minor| close_corporation(minor) }
           remove_icons(self.class::LSL_HEXES, self.class::ABILITY_ICONS[lake_shore_line.id]) if lake_shore_line
           remove_icons(self.class::LITTLE_MIAMI_HEXES, self.class::ABILITY_ICONS[little_miami.id]) if little_miami
-          remove_steamboat_markers! if steamboat && !steamboat.owned_by_corporation?
+          remove_steamboat_bonuses! if steamboat && !steamboat.owned_by_corporation?
           super
         end
 
-        def remove_steamboat_markers!
+        def remove_steamboat_bonuses!
           self.class::STEAMBOAT_HEXES.each do |hex_id|
             hex = hex_by_id(hex_id)
             if hex.assigned?(steamboat.id)
@@ -676,7 +683,7 @@ module Engine
           end
         end
 
-        def event_remove_markers!
+        def event_remove_bonuses!
           removals = Hash.new { |h, k| h[k] = {} }
 
           @corporations.each do |corp|
@@ -700,7 +707,7 @@ module Engine
           removals.each do |company, removal|
             hex = removal[:hex]
             corp = removal[:corporation]
-            @log << "-- Event: #{corp}'s #{company_by_id(company).name} marker removed from #{hex} --"
+            @log << "-- Event: #{corp}'s #{company_by_id(company).name} bonus removed from #{hex} --"
           end
         end
 
@@ -833,7 +840,7 @@ module Engine
         end
 
         def east_west_desc
-          'E/W'
+          'East to West'
         end
 
         def train_help(_entity, runnable_trains, _routes)
@@ -980,6 +987,20 @@ module Engine
           end
 
           false
+        end
+
+        def purchasable_companies(entity = nil)
+          return [] if entity&.minor?
+
+          super
+        end
+
+        def unowned_purchasable_companies
+          @round.is_a?(Engine::Round::Draft) ? @companies.reject { |c| c.name.start_with?('Pass') }.sort_by(&:name) : []
+        end
+
+        def show_company_owners?
+          !@round.is_a?(Engine::Round::Draft)
         end
       end
     end

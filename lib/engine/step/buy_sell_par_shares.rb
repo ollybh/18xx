@@ -97,7 +97,7 @@ module Engine
         return false if entity == bundle.owner
 
         corporation = bundle.corporation
-        entity.cash >= modify_purchase_price(bundle) &&
+        available_cash(entity) >= modify_purchase_price(bundle) &&
           !@round.players_sold[entity][corporation] &&
           (can_buy_multiple?(entity, corporation, bundle.owner) || !bought?) &&
           can_gain?(entity, bundle)
@@ -107,8 +107,11 @@ module Engine
         return false unless can_sell_any?(entity)
         return true if @game.num_certs(entity) > @game.cert_limit(entity)
 
-        !@game.can_hold_above_corp_limit?(entity) &&
-          @game.corporations.any? { |corp| !corp.holding_ok?(entity) }
+        !@game.can_hold_above_corp_limit?(entity) && !must_sell_corporations(entity).empty?
+      end
+
+      def must_sell_corporations(entity)
+        @game.corporations.select { |corp| !corp.holding_ok?(entity) && can_sell_any_bundles(entity, corp) }
       end
 
       def can_sell?(entity, bundle)
@@ -170,7 +173,8 @@ module Engine
         @round.bought_from_ipo = true if action.bundle.owner.corporation?
         buy_shares(action.purchase_for || action.entity, action.bundle,
                    swap: action.swap, borrow_from: action.borrow_from,
-                   allow_president_change: allow_president_change?(action.bundle.corporation))
+                   allow_president_change: allow_president_change?(action.bundle.corporation),
+                   discounter: action.discounter)
         track_action(action, action.bundle.corporation)
       end
 
@@ -206,6 +210,10 @@ module Engine
         end
       end
 
+      def available_cash(entity)
+        entity.cash
+      end
+
       def can_buy_multiple?(_entity, corporation, owner)
         if @game.multiple_buy_only_from_market?
           return false unless owner.share_pool?
@@ -217,11 +225,13 @@ module Engine
          @round.current_actions.none? { |x| x.is_a?(Action::BuyShares) && x.bundle.corporation != corporation }
       end
 
+      def can_sell_any_bundles(entity, corporation)
+        bundles = @game.bundles_for_corporation(entity, corporation)
+        bundles.any? { |bundle| can_sell?(entity, bundle) }
+      end
+
       def can_sell_any?(entity)
-        @game.corporations.any? do |corporation|
-          bundles = @game.bundles_for_corporation(entity, corporation)
-          bundles.any? { |bundle| can_sell?(entity, bundle) }
-        end
+        @game.corporations.any? { |corporation| can_sell_any_bundles(entity, corporation) }
       end
 
       def can_buy_shares?(entity, shares)
@@ -242,7 +252,7 @@ module Engine
         bundle = min_share&.to_bundle
         return unless bundle
 
-        entity.cash >= modify_purchase_price(bundle) && can_gain?(entity, bundle)
+        available_cash(entity) >= modify_purchase_price(bundle) && can_gain?(entity, bundle)
       end
 
       def can_buy_any_from_market?(entity)
@@ -286,7 +296,7 @@ module Engine
 
       def purchasable_companies(entity)
         return [] if bought? ||
-          !entity.cash.positive? ||
+          !available_cash(entity).positive? ||
           !@game.phase ||
           !@game.phase.status.include?('can_buy_companies_from_other_players')
 
@@ -294,20 +304,20 @@ module Engine
       end
 
       def buyable_bank_owned_companies(entity)
-        return [] unless entity.player?
+        return [] if !entity.player? || bought?
 
         @game.buyable_bank_owned_companies.select { |c| can_buy_company?(entity, c) }
       end
 
       def can_buy_company?(player, company)
-        @game.buyable_bank_owned_companies.include?(company) && player.cash >= company.value
+        @game.buyable_bank_owned_companies.include?(company) && available_cash(player) >= company.value
       end
 
       def get_par_prices(entity, _corp)
         @game
           .stock_market
           .par_prices
-          .select { |p| p.price * 2 <= entity.cash }
+          .select { |p| p.price * 2 <= available_cash(entity) }
       end
 
       def sell_shares(entity, shares, swap: nil)
@@ -339,8 +349,13 @@ module Engine
         entity.companies << company
         entity.spend(price, owner.nil? ? @game.bank : owner)
         @round.current_actions << action
-        @log << "#{owner ? '-- ' : ''}#{entity.name} buys #{company.name} from "\
-                "#{owner ? owner.name : 'the market'} for #{@game.format_currency(price)}"
+        @log << if owner == @game.bank
+                  "#{entity.name} buys #{company.name} from #{owner.name} for #{@game.format_currency(price)}"
+                else
+                  "#{owner ? '-- ' : ''}#{entity.name} buys #{company.name} from "\
+                    "#{owner ? owner.name : 'the market'} for #{@game.format_currency(price)}"
+                end
+        @game.after_buy_company(entity, company, price) if entity.player?
       end
 
       def auto_actions(entity)
@@ -395,7 +410,7 @@ module Engine
             # in the brown and made decisions appropriately.
             bigger_share = @game.shares_for_corporation(corporation).select do |s|
               s.percent > share_to_buy.percent && (s.owner != entity || s.owner != corporation.owner)
-            end.max(&:percent)
+            end.max_by(&:percent)
 
             if bigger_share
               other_percent = action.entity.percent_of(corporation) + bigger_share.percent

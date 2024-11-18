@@ -16,9 +16,9 @@ module Engine
             revenue: 0,
             desc: 'Comes with one coal mine marker. When placing a yellow '\
                   'tile in a coal hex pointing to a revenue location, can place '\
-                  'token to avoid $15 terrain fee.  Marked yellow hexes can be '\
-                  'upgraded.  Hexes pay $10 extra revenue and do not count as a '\
-                  'stop.  May not start or end a route at a coal mine.',
+                  'token to avoid $15 terrain fee. Marked yellow hexes can be '\
+                  'upgraded. Hexes pay $10 extra revenue and do not count as a '\
+                  'stop. May not start or end a route at a coal mine.',
             sym: 'P1',
             abilities: [
               {
@@ -42,7 +42,7 @@ module Engine
             revenue: 0,
             desc: 'Comes with one $10 bridge token that may be placed by the owning '\
                   'corp in a city with $10 water cost, max one token '\
-                  'per city.  Allows owning corp to '\
+                  'per city. Allows owning corp to '\
                   'skip $10 river fee when placing track.',
             sym: 'P2',
             abilities: [
@@ -68,9 +68,9 @@ module Engine
             revenue: 0,
             desc: 'Comes with one oil marker. When placing a yellow '\
                   'tile in an oilfield hex pointing to a revenue location, can place '\
-                  'token.  Marked yellow hexes *can* be '\
-                  'upgraded.  Hexes pay $10 extra revenue and do not count as a '\
-                  'stop.  Hexes revenue bonus is upgraded automatically to $20 in phase 5. '\
+                  'token. Marked yellow hexes *can* be '\
+                  'upgraded. Hexes pay $10 extra revenue and do not count as a '\
+                  'stop. Hexes revenue bonus is upgraded automatically to $20 in phase 5. '\
                   'May not start or end a route at an oilfield.',
             sym: 'P3',
             abilities: [
@@ -238,9 +238,9 @@ module Engine
             revenue: 0,
             desc: 'Comes with two oil markers. When placing a yellow '\
                   'tile in an oilfield hex pointing to a revenue location, can place '\
-                  'token.  Marked yellow hexes *can* be '\
-                  'upgraded.  Hexes pay $10 extra revenue and do not count as a '\
-                  'stop.  Hexes revenue bonus is upgraded automatically to $20 in phase 5. '\
+                  'token. Marked yellow hexes *can* be '\
+                  'upgraded. Hexes pay $10 extra revenue and do not count as a '\
+                  'stop. Hexes revenue bonus is upgraded automatically to $20 in phase 5. '\
                   'May not start or end a route at an oilfield.',
             sym: 'P12',
             abilities: [
@@ -342,10 +342,10 @@ module Engine
             value: 60,
             revenue: 0,
             desc: 'Comes with two coal mine markers. When placing a yellow '\
-                  'tile in a mountain hex next to a revenue location, can place '\
-                  'token to avoid $15 terrain fee.  Marked yellow hexes can be '\
-                  'upgraded.  Hexes pay $10 extra revenue and do not count as a '\
-                  'stop.  May not start or end a route at a coal mine.',
+                  'tile in a coal hex next to a revenue location, can place '\
+                  'token to avoid $15 terrain fee. Marked yellow hexes can be '\
+                  'upgraded. Hexes pay $10 extra revenue and do not count as a '\
+                  'stop. May not start or end a route at a coal mine.',
             sym: 'P18',
             abilities: [
               {
@@ -401,7 +401,7 @@ module Engine
             revenue: 0,
             desc: 'Comes with one $10 bridge token that may be placed by the owning '\
                   'corp in a city with $10 water cost, max one token '\
-                  'per city.  Allows owning corp to '\
+                  'per city. Allows owning corp to '\
                   'skip $10 river fee when placing track. '\
                   'Also comes with one coal token and one ore token. (see rules on coal and ore) '\
                   'You can only ever use one of these two; using one means you forfeit the other',
@@ -440,7 +440,7 @@ module Engine
             revenue: 0,
             desc: 'Comes with two $10 bridge tokens that may be placed by the owning '\
                   'corp in a city with $10 water cost, max one token '\
-                  'per city.  Allows owning corp to '\
+                  'per city. Allows owning corp to '\
                   'skip $10 river fee when placing track.',
             sym: 'P22',
             abilities: [
@@ -580,10 +580,10 @@ module Engine
             value: 90,
             revenue: 0,
             desc: 'Comes with three coal mine markers. When placing a yellow '\
-                  'tile in a mountain hex next to a revenue location, can place '\
-                  'token to avoid $15 terrain fee.  Marked yellow hexes can be '\
-                  'upgraded.  Hexes pay $10 extra revenue and do not count as a '\
-                  'stop.  May not start or end a route at a coal mine.',
+                  'tile in a coal hex next to a revenue location, can place '\
+                  'token to avoid $15 terrain fee. Marked yellow hexes can be '\
+                  'upgraded. Hexes pay $10 extra revenue and do not count as a '\
+                  'stop. May not start or end a route at a coal mine.',
             sym: 'P28',
             abilities: [
               {
@@ -815,7 +815,6 @@ module Engine
             always_market_price: true,
             color: '#7090c9',
             text_color: 'White',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -828,7 +827,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: '#025aaa',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -842,7 +840,6 @@ module Engine
             always_market_price: true,
             color: '#ADD8E6',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -856,7 +853,6 @@ module Engine
             always_market_price: true,
             color: 'Sienna',
             text_color: 'White',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -870,7 +866,6 @@ module Engine
             always_market_price: true,
             color: 'LightSkyBlue',
             text_color: 'Black',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -883,7 +878,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: '#32763f',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -896,7 +890,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: 'Red',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -910,7 +903,6 @@ module Engine
             always_market_price: true,
             color: 'Gray',
             text_color: 'White',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -923,7 +915,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: '#018471',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -936,7 +927,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: 'Indigo',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -949,7 +939,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: '#110a0c',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -962,7 +951,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: 'DarkRed',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -975,7 +963,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: 'Black',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -989,7 +976,6 @@ module Engine
             always_market_price: true,
             color: 'YellowGreen',
             text_color: 'Black',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -1002,7 +988,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: '#f48221',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -1015,7 +1000,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: 'ForestGreen',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -1028,7 +1012,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: '#d02020',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -1041,7 +1024,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: 'Purple',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -1055,7 +1037,6 @@ module Engine
             always_market_price: true,
             color: 'Gold',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -1068,7 +1049,6 @@ module Engine
             tokens: [0],
             always_market_price: true,
             color: 'Brown',
-            reservation_color: nil,
           },
         ].freeze
       end

@@ -135,7 +135,7 @@ module Engine
         # Steps for companies are non-blocking
         if entity
           return @steps.find do |step|
-            step.active? && !step.actions(entity).empty? && (entity.company? || step.blocking?)
+            step.active? && (entity.company? || step.blocking?) && !step.actions(entity).empty?
           end
         end
 
@@ -154,6 +154,10 @@ module Engine
         # If overriding, make sure to call @game.next_turn!
         @game.next_turn!
         @entity_index = @entities.find_index(entity)
+      end
+
+      def next_entity!
+        raise NotImplementedError
       end
 
       def next_entity_index!
@@ -200,8 +204,6 @@ module Engine
         true
       end
 
-      private
-
       def skip_steps
         @steps.each do |step|
           next if !step.active? || !step.blocks? || @entities[@entity_index]&.closed?
@@ -211,11 +213,17 @@ module Engine
         end
       end
 
+      private
+
       def before_process(_action); end
 
       def after_process_before_skip(_action); end
 
       def after_process(_action); end
+
+      def inspect
+        "<#{self.class.name} #{@game.turn_round_num.join('.')}>"
+      end
     end
   end
 end

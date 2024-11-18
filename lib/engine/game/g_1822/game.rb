@@ -26,6 +26,9 @@ module Engine
                         nerGreen: '#aade87',
                         black: '#000',
                         white: '#ffffff')
+        PRIVATE_RED = '#FF7276'
+        PRIVATE_GREEN = '#90EE90'
+        PRIVATE_BLUE = '#89CFF0'
 
         BANKRUPTCY_ALLOWED = false
 
@@ -33,11 +36,11 @@ module Engine
 
         BANK_CASH = 12_000
 
-        CERT_LIMIT = { 3 => 26, 4 => 20, 5 => 16, 6 => 13, 7 => 11 }.freeze
+        CERT_LIMIT = { 2 => 40, 3 => 26, 4 => 20, 5 => 16, 6 => 13, 7 => 11 }.freeze
 
         EBUY_OTHER_VALUE = false
 
-        STARTING_CASH = { 3 => 700, 4 => 525, 5 => 420, 6 => 350, 7 => 300 }.freeze
+        STARTING_CASH = { 2 => 1000, 3 => 700, 4 => 525, 5 => 420, 6 => 350, 7 => 300 }.freeze
 
         CAPITALIZATION = :incremental
 
@@ -52,6 +55,7 @@ module Engine
         }.freeze
 
         GAME_END_CHECK = { bank: :full_or, stock_market: :current_or }.freeze
+        GAME_END_ON_NOTHING_SOLD_IN_SR1 = true
 
         STOCKMARKET_COLORS = Base::STOCKMARKET_COLORS.merge(
           par_1: :red,
@@ -284,6 +288,10 @@ module Engine
           },
         ].freeze
 
+        TRAIN_AUTOROUTE_GROUPS = [
+          %w[E],
+        ].freeze
+
         LAYOUT = :flat
 
         SELL_MOVEMENT = :down_share
@@ -293,7 +301,7 @@ module Engine
         MUST_BUY_TRAIN = :always
         NEXT_SR_PLAYER_ORDER = :most_cash
 
-        SELL_AFTER = :operate
+        SELL_AFTER = :full_or_turn
 
         SELL_BUY_ORDER = :sell_buy
 
@@ -323,6 +331,8 @@ module Engine
           'minor_float_phase3on' => ['Minors receive winning bid as capital',
                                      'Minors receive entire winning bid as capital '\
                                      'and float at between 50 to 100 stock value based on bid'],
+          'l_upgrade' => ['£70 L-train upgrades',
+                          'The cost to upgrade an L-train to a 2-train is reduced from £80 to £70.'],
         ).freeze
 
         BIDDING_BOX_MINOR_COUNT = 4
@@ -383,8 +393,6 @@ module Engine
         LONDON_HEX = 'M38'
         ENGLISH_CHANNEL_HEX = 'P43'
         FRANCE_HEX = 'Q44'
-        FRANCE_HEX_BROWN_TILE = 'offboard=revenue:yellow_0|green_60|brown_90|gray_120,visit_cost:0;'\
-                                'path=a:2,b:_0,lanes:2'
 
         COMPANY_MTONR = 'P2'
         COMPANY_LCDR = 'P5'
@@ -481,6 +489,7 @@ module Engine
 
         MINOR_14_ID = '14'
         MINOR_14_HOME_HEX = 'M38'
+        PENDING_HOME_TOKENERS = [MINOR_14_ID].freeze
 
         PLUS_EXPANSION_BIDBOX_1 = %w[P1 P3 P4 P13 P14 P19].freeze
         PLUS_EXPANSION_BIDBOX_2 = %w[P2 P5 P8 P10 P11 P12 P21].freeze
@@ -527,6 +536,9 @@ module Engine
         STARTING_CORPORATIONS_PLUS = %w[1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
                                         30 LNWR GWR LBSCR SECR CR MR LYR NBR SWR NER].freeze
 
+        # can the tax haven private own multiple shares?
+        TAX_HAVEN_MULTIPLE = false
+
         TOKEN_PRICE = 100
 
         TRACK_PLAIN = %w[7 8 9 80 81 82 83 544 545 546 60 169].freeze
@@ -538,7 +550,7 @@ module Engine
 
         UPGRADE_COST_L_TO_2 = 80
 
-        attr_reader :minor_14_city_exit
+        attr_reader :minor_14_city_exit, :tax_haven
         attr_accessor :bidding_token_per_player, :player_debts
 
         def bank_sort(corporations)
@@ -558,6 +570,11 @@ module Engine
 
         def check_distance(route, visits)
           raise GameError, 'Cannot run Pullman train' if pullman_train?(route.train)
+
+          if train_type(route.train) == :etrain &&
+             visits.count { |v| v.city? && v.tokened_by?(route.corporation) } < 2
+            raise GameError, 'E-train route must have at least 2 tokened cities'
+          end
 
           english_channel_visit = english_channel_visit(visits)
           # Permanent local train cant run in the english channel
@@ -579,15 +596,10 @@ module Engine
           # Tracks by e-train and normal trains
           tracks_by_type = Hash.new { |h, k| h[k] = [] }
 
-          # Check local train not use the same token more then one time
-          local_cities = []
-
           # Merthyr Tydfil and Pontypool
           merthyr_tydfil_pontypool = {}
 
           routes.each do |route|
-            local_cities.concat(route.visited_stops.select(&:city?)) if route.train.local? && !route.chains.empty?
-
             route.paths.each do |path|
               a = path.a
               b = path.b
@@ -616,14 +628,30 @@ module Engine
             end
           end
 
-          local_cities.group_by(&:itself).each do |k, v|
-            raise GameError, "Local train can only use each token on #{k.hex.id} once" if v.size > 1
-          end
+          check_local_cities(routes)
 
           # Check Merthyr Tydfil and Pontypool, only one of the 2 tracks may be used
           return if !merthyr_tydfil_pontypool[1] || !merthyr_tydfil_pontypool[2]
 
           raise GameError, 'May only use one of the tracks connecting Merthyr Tydfil and Pontypool'
+        end
+
+        # Check local train not use the same token more then one time
+        def check_local_cities(routes)
+          local_cities = []
+          routes.each do |route|
+            local_cities.concat(route.visited_stops.select(&:city?)) if route.train.local? && !route.chains.empty?
+          end
+
+          local_cities.group_by(&:itself).each do |k, v|
+            puts "Local train can only use each token on #{k.hex.id} once"
+            raise GameError, "Local train can only use each token on #{k.hex.id} once" if v.size > 1
+          end
+        end
+
+        # called by AutoRouter
+        def check_other(route)
+          check_local_cities(route.routes)
         end
 
         def company_bought(company, entity)
@@ -643,7 +671,7 @@ module Engine
             return "Bid box #{index + 1}" if c == company
           end
 
-          if optional_plus_expansion?
+          if optional_plus_expansion? && !optional_plus_expansion_single_stack?
             bidbox_privates.each do |c|
               next unless c == company
 
@@ -663,8 +691,9 @@ module Engine
 
           if company.id == self.class::COMPANY_OSTH && company.owner&.player? && @tax_haven.value.positive?
             company.value = @tax_haven.value
-            share = @tax_haven.shares.first
-            return "(#{share.corporation.name})"
+            cash = format_currency(@tax_haven.cash)
+            shares = @tax_haven.shares.map { |s| s.corporation.name }.join(',')
+            return "(#{cash}; #{shares})"
           end
 
           nil
@@ -679,13 +708,15 @@ module Engine
         end
 
         def crowded_corps
-          @crowded_corps ||= corporations.select do |c|
-            trains = c.trains.count { |t| !extra_train?(t) }
-            crowded = trains > train_limit(c)
-            crowded |= extra_train_permanent_count(c) > 1
-            crowded |= pullman_train_count(c) > 1
-            crowded
-          end
+          @crowded_corps ||= corporations.select { |c| crowded_corp?(c) }
+        end
+
+        def crowded_corp?(corp)
+          trains = corp.trains.count { |t| !extra_train?(t) }
+          crowded = trains > train_limit(corp)
+          crowded |= extra_train_permanent_count(corp) > 1
+          crowded |= pullman_train_count(corp) > 1
+          crowded
         end
 
         def discountable_trains_for(corporation)
@@ -697,17 +728,14 @@ module Engine
           discount_info
         end
 
-        def end_game!(player_initiated: false)
-          finalize_end_game_values
-          super
-        end
-
-        def finalize_end_game_values
+        def tax_haven_value(player)
           company = company_by_id(self.class::COMPANY_OSTH)
-          return if !company || !@tax_haven.value.positive?
 
-          # Make sure tax havens value is correct
-          company.value = @tax_haven.value
+          return 0 unless company
+          return 0 if company.owner != player
+          return 0 unless @tax_haven.value.positive?
+
+          @tax_haven.value
         end
 
         def entity_can_use_company?(entity, company)
@@ -864,8 +892,24 @@ module Engine
             next if players.size < (company[:min_players] || 0)
             next unless starting_companies.include?(company[:sym])
 
+            company = init_private_company_color(company)
             Company.new(**company)
           end.compact
+        end
+
+        def init_private_company_color(company)
+          return company unless company[:sym][0] == self.class::COMPANY_PRIVATE_PREFIX
+
+          company[:color] =
+            if company[:desc].start_with?('MAJOR/MINOR,')
+              self.class::PRIVATE_GREEN
+            elsif company[:desc].start_with?('MAJOR,')
+              self.class::PRIVATE_RED
+            elsif company[:desc].start_with?('CANNOT BE ACQUIRED.')
+              self.class::PRIVATE_BLUE
+            end
+
+          company
         end
 
         def init_company_abilities
@@ -994,7 +1038,13 @@ module Engine
         end
 
         def player_value(player)
-          player.value - @player_debts[player]
+          # tax_haven_company.value can sometimes be zero and sometimes the same
+          # as tax_haven_value() (issues #5200 and #11007) because it is only
+          # set in company_status_str, which is only called by some views, so
+          # substract that value and include only the correct calculation
+          tax_haven_val = tax_haven_value(player) - (tax_haven_company&.value || 0)
+
+          player.value - @player_debts[player] + tax_haven_val
         end
 
         def purchasable_companies(entity = nil)
@@ -1129,7 +1179,7 @@ module Engine
           @minor_14_city_exit = nil
 
           # Initialize a dummy player for Tax haven to hold the share and the cash it generates
-          @tax_haven = Engine::Player.new(-1, 'Tax Haven')
+          @tax_haven = Engine::Player.new(-1, self.class::COMPANY_OSTH)
 
           # Initialize the stock round choice for P9-M&GNR
           @double_cash_choice = nil
@@ -1165,7 +1215,7 @@ module Engine
           concessions = timeline_companies(self.class::COMPANY_CONCESSION_PREFIX, bidbox_concessions)
           timeline << "Concessions: #{concessions.join(', ')}" unless concessions.empty?
 
-          if optional_plus_expansion?
+          if optional_plus_expansion? && !optional_plus_expansion_single_stack?
             b1_privates = timeline_companies_plus(self.class::COMPANY_PRIVATE_PREFIX,
                                                   self.class::PLUS_EXPANSION_BIDBOX_1)
             timeline << "Privates bidbox 1 : #{b1_privates.join(', ')}" unless b1_privates.empty?
@@ -1228,7 +1278,7 @@ module Engine
 
         def upgrades_to?(from, to, _special = false, selected_company: nil)
           # This is needed because the S tile upgrade removes the town in yellow
-          if self.class::UPGRADABLE_S_HEX_NAME == from.hex.name && from.color == :white
+          if self.class::UPGRADABLE_S_HEX_NAME == from.hex&.name && from.color == :white
             return self.class::UPGRADABLE_S_YELLOW_CITY_TILE == to.name
           end
 
@@ -1299,11 +1349,6 @@ module Engine
 
           # If we upgraded london, check if we need to add the extra slot from minor 14
           upgrade_minor_14_home_hex(hex) if hex.name == self.class::MINOR_14_HOME_HEX
-
-          # If we upgraded the english channel to brown, upgrade france as well since we got 2 lanes to france.
-          return if hex.name != self.class::ENGLISH_CHANNEL_HEX || tile.color != :brown
-
-          upgrade_france_to_brown
         end
 
         def bank_companies(prefix)
@@ -1325,7 +1370,7 @@ module Engine
         end
 
         def bidbox_privates
-          if optional_plus_expansion?
+          if optional_plus_expansion? && !optional_plus_expansion_single_stack?
             companies = bank_companies(self.class::COMPANY_PRIVATE_PREFIX)
             privates = []
             privates << companies.find { |c| self.class::PLUS_EXPANSION_BIDBOX_1.include?(c.id) }
@@ -1344,7 +1389,7 @@ module Engine
 
           # Set the reservation color of all the minors in the bid boxes
           @bidbox_minors_cache.each do |company_id|
-            corporation_by_id(company_id[1..-1]).reservation_color = self.class::BIDDING_BOX_MINOR_COLOR
+            corporation_by_id(company_id[1..-1])&.reservation_color = self.class::BIDDING_BOX_MINOR_COLOR
           end
         end
 
@@ -1493,12 +1538,15 @@ module Engine
         end
 
         def company_choices_osth(company, time)
-          return {} if @tax_haven.value.positive? || !company.owner&.player? || time != :stock_round
+          return {} if @tax_haven.value.positive? && !company_tax_haven_can_own_multiple?
+          return {} if !company.owner&.player? || time != :stock_round || @round.tax_haven_bought
 
           choices = {}
           @corporations.select { |c| c.type == :major }.each do |corporation|
             price = corporation.share_price&.price || 0
             next unless price.positive?
+            next if @tax_haven.num_shares_of(corporation).positive?
+            next if price > tax_haven_spender(company).cash
 
             if corporation.num_ipo_shares.positive?
               choices["#{corporation.id}_ipo"] = "#{corporation.id} IPO (#{format_currency(price)})"
@@ -1588,16 +1636,29 @@ module Engine
         end
 
         def company_made_choice_osth(company, choice)
-          spender = company.owner
+          spender = tax_haven_spender(company)
           bundle = company_tax_haven_bundle(choice)
           corporation = bundle.corporation
           floated = corporation.floated?
           receiver = bundle.owner == @share_pool ? @bank : corporation
           @share_pool.transfer_shares(bundle, @tax_haven, spender: spender, receiver: receiver,
                                                           price: bundle.price, allow_president_change: false)
-          @log << "#{spender.name} spends #{format_currency(bundle.price)} and tax haven gains a share of "\
-                  "#{corporation.name}."
+
+          if spender == @tax_haven
+            from = choice.split('_')[1] == 'ipo' ? 'Treasury' : 'market'
+            @log << "Tax Haven (#{company.owner.name}) buys a 10% share of #{corporation.name} "\
+                    "from the #{from} for #{format_currency(bundle.price)}"
+          else
+            @log << "#{spender.name} spends #{format_currency(bundle.price)} and Tax Haven gains "\
+                    "a share of #{corporation.name}."
+          end
           float_corporation(corporation) if corporation.floatable && floated != corporation.floated?
+        end
+
+        def tax_haven_spender(company)
+          return company.owner if !company_tax_haven_can_own_multiple? || @tax_haven.value.zero?
+
+          @tax_haven
         end
 
         def company_tax_haven_bundle(choice)
@@ -1615,6 +1676,10 @@ module Engine
 
           @bank.spend(amount, @tax_haven)
           @log << "#{entity.name} pays out #{format_currency(amount)} to tax haven"
+        end
+
+        def company_tax_haven_can_own_multiple?
+          self.class::TAX_HAVEN_MULTIPLE || @optional_rules&.include?(:tax_haven_multiple)
         end
 
         def destination_bonus(routes)
@@ -1725,26 +1790,35 @@ module Engine
           @optional_rules&.include?(:plus_expansion)
         end
 
-        def payoff_player_loan(player)
-          # Pay full or partial of the player loan. The money from loans is outside money, doesnt count towards
-          # the normal bank money.
-          if player.cash >= @player_debts[player]
-            player.cash -= @player_debts[player]
-            @log << "#{player.name} pays off their loan of #{format_currency(@player_debts[player])}"
-            @player_debts[player] = 0
-          else
-            @player_debts[player] -= player.cash
-            @log << "#{player.name} decreases their loan by #{format_currency(player.cash)} "\
-                    "(#{format_currency(@player_debts[player])})"
-            player.cash = 0
-          end
+        def optional_plus_expansion_no_removals?
+          @optional_rules&.include?(:plus_expansion_no_removals)
         end
 
-        def check_destination_duplicate(entity, hex); end
+        def optional_plus_expansion_single_stack?
+          @optional_rules&.include?(:plus_expansion_single_stack)
+        end
 
-        def place_destination_token(entity, hex, token)
-          check_destination_duplicate(entity, hex)
-          city = hex.tile.cities.first
+        # Pay full or partial of the player loan. The money from loans is
+        # outside money, doesnt count towards the normal bank money.
+        def payoff_player_loan(player, payoff_amount: nil)
+          loan_balance = @player_debts[player]
+          payoff_amount = player.cash if !payoff_amount || payoff_amount > player.cash
+          payoff_amount = [payoff_amount, loan_balance].min
+
+          @player_debts[player] -= payoff_amount
+          player.cash -= payoff_amount
+
+          @log <<
+            if payoff_amount == loan_balance
+              "#{player.name} pays off their loan of #{format_currency(loan_balance)}"
+            else
+              "#{player.name} decreases their loan by #{format_currency(payoff_amount)} "\
+                "(#{format_currency(@player_debts[player])})"
+            end
+        end
+
+        def place_destination_token(entity, hex, token, city = nil, log: true)
+          city ||= destination_city(hex, entity)
           city.place_token(entity, token, free: true, check_tokenable: false, cheater: true)
           hex.tile.icons.reject! { |icon| icon.name == "#{entity.id}_destination" }
 
@@ -1754,7 +1828,11 @@ module Engine
 
           @graph.clear
 
-          @log << "#{entity.name} places its destination token on #{hex.name}"
+          @log << "#{entity.name} places its destination token on #{hex.name}" if log
+        end
+
+        def destination_city(hex, _entity)
+          hex.tile.cities.first
         end
 
         def player_debt(player)
@@ -1814,17 +1892,11 @@ module Engine
           train.name == 'E' ? :etrain : :normal
         end
 
-        def upgrade_france_to_brown
-          france_tile = Engine::Tile.from_code(self.class::FRANCE_HEX, :gray, self.class::FRANCE_HEX_BROWN_TILE)
-          france_tile.location_name = 'France'
-          hex_by_id(self.class::FRANCE_HEX).tile = france_tile
-        end
-
         def upgrade_minor_14_home_hex(hex)
           return unless @minor_14_city_exit
 
           extra_city = hex.tile.paths.find { |p| p.edges[0].num == @minor_14_city_exit }.city
-          return unless extra_city.tokens.size == 1
+          return unless extra_city.tokens.size <= extra_city.normal_slots
 
           extra_city.tokens[extra_city.normal_slots] = nil
         end
@@ -1890,16 +1962,17 @@ module Engine
 
         def hex_blocked_by_ability?(entity, ability, hex, tile)
           return false if tile.name == 'BC'
+          return false unless hex.tile.color == :white
           return false unless ability.player
           return false if entity.player == ability.player
-          return false unless ability.hexes.include?(hex.id)
-          return false if hex.tile.blockers.map(&:player).include?(entity.player)
+          return false if ability.hexes.none? { |h| h.id == hex.id }
+          return false if hex.tile.blockers.any? { |b| b.player == entity.player }
 
           true
         end
 
         def legal_tile_rotation?(entity, hex, tile)
-          rights_owners = hex.tile.blockers.map(&:owner).compact.uniq
+          rights_owners = hex.tile.blockers.map(&:player).compact.uniq
           return true if rights_owners.delete(acting_for_entity(entity))
 
           rights_owners.empty? ? legal_if_stubbed?(hex, tile) : super
@@ -1921,10 +1994,52 @@ module Engine
           @nothing_sold_in_sr
         end
 
+        # remove non-destination tokens if a corporation has multiple tokens in
+        # one city
+        def remove_extra_tokens!(tile)
+          tile.cities.each do |city|
+            corp_tokens_with_count =
+              city.tokens.each_with_object(Hash.new { |h, k| h[k] = [[], 0] }) do |token, counted_tokens|
+                next unless token
+
+                counted_tokens[token.corporation][0] << token unless token.type == :destination
+                counted_tokens[token.corporation][1] += 1
+              end
+
+            corp_tokens_with_count.each do |corp, (tokens_to_remove, token_count)|
+              (token_count - 1).times do
+                @log << "Extra token for #{corp.name} is returned to their available tokens"
+                token = tokens_to_remove.pop
+                token.remove!
+                # exchange tokens have a price of 0
+                token.price = self.class::TOKEN_PRICE
+              end
+            end
+          end
+        end
+
+        def pending_home_tokeners
+          self.class::PENDING_HOME_TOKENERS
+        end
+
+        def tax_haven_company
+          @tax_haven_company ||= company_by_id(self.class::COMPANY_OSTH)
+        end
+
+        def share_owning_players
+          if tax_haven_company&.owned_by_player?
+            [*@players, @tax_haven]
+          else
+            @players
+          end
+        end
+
         private
 
         def find_and_remove_train_by_id(train_id, buyable: true)
           train = train_by_id(train_id)
+          return unless train
+
           @depot.remove_train(train)
           train.buyable = buyable
           train.reserved = true
@@ -1955,25 +2070,25 @@ module Engine
           privates.unshift(p1)
 
           # If have have activated 1822+, 3 companies will be removed from the game
-          if optional_plus_expansion?
+          if optional_plus_expansion? && !optional_plus_expansion_no_removals?
             # Make sure we have correct order of the bidboxes
             bid_box_1 = privates.map { |c| c if self.class::PLUS_EXPANSION_BIDBOX_1.include?(c.id) }.compact
             bid_box_2 = privates.map { |c| c if self.class::PLUS_EXPANSION_BIDBOX_2.include?(c.id) }.compact
             bid_box_3 = privates.map { |c| c if self.class::PLUS_EXPANSION_BIDBOX_3.include?(c.id) }.compact
             privates = bid_box_1 + bid_box_2 + bid_box_3
 
-            # Remove one of the bidbid 2 privates, except London, Chatham and Dover Railway
+            # Remove one of the bidbox 2 privates, except London, Chatham and Dover Railway
             company = privates.find do |c|
               c.id != self.class::COMPANY_LCDR && self.class::PLUS_EXPANSION_BIDBOX_2.include?(c.id)
             end
             privates.delete(company)
-            @log << "#{company.name} have been removed from the game"
+            @log << "#{company.name} has been removed from the game"
 
             # Remove two of the bidbox 3 privates
             2.times.each do |_|
               company = privates.find { |c| self.class::PLUS_EXPANSION_BIDBOX_3.include?(c.id) }
               privates.delete(company)
-              @log << "#{company.name} have been removed from the game"
+              @log << "#{company.name} has been removed from the game"
             end
           end
 
@@ -2005,8 +2120,11 @@ module Engine
         end
 
         def setup_destinations
+          @destination_hexes = {}
           @corporations.each do |c|
             next unless c.destination_coordinates
+
+            @destination_hexes[c.destination_coordinates] = c
 
             home_hex = hex_by_id(c.coordinates)
             ability = Ability::Base.new(
@@ -2018,14 +2136,20 @@ module Engine
             dest_hex = hex_by_id(c.destination_coordinates)
             ability = Ability::Base.new(
               type: 'base',
-              description: "Destination: #{dest_hex.location_name} (#{dest_hex.name})",
+              description: destination_description(c),
             )
             c.add_ability(ability)
 
-            c.tokens << Engine::Token.new(c, logo: "../#{c.destination_icon}.svg",
-                                             simple_logo: "../#{c.destination_icon}.svg",
+            c.tokens << Engine::Token.new(c, logo: "#{c.destination_icon}.svg",
+                                             simple_logo: "#{c.destination_icon}.svg",
                                              type: :destination)
-            dest_hex.tile.icons << Part::Icon.new("../#{c.destination_icon}", "#{c.id}_destination")
+            icon = Part::Icon.new(c.destination_icon.to_s, "#{c.id}_destination", owner: c, loc: c.destination_loc)
+            if c.destination_icon_in_city_slot
+              city, slot = c.destination_icon_in_city_slot
+              dest_hex.tile.cities[city].slot_icons[slot] = icon
+            else
+              dest_hex.tile.icons << icon
+            end
 
             next unless c.id == self.class::TWO_HOME_CORPORATION
 
@@ -2034,6 +2158,12 @@ module Engine
               description: 'Places destination token in its first OR'
             ))
           end
+        end
+
+        def destination_description(corporation)
+          dest_hex = hex_by_id(corporation.destination_coordinates)
+
+          "Destination: #{dest_hex.location_name} (#{dest_hex.name})"
         end
 
         def setup_exchange_tokens
@@ -2063,6 +2193,26 @@ module Engine
 
         def port_tile?(hex)
           hex.tile.color == :blue && !hex.tile.cities.empty?
+        end
+
+        def pullman_route_distance_str(route)
+          towns = route.visited_stops.count(&:town?)
+          cities = route_distance(route) - towns
+          towns.positive? ? "#{cities}+#{towns}" : cities.to_s
+        end
+
+        def e_route_distance_str(route)
+          corp = route.train.owner
+          total_laid_tokens = corp.tokens.count(&:used)
+          paying_stops = route.visited_stops.count { |stop| stop.tokened_by?(corp) }
+          "#{paying_stops}/#{total_laid_tokens}"
+        end
+
+        def route_distance_str(route)
+          return pullman_route_distance_str(route) if route.train.name[-1] == '+'
+          return e_route_distance_str(route) if route.train.name == 'E'
+
+          super(route)
         end
       end
     end

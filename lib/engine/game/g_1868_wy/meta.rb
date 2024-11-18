@@ -8,23 +8,25 @@ module Engine
       module Meta
         include Game::Meta
 
-        DEV_STAGE = :prealpha
-        PROTOTYPE = true
+        DEV_STAGE = :production
 
         GAME_DESIGNER = 'John Harres'
-        # GAME_INFO_URL = ''
-        # GAME_PUBLISHER = ''
-        # GAME_RULES_URL = ''
+        GAME_INFO_URL = 'https://github.com/tobymao/18xx/wiki/1868-Wyoming'
+        GAME_PUBLISHER = :mercury
+        GAME_RULES_URL = {
+          'Rules' => 'https://boardgamegeek.com/filepage/262791/rules-traxx-mainline-hell-wheels-ks-release',
+          'Rules Highlights (2 pages)' => 'https://boardgamegeek.com/filepage/262792/rules-highlights',
+        }.freeze
         GAME_LOCATION = 'Wyoming, USA'
         GAME_TITLE = '1868 Wyoming'
         GAME_FULL_TITLE = '1868: Boom and Bust in the Coal Mines and Oil Fields of Wyoming'
         GAME_ISSUE_LABEL = '1868WY'
 
-        PLAYER_RANGE = [3, 5].freeze
+        PLAYER_RANGE = [2, 5].freeze
 
         OPTIONAL_RULES = [
           {
-            sym: :async,
+            sym: :async_friendly,
             short_name: 'Async-friendly Dev Rounds',
             desc: 'In Development Rounds from phase 5, players go through the Stock '\
                   'Round order once to place Coal and Oil tokens together, instead '\

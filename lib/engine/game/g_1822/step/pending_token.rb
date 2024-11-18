@@ -26,7 +26,7 @@ module Engine
                                'tokens in the same city'
             end
 
-            connected = action.entity.id != @game.class::MINOR_14_ID
+            connected = !@game.pending_home_tokeners.include?(action.entity.id)
             city.tokens << nil if action.entity.id == @game.class::MINOR_14_ID
             city.tokens << nil unless city.get_slot(action.entity)
             place_token(token.corporation, city, token, connected: connected, extra_action: true,
@@ -43,7 +43,7 @@ module Engine
             ability = Ability::BlocksHexesConsent.new(
               type: :blocks_hexes_consent,
               owner_type: 'player',
-              hexes: [hex.id],
+              hexes: [hex],
               hidden: true,
             )
             m14.add_ability(ability)

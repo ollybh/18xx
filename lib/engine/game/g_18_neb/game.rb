@@ -2,198 +2,54 @@
 
 require_relative 'meta'
 require_relative '../base'
+require_relative 'entities'
+require_relative 'map'
 
 module Engine
   module Game
     module G18Neb
       class Game < Game::Base
         include_meta(G18Neb::Meta)
+        include Entities
+        include Map
 
-        register_colors(black: '#37383a',
-                        orange: '#f48221',
-                        brightGreen: '#76a042',
-                        red: '#d81e3e',
-                        turquoise: '#00a993',
-                        blue: '#0189d1',
-                        brown: '#7b352a')
+        attr_reader :cattle_token_hex
 
-        CURRENCY_FORMAT_STR = '$%s'
+        DEPOT_CLASS = G18Neb::Depot
 
         BANK_CASH = 6000
 
-        CERT_LIMIT = { 2 => 21, 3 => 15, 4 => 13 }.freeze
+        CERT_LIMIT = { 2 => 26, 3 => 17, 4 => 13 }.freeze
 
         STARTING_CASH = { 2 => 650, 3 => 450, 4 => 350 }.freeze
 
-        CAPITALIZATION = :incremental
-        # However 10-share corps that start in round 5: if their 5th share purchase
-        #  - get 5x starting value
-        #  - the remaining 5 shares are placed in bank pool
+        MIN_BID_INCREMENT = 5
+        ONLY_HIGHEST_BID_COMMITTED = true
 
-        MUST_SELL_IN_BLOCKS = true
+        CAPITALIZATION = :incremental
+        HOME_TOKEN_TIMING = :par
 
         SELL_BUY_ORDER = :sell_buy
-        # is this first to pass: first, second: second.. yes
+        SELL_AFTER = :operate
+        MUST_SELL_IN_BLOCKS = true
+
+        SOLD_OUT_TOP_ROW_MOVEMENT = :down_right
+
         NEXT_SR_PLAYER_ORDER = :first_to_pass
-        MIN_BID_INCREMENT = 5
 
-        # Special City hexes
-        OMAHA_HEX = 'K7'
-        DENVER_HEX = 'C9'
-        LINCOLN_HEX = 'J8'
-        CHADRON_HEX = 'C3'
-        YELLOW_TOWNS = %w[3 4 58 3a 4a 58a].freeze
-        GREEN_CITIES = %w[226 227 228].freeze
-        BROWN_CITIES = %w[611].freeze
-        GRAY_CITIES = %w[51].freeze
+        ALLOW_TRAIN_BUY_FROM_OTHER_PLAYERS = false
+        EBUY_DEPOT_TRAIN_MUST_BE_CHEAPEST = false
+        EBUY_SELL_MORE_THAN_NEEDED_LIMITS_DEPOT_TRAIN = true
 
-        TILE_TYPE = :lawson
+        CERT_LIMIT_CHANGE_ON_BANKRUPTCY = true
+        BANKRUPTCY_ENDS_GAME_AFTER = :all_but_one
 
-        # rubocop:disable Layout/LineLength
-        TILES = {
-          # Yellow
-          '3a' =>
-          {
-            'count' => 4,
-            'color' => 'yellow',
-            'code' => 'town=revenue:10,to_city:1;path=a:0,b:_0;path=a:_0,b:1',
-          },
-          '4a' =>
-          {
-            'count' => 6,
-            'color' => 'yellow',
-            'code' => 'town=revenue:10,to_city:1;path=a:0,b:_0;path=a:_0,b:3',
-          },
-          '58a' =>
-          {
-            'count' => 6,
-            'color' => 'yellow',
-            'code' => 'town=revenue:10,to_city:1;path=a:0,b:_0;path=a:_0,b:2',
-          },
-          '7' => 4,
-          '8' => 14,
-          '9' => 14,
-
-          # Green
-          '80' => 2,
-          '81' => 2,
-          '82' => 6,
-          '83' => 6,
-          # Single City green tiles
-          '226' =>
-          {
-            'count' => 2,
-            'color' => 'green',
-            'code' => 'city=revenue:30,slots:1;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:6,b:_0',
-          },
-          '227' =>
-          {
-            'count' => 2,
-            'color' => 'green',
-            'code' => 'city=revenue:30,slots:1;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0;path=a:6,b:_0',
-          },
-          '228' =>
-          {
-            'count' => 2,
-            'color' => 'green',
-            'code' => 'city=revenue:30,slots:1;path=a:0,b:_0;path=a:1,b:_0;path=a:3,b:_0;path=a:4,b:_0',
-          },
-          '229' =>
-          {
-            'count' => 1,
-            'color' => 'green',
-            'code' => 'city=revenue:40,slots:2;path=a:1,b:_0;path=a:2,b:_0;path=a:4,b:_0;path=a:5,b:_0;label=O',
-          },
-          '407' =>
-          {
-            'count' => 1,
-            'color' => 'green',
-            'code' => 'city=revenue:40,slots:2;path=a:2,b:_0;path=a:3,b:_0;path=a:5,b:_0;path=a:5,b:_0;label=D',
-          },
-
-          # Brown
-          '544' => 2,
-          '545' => 2,
-          '546' => 2,
-          '611' => 6,
-          '230' =>
-          {
-            'count' => 1,
-            'color' => 'brown',
-            'code' => 'city=revenue:50,slots:2;path=a:0,b:_0;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0;label=O',
-          },
-          '233' =>
-          {
-            'count' => 2,
-            'color' => 'brown',
-            'code' => 'city=revenue:40,slots:2;path=a:0,b:_0;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0;label=LC',
-          },
-          '234' =>
-          {
-            'count' => 1,
-            'color' => 'brown',
-            'code' => 'city=revenue:50,slots:2;path=a:2,b:_0;path=a:3,b:_0;path=a:5,b:_0;label=D',
-          },
-
-          # Gray
-          '231' =>
-          {
-            'count' => 1,
-            'color' => 'gray',
-            'code' => 'city=revenue:60,slots:3;path=a:0,b:_0;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0;label=O',
-          },
-          '192' =>
-          {
-            'count' => 1,
-            'color' => 'gray',
-            'code' => 'city=revenue:50,slots:3;path=a:0,b:_0;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0;label=C',
-          },
-          '116' =>
-          {
-            'count' => 1,
-            'color' => 'gray',
-            'code' => 'city=revenue:60,slots:3;path=a:2,b:_0;path=a:3,b:_0;path=a:5,b:_0;label=D',
-          },
-          '409' =>
-          {
-            'count' => 1,
-            'color' => 'gray',
-            'code' => 'city=revenue:50,slots:3;path=a:0,b:_0;path=a:1,b:_0;path=a:2,b:_0;path=a:3,b:_0;path=a:4,b:_0;path=a:5,b:_0;label=L',
-          },
-          '51' => 2,
-        }.freeze
-        # rubocop:enable Layout/LineLength
-
-        LOCATION_NAMES = {
-          'A5' => 'Powder River Basin',
-          'A7' => 'West',
-          'B2' => 'Pacific Northwest',
-          'B6' => 'Scottsbluff',
-          'C3' => 'Chadron',
-          'C7' => 'Sidney',
-          'C9' => 'Denver',
-          'E7' => 'Sutherland',
-          'F6' => 'North Platte',
-          'G1' => 'Valentine',
-          'G7' => 'Kearney',
-          'G11' => 'McCook',
-          'H8' => 'Grand Island',
-          'H10' => 'Holdrege',
-          'I3' => 'ONeill',
-          'I5' => 'Norfolk',
-          'J8' => 'Lincoln',
-          'J12' => 'Beatrice',
-          'K3' => 'South Sioux City',
-          'K7' => 'Omaha',
-          'L4' => 'Chicago Norh',
-          'L6' => 'South Chicago',
-          'L10' => 'Nebraska City',
-          'L12' => 'Kansas City',
-        }.freeze
+        CLOSED_CORP_RESERVATIONS_REMOVED = false
+        CLOSED_CORP_TRAINS_REMOVED = false
 
         MARKET = [
-          %w[82 90 100 110 122 135 150 165 180 200 220 270 300 330 360 400],
-          %w[75 82 90 100p 110 122 135 150 165 180 200 220 270 300 330 360],
+          %w[82 90 100 110 122 135 150 165 180 200 220 245 270 300 330 360 400],
+          %w[75 82 90 100p 110 122 135 150 165 180 200 220 245 270 300 330 360],
           %w[70 75 82 90p 100 110 122 135 150 165 180 200 220],
           %w[65 70 75 82p 90 100 110 122 135 150 165],
           %w[60 65 70 75p 82 90 100 110],
@@ -206,9 +62,9 @@ module Engine
           {
             name: '2',
             train_limit: 4,
-            tiles: [:yellow],
+            tiles: %i[yellow],
             operating_rounds: 2,
-            status: ['can_buy_morison'],
+            status: ['can_buy_morison_bridging'],
           },
           {
             name: '3',
@@ -229,23 +85,23 @@ module Engine
           {
             name: '5',
             on: '5/7',
-            train_limit: 3,
+            train_limit: { 'ten-share': 3, local: 1 },
             tiles: %i[yellow green brown],
             operating_rounds: 2,
           },
           {
             name: '6',
             on: '6/8',
-            train_limit: 2,
+            train_limit: { 'ten-share': 2, local: 1 },
             tiles: %i[yellow green brown],
-            operating_rounds: 3,
+            operating_rounds: 2,
           },
           {
-            name: 'D',
+            name: '4D',
             on: '4D',
-            train_limit: 2,
+            train_limit: { 'ten-share': 2, local: 1 },
             tiles: %i[yellow green brown gray],
-            operating_rounds: 3,
+            operating_rounds: 2,
           },
         ].freeze
 
@@ -280,391 +136,386 @@ module Engine
             price: 450,
             num: 2,
             events: [{ 'type' => 'close_companies' },
-                     { 'type' => 'local_railroads_available' }],
+                     { 'type' => 'full_capitalization' },
+                     { 'type' => 'local_railways_available' }],
           },
           {
             name: '6/8',
-            distance: [{ 'pay' => 6, 'visit' => 8 }],
+            distance: [{ 'nodes' => %w[city offboard town], 'pay' => 6, 'visit' => 8 }],
             price: 600,
             num: 2,
+            events: [{ 'type' => 'remove_tokens' }],
           },
           {
             name: '4D',
-            # Can pick 4 best city or offboards, skipping smaller cities.
             distance: [{ 'nodes' => %w[city offboard], 'pay' => 4, 'visit' => 99, 'multiplier' => 2 },
-                       { 'nodes' => ['town'], 'pay' => 99, 'visit' => 99 }],
+                       { 'nodes' => %w[town], 'pay' => 0, 'visit' => 99 }],
             price: 900,
             num: 20,
             available_on: '6',
-            discount: { '4' => 300, '5' => 300, '6' => 300 },
           },
         ].freeze
 
-        COMPANIES = [
-          {
-            name: 'Denver Pacific Railroad',
-            value: 20,
-            revenue: 5,
-            desc: 'Once per game, allows Corporation owner to lay or upgrade a tile in B8',
-            sym: 'DPR',
-            abilities: [
-              {
-                type: 'blocks_hexes',
-                owner_type: 'player',
-                remove: 3, # No tile may be placed on C7 until phase 3.
-                hexes: ['B8'],
-              },
-              {
-                type: 'tile_lay',
-                owner_type: 'corporation',
-                hexes: ['B8'],
-                tiles: %w[3 4 5 80 81 82 83],
-                count: 1,
-                on_phase: 3,
-              },
-            ],
-            color: nil,
-          },
-          {
-            name: 'Morison Bridging Company',
-            value: 40,
-            revenue: 10,
-            desc: 'Corporation owner gets two bridge discount tokens',
-            sym: 'P2',
-            abilities: [
-              {
-                type: 'tile_discount',
-                discount: 60,
-                terrain: 'water',
-                owner_type: 'corporation',
-                hexes: %w[K3 K5 K7 J8 L8 L10],
-                count: 2,
-                remove: 5,
-              },
-            ],
-            color: nil,
-          },
-          {
-            name: 'Armour and Company',
-            value: 70,
-            revenue: 15,
-            desc: 'An owning Corporation may place a cattle token in any Town or City',
-            sym: 'P3',
-            abilities: [
-              {
-                type: 'assign_hexes',
-                hexes: %w[B6 C3 C7 C9 E7 F6 G7 G11 H8 H10 I3 I5 J8 J12 K3 K7 L10],
-                count: 1,
-                when: 'track_and_token',
-                owner_type: 'corporation',
-              },
-              { type: 'hex_bonus', owner_type: 'corporation', amount: 20, hexes: [] },
-            ],
-            color: nil,
-          },
-          {
-            name: 'Central Pacific Railroad',
-            value: 100,
-            revenue: 15,
-            desc: 'May exchange for share in Colorado & Southern Railroad',
-            sym: 'P4',
-            abilities: [
-                {
-                  type: 'exchange',
-                  corporations: ['C&S'],
-                  owner_type: 'player',
-                  when: 'owning_player_stock_round',
-                  from: %w[ipo market],
-                },
-                {
-                  type: 'blocks_hexes',
-                  owner_type: 'player',
-                  hexes: ['C7'],
-                  # on_phase: 3,
-                  remove: 3, # No tile may be placed on C7 until phase 3.
-                },
-              ],
-            color: nil,
-          },
-          {
-            name: 'Crédit Mobilier',
-            value: 130,
-            revenue: 5,
-            desc: '$5 revenue each time ANY tile is laid or upgraded.',
-            sym: 'P5',
-            abilities: [
-              {
-                type: 'tile_income',
-                income: 5,
-              },
-            ],
-            color: nil,
-          },
-          {
-            name: 'Union Pacific Railroad',
-            value: 175,
-            revenue: 25,
-            desc: 'Comes with President\'s Certificate of the Union Pacific Railroad',
-            sym: 'P6',
-            abilities: [
-              { type: 'shares', shares: 'UP_0' },
-              { type: 'close', when: 'bought_train', corporation: 'UP' },
-              { type: 'no_buy' },
-            ],
-            color: nil,
-          },
-        ].freeze
+        STATUS_TEXT = Base::STATUS_TEXT.merge(
+          'can_buy_morison_bridging' => ['Can Buy Morison Bridging Company'],
+        )
 
-        CORPORATIONS = [
-          {
-            float_percent: 20,
-            sym: 'UP',
-            name: 'Union Pacific',
-            logo: '18_neb/UP',
-            tokens: [0, 40, 100],
-            coordinates: 'K7',
-            color: '#376FFF',
-            always_market_price: true,
-            reservation_color: nil,
-          },
-          {
-            float_percent: 20,
-            sym: 'CBQ',
-            name: 'Chicago Burlington & Quincy',
-            logo: '18_neb/CBQ',
-            tokens: [0, 40, 100, 100],
-            coordinates: 'L6',
-            color: '#666666',
-            always_market_price: true,
-            reservation_color: nil,
-          },
-          {
-            float_percent: 20,
-            sym: 'CNW',
-            name: 'Chicago & Northwestern',
-            logo: '18_neb/CNW',
-            tokens: [0, 40, 100],
-            coordinates: 'L4',
-            color: '#2C9846',
-            always_market_price: true,
-            reservation_color: nil,
-          },
-          {
-            float_percent: 20,
-            sym: 'DRG',
-            name: 'Denver & Rio Grande',
-            logo: '18_neb/DRG',
-            tokens: [0, 40],
-            coordinates: 'C9',
-            color: '#D4AF37',
-            text_color: 'black',
-            always_market_price: true,
-            reservation_color: nil,
-          },
-          {
-            float_percent: 20,
-            sym: 'MP',
-            name: 'Missouri Pacific',
-            logo: '18_neb/MP',
-            tokens: [0, 40, 100],
-            coordinates: 'L12',
-            color: '#874301',
-            reservation_color: nil,
-            always_market_price: true,
-          },
-          {
-            float_percent: 20,
-            sym: 'C&S',
-            name: 'Colorado & Southern',
-            logo: '18_neb/CS',
-            tokens: [0, 40, 100, 100],
-            coordinates: 'A7',
-            color: '#AE4A84',
-            always_market_price: true,
-            reservation_color: nil,
-          },
-          {
-            float_percent: 40,
-            sym: 'OLB',
-            name: 'Omaha, Lincoln & Beatrice',
-            logo: '18_neb/OLB',
-            shares: [40, 20, 20, 20],
-            tokens: [0, 40],
-            coordinates: 'K7',
-            max_ownership_percent: 100,
-            color: '#F40003',
-            type: 'local',
-            always_market_price: true,
-            reservation_color: nil,
-          },
-          {
-            float_percent: 40,
-            sym: 'NR',
-            name: 'NebKota',
-            logo: '18_neb/NR',
-            shares: [40, 20, 20, 20],
-            tokens: [0, 40],
-            coordinates: 'C3',
-            max_ownership_percent: 100,
-            color: '#000000',
-            type: 'local',
-            always_market_price: true,
-            reservation_color: nil,
-          },
-        ].freeze
+        EVENTS_TEXT = Base::EVENTS_TEXT.merge(
+          'full_capitalization' => ['Full Capitalization',
+                                    'Newly started 10-share corporations receive remaining capitalization once 5 shares sold'],
+          'local_railways_available' => ['Local Railways Available', 'Local Railways can now be started'],
+          'remove_tokens' => ['Remove Tokens', 'All private company tokens are removed from the game'],
+        )
 
-        # rubocop:disable Layout/LineLength
-        HEXES = {
-          white: {
-            # empty tiles
-            %w[B4 B8 C5 D2 D4 D6 E3 E5 F2 F4 F8 F10 F12 G3 G5 G9 H2 H4 H6 H12 I7 I9 I11 J2 J4 J6 J10 K9 K11] => '',
-            %w[K5 L8] => 'upgrade=cost:60,terrain:water',
-            # town tiles
-            %w[B6 C3 C7 E7 F6 G7 G11 H8 H10 I3 I5 J12] => 'town=revenue:0',
-            %w[K3] => 'town=revenue:0;upgrade=cost:20,terrain:water',
-            %w[J8] => 'town=revenue:0;upgrade=cost:40,terrain:water',
-            %w[L10] => 'town=revenue:0;upgrade=cost:60,terrain:water',
-          },
-          yellow: {
-            # city tiles
-            ['C9'] => 'city=revenue:30;path=a:5,b:_0',
-            # Omaha
-            ['K7'] => 'city=revenue:30,loc:5;town=revenue:10,loc:4,to_city:1;path=a:1,b:_1;path=a:_1,b:4;path=a:1,b:_0;upgrade=cost:60,terrain:water',
-          },
-          gray: {
-            ['D8'] => 'path=a:5,b:2',
-            ['D10'] => 'path=a:4,b:2',
-            ['E9'] => 'junction;path=a:5,b:_0;path=a:_0,b:2;path=a:_0,b:1;path=a:_0,b:3',
-            ['I1'] => 'path=a:1,b:5',
-            ['K1'] => 'path=a:1,b:6',
-            ['K13'] => 'path=a:2,b:3',
-            ['M9'] => 'path=a:2,b:1',
-          },
-          red: {
-            # Powder River Basin
-            ['A5'] => 'offboard=revenue:yellow_0|green_30|brown_60;path=a:4,b:_0;path=a:5,b:_0;path=a:0,b:_0;label=W',
-            # West
-            ['A7'] => 'city=revenue:yellow_30|green_40|brown_50;path=a:4,b:_0;path=a:5,b:_0;path=a:_0,b:3;label=W',
-            # Pacific NW
-            ['B2'] => 'offboard=revenue:yellow_30|green_40|brown_50;path=a:0,b:_0;path=a:5,b:_0;label=W',
-            # Valentine
-            ['G1'] => 'town=revenue:yellow_30|green_40|brown_50;path=a:0,b:_0;path=a:5,b:_0;path=a:1,b:_0',
-            # Chi North
-            ['L4'] => 'city=revenue:yellow_30|green_50|brown_60;path=a:1,b:_0,terminal:1;path=a:2,b:_0,terminal:1;label=E',
-            # South Chi
-            ['L6'] => 'city=revenue:yellow_20|green_40|brown_60;path=a:2,b:_0,terminal:1;path=a:0,b:_0,terminal:1;path=a:1,b:_0,terminal:1;label=E',
-            # KC
-            ['L12'] => 'city=revenue:yellow_30|green_50|brown_60;path=a:2,b:_0,terminal:1;path=a:3,b:_0,terminal:1;label=E',
-          },
+        CATTLE_OPEN_ICON = 'cattle_open'
+        CATTLE_CLOSED_ICON = 'cattle_closed'
+
+        ASSIGNMENT_TOKENS = {
+          CATTLE_OPEN_ICON => '/icons/18_neb/cattle_open.svg',
+          CATTLE_CLOSED_ICON => '/icons/18_neb/cattle_closed.svg',
         }.freeze
-        # rubocop:enable Layout/LineLength
 
-        LAYOUT = :flat
+        TILE_LAYS = [{ lay: true, upgrade: true }, { lay: true, upgrade: :not_if_upgraded }].freeze
 
-        EBUY_PRES_SWAP = false # allow presidential swaps of other corps when ebuying
-        EBUY_OTHER_VALUE = false # allow ebuying other corp trains for up to face
-        HOME_TOKEN_TIMING = :float # not :operating_round
-        # Two tiles can be laid, only one upgrade
-        TILE_LAYS = [{ lay: true, upgrade: true }, { lay: true, cost: 20, upgrade: :not_if_upgraded }].freeze
+        def bridge_company
+          @bridge_company ||= @companies.find { |company| company.id == 'P2' }
+        end
+
+        def cattle_company
+          @cattle_company ||= company_by_id('P3')
+        end
+
+        def tile_income_company
+          @tile_income_company ||= @companies.find { |company| company.id == 'P5' }
+        end
+
+        def setup_preround
+          setup_company_purchase_prices
+        end
+
+        def setup_company_purchase_prices
+          @companies.each do |company|
+            range = case company
+                    when bridge_company
+                      [1.0, 1.0]
+                    when tile_income_company
+                      [0.5, 1.0]
+                    else
+                      [0.5, 1.5]
+                    end
+            set_company_purchase_price(company, *range)
+          end
+        end
+
+        def set_company_purchase_price(company, min_multiplier, max_multiplier)
+          company.min_price = (company.value * min_multiplier).ceil
+          company.max_price = (company.value * max_multiplier).floor
+        end
 
         def setup
-          @corporations, @future_corporations = @corporations.partition { |corporation| corporation.type != :local }
+          @corporations_to_fully_capitalize = []
+          @locals = @corporations.select { |c| c.type == :local }
+          move_local_reservations_to_city
+          place_neutral_token(valentine_hex)
         end
 
-        def omaha_upgrade(to, from)
-          return to == '229' if from == 'yellow'
-          return to == '230' if from == 'green'
-          return to == '231' if from == 'brown'
-        end
-
-        def denver_upgrade(to, from)
-          return to == '407' if from == :yellow
-          return to == '234' if from == :green
-          return to == '116' if from == :brown
-        end
-
-        def upgrades_to?(from, to, _special = false, selected_company: nil)
-          case from.hex.name
-          when OMAHA_HEX
-            return omaha_upgrade(to.name, from.color)
-          when DENVER_HEX
-            return denver_upgrade(to.name, from.color)
-          when LINCOLN_HEX
-            return GREEN_CITIES.include?(to.name) if from.color == :yellow
-            return to.name == '233' if from.color == :green
-            return to.name == '409' if from.color == :brown
-          when CHADRON_HEX
-            return GREEN_CITIES.include?(to.name) if from.color == :yellow
-            return to.name == '233' if from.color == :green
-            return to.name == '192' if from.color == :brown
-          else
-            return GREEN_CITIES.include?(to.name) if YELLOW_TOWNS.include? from.hex.tile.name
-            return BROWN_CITIES.include?(to.name) if GREEN_CITIES.include? from.hex.tile.name
-            return GRAY_CITIES.include?(to.name) if BROWN_CITIES.include? from.hex.tile.name
-          end
-
-          super
-        end
-
-        def all_potential_upgrades(tile, tile_manifest: false, selected_company: nil)
-          upgrades = super
-          return upgrades unless tile_manifest
-
-          upgrades |= GREEN_CITIES if YELLOW_TOWNS.include?(tile.name)
-          upgrades
-        end
-
-        # borrowed from 1846 for initial reverse corporation order
-        def operating_order
-          corporations = @corporations.select(&:floated?)
-          if @turn == 1 && (@round_num || 1) == 1
-            corporations.sort_by! do |c|
-              sp = c.share_price
-              [sp.price, sp.corporations.find_index(c)]
+        def move_local_reservations_to_city
+          @locals.each do |local|
+            hex = hex_by_id(local.coordinates)
+            hex.tile.remove_reservation!(local)
+            [@tiles, @all_tiles].each do |tiles|
+              brown_tile = tiles.find { |t| local_home_track_brown_upgrade?(hex.tile, t) }
+              brown_tile.cities.first.add_reservation!(local)
             end
-          else
-            corporations.sort!
           end
-          corporations
         end
 
-        def event_local_railroads_available!
-          @log << 'Local railroads are now available!'
+        def valentine_hex
+          @valentine_hex ||= hex_by_id('G1')
+        end
 
-          @corporations += @future_corporations
-          @future_corporations = []
+        def place_neutral_token(hex)
+          @neutral_corp ||= Corporation.new(sym: 'N', name: 'Neutral', logo: '18_neb/neutral', tokens: [])
+          hex.tile.cities.first.place_token(@neutral_corp,
+                                            Token.new(@neutral_corp, price: 0, type: :neutral),
+                                            check_tokenable: false)
+        end
+
+        def event_close_companies!
+          super
+          # Bridge tokens remain in the game until phase 6
+          company_by_id('P2')&.revenue = 0
+          cattle_company&.revenue = 0
+        end
+
+        def event_full_capitalization!
+          @log << "-- Event: #{EVENTS_TEXT['full_capitalization'][1]} --"
+          @corporations_fully_capitalize = true
+        end
+
+        def event_local_railways_available!
+          @log << "-- Event: #{EVENTS_TEXT['local_railways_available'][1]} --"
+          @locals_available = true
+        end
+
+        def event_remove_tokens!
+          @log << "-- Event: #{EVENTS_TEXT['remove_tokens'][1]} --"
+          return unless @cattle_token_hex
+
+          remove_cattle_token
+        end
+
+        def remove_cattle_token
+          @cattle_token_hex.remove_assignment!(self.class::CATTLE_OPEN_ICON)
+          @cattle_token_hex.remove_assignment!(self.class::CATTLE_CLOSED_ICON)
+          @corporations.each do |corporation|
+            corporation.remove_assignment!(self.class::CATTLE_OPEN_ICON)
+            corporation.remove_assignment!(self.class::CATTLE_CLOSED_ICON)
+          end
+        end
+
+        def reorder_players(order = nil, log_player_order: false)
+          @round.is_a?(Round::Auction) ? super(:most_cash, log_player_order: true) : super
         end
 
         def init_round
           Round::Auction.new(self, [
             Engine::Step::CompanyPendingPar,
-            G18Neb::Step::PriceFindingAuction,
+            G18Neb::Step::BidAuction,
           ])
         end
 
         def stock_round
           Round::Stock.new(self, [
-            Engine::Step::DiscardTrain,
-            Engine::Step::Exchange,
-            Engine::Step::HomeToken,
-            Engine::Step::SpecialTrack,
-            Engine::Step::BuySellParShares,
+            G18Neb::Step::LocalHomeTrack,
+            G18Neb::Step::Exchange,
+            G18Neb::Step::BuySellParShares,
           ])
         end
 
         def operating_round(round_num)
+          @round_num = round_num
           Round::Operating.new(self, [
-            Engine::Step::Bankrupt,
-            Engine::Step::Exchange,
-            Engine::Step::BuyCompany,
-            Engine::Step::Track,
-            Engine::Step::Token,
+            G18Neb::Step::Bankrupt,
+            G18Neb::Step::Assign,
+            G18Neb::Step::SpecialChoose,
+            G18Neb::Step::BuyCompany,
+            G18Neb::Step::SpecialTrack,
+            G18Neb::Step::Track,
+            G18Neb::Step::Token,
             Engine::Step::Route,
-            Engine::Step::Dividend,
+            G18Neb::Step::Dividend,
             Engine::Step::DiscardTrain,
-            Engine::Step::BuyTrain,
-            [Engine::Step::BuyCompany, { blocks: true }],
+            G18Neb::Step::BuyTrain,
+            [G18Neb::Step::BuyCompany, { blocks: true }],
           ], round_num: round_num)
+        end
+
+        def ipo_name(_entity = nil)
+          'Treasury'
+        end
+
+        def upgrades_to?(from, to, special = false, selected_company: nil)
+          return local_home_track_brown_upgrade?(from, to) if @round.is_a?(Round::Stock)
+          return true if town_to_city_upgrade?(from, to)
+          return true if omaha_green_upgrade?(from, to)
+
+          super
+        end
+
+        def omaha_green_upgrade?(from, to)
+          from.color == :yellow && from.label&.to_s == 'O' && to.name == 'X04'
+        end
+
+        def town_to_city_upgrade?(from, to)
+          %w[3 4 58].include?(from.name) && %w[X01 X02 X03].include?(to.name)
+        end
+
+        def local_home_track_brown_upgrade?(from, to)
+          to.color == :brown && @locals.map(&:coordinates).include?(from.hex.id) && upgrades_to_correct_label?(from, to)
+        end
+
+        def upgrade_cost(tile, _hex, entity, spender)
+          terrain_cost = tile.upgrades.sum(&:cost)
+          discounts = 0
+
+          # Tile discounts must be activated
+          if entity.company? && (ability = entity.all_abilities.find { |a| a.type == :tile_discount })
+            discounts = tile.upgrades.sum do |upgrade|
+              next unless upgrade.terrains.include?(ability.terrain)
+
+              discount = [upgrade.cost, ability.discount].min
+              log_cost_discount(spender, ability, discount) if discount.positive?
+              discount
+            end
+          end
+
+          terrain_cost -= TILE_COST if terrain_cost.positive?
+          terrain_cost - discounts
+        end
+
+        def purchasable_companies(entity = nil)
+          if @phase.status.include?('can_buy_morison_bridging') &&
+              bridge_company&.owner&.player? &&
+              entity != bridge_company.owner
+            [bridge_company]
+          elsif @phase.status.include?('can_buy_companies')
+            super
+          else
+            []
+          end
+        end
+
+        def after_phase_change(name)
+          set_company_purchase_price(bridge_company, 0.5, 1.5) if name == '3' && bridge_company
+        end
+
+        def after_par(corporation)
+          super
+          return if corporation.type == :local || !corporations_fully_capitalize?
+
+          @corporations_to_fully_capitalize << corporation
+        end
+
+        def place_home_token(corporation)
+          unless can_place_home_token?(corporation)
+            @round.pending_home_track << corporation unless @round.pending_home_track.include?(corporation)
+            return
+          end
+
+          super
+        end
+
+        def can_place_home_token?(corporation)
+          return true unless corporation.type == :local
+
+          %i[brown gray].include?(hex_by_id(corporation.coordinates).tile.color)
+        end
+
+        def corporations_fully_capitalize?
+          @corporations_fully_capitalize
+        end
+
+        def locals_available?
+          @locals_available
+        end
+
+        def can_par?(corporation, _parrer)
+          return false if corporation.type == :local && !locals_available?
+
+          super
+        end
+
+        def can_gain_from_player?(entity, bundle)
+          bundle.corporation == entity && !causes_president_swap?(entity, bundle)
+        end
+
+        def causes_president_swap?(corporation, bundle)
+          return false unless corporation.president?(bundle.owner)
+
+          seller = bundle.owner
+          share_holders = corporation.player_share_holders(corporate: true)
+          remaining = share_holders[seller] - bundle.percent
+          next_highest = share_holders.reject { |k, _| k == seller }.values.max || 0
+          remaining < next_highest
+        end
+
+        def check_for_full_capitalization(corporation)
+          return if !@corporations_to_fully_capitalize.include?(corporation) || corporation.num_ipo_shares != 5
+
+          cash = corporation.num_ipo_shares * corporation.par_price.price
+          @bank.spend(cash, corporation)
+          @share_pool.transfer_shares(ShareBundle.new(corporation.shares_of(corporation)), @share_pool)
+          @corporations_to_fully_capitalize.delete(corporation)
+          @log << "#{corporation.name} becomes fully capitalized, receiving #{format_currency(cash)} in its treasury. " \
+                  "#{corporation.name}'s remaining shares are placed in the market."
+        end
+
+        def issuable_shares(entity)
+          max_issuable = (entity.total_shares * 0.5).floor - entity.num_market_shares
+          return [] unless max_issuable.positive?
+
+          bundles_for_corporation(entity, entity, shares: entity.shares_of(entity).first(max_issuable))
+        end
+
+        def redeemable_shares(entity)
+          ([@share_pool] + @players).flat_map do |sh|
+            sh.shares_of(entity).reject(&:president).find { |s| s.price <= entity.cash }&.to_bundle
+          end.compact
+        end
+
+        def operating_order
+          corporations = @corporations.select(&:floated?)
+          if @turn == 1 && (@round_num || 1) == 1
+            corporations.sort_by do |c|
+              sp = c.share_price
+              [sp.price, sp.corporations.find_index(c)]
+            end
+          else
+            corporations.sort
+          end
+        end
+
+        def check_other(route)
+          double_chicago = (self.class::CHICAGO_HEXES & route.stops.map { |s| s.hex.id }) == self.class::CHICAGO_HEXES
+          raise GameError, 'Cannot include both North and South Chicago' if double_chicago
+        end
+
+        def revenue_for(route, stops)
+          super + east_west_bonus(route, stops) + cattle_bonus(route, stops)
+        end
+
+        def revenue_str(route)
+          stops = route.stops
+          stop_hexes = stops.map(&:hex)
+          str = route.hexes.map { |h| stop_hexes.include?(h) ? h&.name : "(#{h&.name})" }.join('-')
+          str += ' + EW' if east_west_route?(route.stops)
+          str
+        end
+
+        def east_west_route?(stops)
+          (stops.map { |s| s.tile.label&.to_s }.uniq & %w[E W]).size == 2
+        end
+
+        def east_west_bonus(route, stops)
+          return 0 unless east_west_route?(stops)
+
+          stops.map { |stop| stop.route_revenue(route.phase, route.train) }.max
+        end
+
+        def cattle_bonus(route, stops)
+          closed_cattle = stops.any? { |stop| stop.hex.assigned?(self.class::CATTLE_CLOSED_ICON) }
+          open_cattle = !closed_cattle && stops.any? { |stop| stop.hex.assigned?(self.class::CATTLE_OPEN_ICON) }
+
+          if (open_cattle && route.train.owner.assigned?(self.class::CATTLE_OPEN_ICON)) ||
+              (closed_cattle && route.train.owner.assigned?(self.class::CATTLE_CLOSED_ICON))
+            20
+          elsif open_cattle
+            10
+          else
+            0
+          end
+        end
+
+        def cattle_token_assigned!(hex)
+          cattle_company.add_ability(Engine::Ability::ChooseAbility.new(type: :choose_ability, choices: ['Close Token'],
+                                                                        when: 'token'))
+          @cattle_token_hex = hex
+        end
+
+        def rust(train)
+          train.rusted = true
+          @depot.reclaim_train(train)
+        end
+
+        def close_corporation(corporation, quiet: false)
+          if corporation.assigned?(self.class::CATTLE_OPEN_ICON) || corporation.assigned?(self.class::CATTLE_CLOSED_ICON)
+            remove_cattle_token
+          end
+          super
+          corporation = reset_corporation(corporation)
+          hex_by_id(corporation.coordinates).tile.add_reservation!(corporation, 0)
+          @corporations << corporation
         end
       end
     end

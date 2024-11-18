@@ -12,7 +12,12 @@ module Engine
             @home_token_timing = @game.class::HOME_TOKEN_TIMING
             @entities.each { |c| @game.place_home_token(c) } if @home_token_timing == :operating_round
             (@game.corporations + @game.minors + @game.companies).each(&:reset_ability_count_this_or!)
+            @game.done_this_round.clear
             after_setup
+          end
+
+          def skip_entity?(entity)
+            entity.closed? || @game.done_this_round[entity]
           end
 
           def after_process(action)
@@ -31,12 +36,9 @@ module Engine
             next_entity! unless @game.finished
           end
 
-          def next_entity!
-            after_operating(@entities[@entity_index])
-            super
-          end
-
           def start_operating
+            return if @game.finished
+
             entity = @entities[@entity_index]
 
             if @game.frozen?(entity)
@@ -47,7 +49,7 @@ module Engine
             super
           end
 
-          def after_operating(entity)
+          def after_end_of_turn(entity)
             return unless entity&.corporation?
 
             @game.done_operating!(entity)
@@ -61,8 +63,11 @@ module Engine
             2.times { @game.stock_market.move_left(entity) }
             @game.log_share_price(entity, old_price, 2)
 
-            # sell shares of controlling corps
-            entity.corporate_shares.select { |s| @game.in_chain?(entity, s.corporation) }.each do |share|
+            return unless @game.circular?(entity)
+
+            # for circular ownership, sell shares of corps that were in chain when it became frozen
+            # circular will remain set as long as corp is frozen
+            entity.corporate_shares.select { |s| @game.in_cicular_chain?(entity, s.corporation) }.each do |share|
               @game.sell_shares_and_change_price(share.to_bundle, allow_president_change: true)
             end
             @game.update_frozen!

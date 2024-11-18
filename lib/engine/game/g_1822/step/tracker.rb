@@ -78,6 +78,13 @@ module Engine
             next 0 unless hex.targeting?(neighbor)
 
             tile.borders.delete(border)
+
+            # delete border on adjacent hex side if it also has track, i.e., if
+            # it was preprinted on a gray hex
+            n_tile = neighbor.tile
+            n_edge = hex.invert(edge)
+            n_tile.borders.reject! { |nb| nb.edge == n_edge } if n_tile.exits.include?(n_edge)
+
             types << border.type
             cost - border_cost_discount(entity, spender, border, cost, hex)
           end
@@ -100,6 +107,12 @@ module Engine
 
         def upgraded_track?(from, _to, _hex)
           from.color != :white
+        end
+
+        def update_token!(action, entity, tile, old_tile)
+          @game.remove_extra_tokens!(tile)
+
+          super
         end
       end
     end

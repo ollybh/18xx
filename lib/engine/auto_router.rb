@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# backtick_javascript: true
+
 require_relative 'game_error'
 require_relative 'route'
 
@@ -12,13 +14,30 @@ module Engine
     end
 
     def compute(corporation, **opts)
+      trains = @game.route_trains(corporation).sort_by(&:price).reverse
+
+      train_groups =
+        if (groups = @game.class::TRAIN_AUTOROUTE_GROUPS)
+          trains.group_by { |t| groups.index { |g| g.include?(t.name) } }.values
+        else
+          [trains]
+        end
+
+      routes = opts.delete(:routes)
+
+      train_groups.flat_map do |train_group|
+        opts[:routes] = routes.select { |r| train_group.include?(r.train) }
+        compute_for_train_group(train_group, corporation, **opts)
+      end
+    end
+
+    def compute_for_train_group(trains, corporation, **opts)
       static = opts[:routes] || []
       path_timeout = opts[:path_timeout] || 30
       route_timeout = opts[:route_timeout] || 10
       route_limit = opts[:route_limit] || 10_000
 
       connections = {}
-      trains = @game.route_trains(corporation).sort_by(&:price).reverse
 
       graph = @game.graph_for_entity(corporation)
       nodes = graph.connected_nodes(corporation).keys.sort_by do |node|
@@ -46,11 +65,11 @@ module Engine
 
       nodes.each do |node|
         if Time.now - now > path_timeout
-          puts 'Path timeout reached'
+          LOGGER.debug('Path timeout reached')
           path_walk_timed_out = true
           break
         else
-          puts "Path search: #{nodes.index(node)} / #{nodes.size} - paths starting from #{node.hex.name}"
+          LOGGER.debug { "Path search: #{nodes.index(node)} / #{nodes.size} - paths starting from #{node.hex.name}" }
         end
 
         walk_corporation = graph.no_blocking? ? nil : corporation
@@ -101,9 +120,16 @@ module Engine
             next unless left
 
             chains << { nodes: [left, nil], paths: [] }
+
+            # use the Local train's 1 city instead of any paths as their key;
+            # only 1 train can visit each city, but we want Locals to be able to
+            # visit multiple different cities if a corporation has more than one
+            # of them
+            id = [left]
+          else
+            id = chains.flat_map { |c| c[:paths] }.sort!
           end
 
-          id = chains.flat_map { |c| c[:paths] }.sort!
           next if connections[id]
 
           connections[id] = chains.map do |c|
@@ -140,8 +166,10 @@ module Engine
       end
 
       # Check that there are no duplicate hexside bits (algorithm error)
-      puts "Evaluated #{connections.size} paths, found #{@next_hexside_bit} unique hexsides, and found valid routes "\
-           "#{train_routes.map { |k, v| k.name + ':' + v.size.to_s }.join(', ')} in: #{Time.now - now}"
+      LOGGER.debug do
+        "Evaluated #{connections.size} paths, found #{@next_hexside_bit} unique hexsides, and found valid routes "\
+          "#{train_routes.map { |k, v| k.name + ':' + v.size.to_s }.join(', ')} in: #{Time.now - now}"
+      end
 
       static.each do |route|
         # recompute bitfields of passed-in routes since the bits may have changed across auto-router runs
@@ -156,8 +184,10 @@ module Engine
       sorted_routes = train_routes.map { |_train, routes| routes }
 
       limit = sorted_routes.map(&:size).reduce(&:*)
-      puts "Finding route combos of best #{train_routes.map { |k, v| k.name + ':' + v.size.to_s }.join(', ')} "\
-           "routes with depth #{limit}"
+      LOGGER.debug do
+        "Finding route combos of best #{train_routes.map { |k, v| k.name + ':' + v.size.to_s }.join(', ')} "\
+          "routes with depth #{limit}"
+      end
 
       now = Time.now
       possibilities = js_evaluate_combos(sorted_routes, route_timeout)
@@ -178,7 +208,7 @@ module Engine
         @game.routes_revenue(routes)
       rescue GameError => e
         # report error but still include combo with errored route in the result set
-        puts " Sanity check error, likely an auto_router bug: #{e}"
+        LOGGER.debug { " Sanity check error, likely an auto_router bug: #{e}" }
         routes
       end || []
 
@@ -223,8 +253,8 @@ module Engine
               hexside_right  = node2.edges[0].id
               check_and_set(bitfield, hexside_left, hexside_right, hexside_bits)
             else
-              puts "  ERROR: auto-router found unexpected number of path node edges #{node1.edges.size}. "\
-                   'Route combos may be be incorrect'
+              LOGGER.debug "  ERROR: auto-router found unexpected number of path node edges #{node1.edges.size}. "\
+                           'Route combos may be be incorrect'
             end
           end
         end
@@ -378,8 +408,10 @@ module Engine
         }
       }
 
-      puts "Found #{possibilities_count} possible combos (#{rb_possibilities.size} best) and rejected #{conflicts} "\
-           "conflicting combos in: #{Time.now - now}"
+      LOGGER.debug do
+        "Found #{possibilities_count} possible combos (#{rb_possibilities.size} best) and rejected #{conflicts} "\
+          "conflicting combos in: #{Time.now - now}"
+      end
       rb_possibilities
     end
 

@@ -38,6 +38,11 @@ module Engine
                       else
                         @game.current_entity
                       end
+
+            if spender.type == :minor && %i[brown gray].include?(action.tile.color)
+              raise GameError, 'Minor cannot upgrade past green'
+            end
+
             @in_process = true
 
             minor_single_use = false
@@ -70,7 +75,7 @@ module Engine
 
               next unless ability_.type == :tile_lay
 
-              if ability_.count <= 0 && ability_.closed_when_used_up
+              if ability_.closed_when_used_up && ability_.count <= 0
                 @log << "#{ability_.owner.name} closes"
                 ability_.owner.close!
               end
@@ -207,8 +212,10 @@ module Engine
           end
 
           def potential_tiles_for_entity(entity, hex, tile_ability)
+            return [] if entity.owner.type == :minor && %i[green brown gray].include?(hex.tile.color)
+
             advanced_tile_lay = @game.can_upgrade_one_phase_ahead?(entity)
-            return [] if advanced_tile_lay && entity.owner.type == :minor && !hex.tile.color == :yellow
+            return [] if advanced_tile_lay && entity.owner.type == :minor && hex.tile.color != :yellow
 
             special = tile_ability.special if tile_ability.type == :tile_lay
 

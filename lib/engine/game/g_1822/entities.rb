@@ -16,7 +16,6 @@ module Engine
                   'However, once acquired the acquiring company needs to check whether it is at train limit and '\
                   'discard any trains held in excess of limit.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P2-MtonR (Remove Town)',
@@ -42,7 +41,6 @@ module Engine
                 combo_entities: %w[P8 P10 P11 P12],
               },
             ],
-            color: nil,
           },
           {
             name: 'P3-S&HR (Permanent 2T)',
@@ -60,7 +58,6 @@ module Engine
                   'from the 2P, this also still counts as a normal dividend for stock price movement purposes. Does '\
                   'not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P4-SDR (Permanent 2T)',
@@ -78,7 +75,6 @@ module Engine
                   'from the 2P, this also still counts as a normal dividend for stock price movement purposes. '\
                   'Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P5-LC&DR (English Channel)',
@@ -115,7 +111,6 @@ module Engine
                 when: 'token',
               },
             ],
-            color: nil,
           },
           {
             name: 'P6-L&SR (Mail Contract)',
@@ -129,7 +124,6 @@ module Engine
                   'the mail contract by stopping at a large city and not running beyond it to include small '\
                   'stations. Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P7-S&BR (Mail Contract)',
@@ -143,7 +137,6 @@ module Engine
                   'the mail contract by stopping at a large city and not running beyond it to include small '\
                   'stations. Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P8-E&GR (Hill Discount)',
@@ -153,9 +146,10 @@ module Engine
             desc: 'MAJOR/MINOR, Phase 3. Mountain/Hill Discount. Either: The acquiring company receives a discount '\
                   'token that can be used to pay the full cost of a single track tile lay on a rough terrain, hill '\
                   'or mountain hex. This closes the company. Or: The acquiring company rejects the token and '\
-                  'receives a £20 discount off the cost of all hill and mountain terrain (i.e. NOT off the cost of '\
-                  'rough terrain). The private company does not close. Closes if free token taken when acquired. '\
-                  'Otherwise, flips when acquired and does not close.',
+                  'receives a £20 discount off the cost of all £60 hill and £80 mountain terrain (i.e. NOT off the cost of '\
+                  '£40 rough terrain). The private company does not close. Closes if free token taken when acquired. '\
+                  'Otherwise, flips when acquired and does not close. Rough terrain and hills are any hexes including a '\
+                  'green dome icon. Mountains are indicated by a brown triangle.',
             abilities: [
               {
                 type: 'tile_lay',
@@ -177,7 +171,7 @@ module Engine
                 type: 'tile_discount',
                 owner_type: 'corporation',
                 discount: 20,
-                terrain: 'hill',
+                hexes: %w[C40 E10 F9 G8 H7 H9 H15 I8 I10 I22 J7 J21 J23 J25],
               },
               {
                 type: 'tile_discount',
@@ -186,7 +180,6 @@ module Engine
                 terrain: 'mountain',
               },
             ],
-            color: nil,
           },
           {
             name: 'P9-M&GNR (Double Cash)',
@@ -198,7 +191,6 @@ module Engine
                   'order in the next stock round. If held by a company it pays revenue of '\
                   '£20 (green)/£40 (brown)/£60 (grey). Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P10-G&SWR (River Discount)',
@@ -229,7 +221,6 @@ module Engine
                 terrain: 'swamp',
               },
             ],
-            color: nil,
           },
           {
             name: 'P11-B&ER (Adv. Tile Lay)',
@@ -256,7 +247,6 @@ module Engine
                 combo_entities: %w[P2 P10 P12],
               },
             ],
-            color: nil,
           },
           {
             name: 'P12-L&SR (Extra Tile Lay)',
@@ -283,7 +273,6 @@ module Engine
                 combo_entities: %w[P2 P8 P10 P11],
               },
             ],
-            color: nil,
           },
           {
             name: 'P13-YN&BR (Pullman)',
@@ -295,7 +284,6 @@ module Engine
                   'and does not count as a train for the purposes of train ownership. Can’t be sold to another '\
                   'company. Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P14-K&TR (Pullman)',
@@ -307,7 +295,6 @@ module Engine
                   'and does not count as a train for the purposes of train ownership. Can’t be sold to another '\
                   'company. Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P15-HR (£10x Phase)',
@@ -320,14 +307,13 @@ module Engine
                   'this private company closes. If not acquired beforehand, this company closes at the start of '\
                   'Phase 7 and all treasury credits are returned to the bank.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P16-TH (Tax Haven)',
             sym: 'P16',
             value: 0,
             revenue: 0,
-            desc: 'CAN NOT BE ACQUIRED. Tax Haven. As a stock round action, under the direction and funded by the '\
+            desc: 'CANNOT BE ACQUIRED. Tax Haven. As a stock round action, under the direction and funded by the '\
                   'owning player, the off-shore Tax Haven may purchase an available share certificate and place it '\
                   'onto P16’s charter. The certificate is not counted for determining directorship of a company. '\
                   'The share held in the tax haven does NOT count against the 60% share limit for purchasing '\
@@ -341,7 +327,6 @@ module Engine
                   'cash from dividend income accumulated on the charter. Can’t be acquired. Does not count against '\
                   'the certificate limit.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P17-LUR (Move Card)',
@@ -353,7 +338,6 @@ module Engine
                   'currently in the bidding boxes, and move it to the top or the bottom of the stack. Closes when '\
                   'the power is exercised.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P18-C&HPR (Station Swap)',
@@ -364,7 +348,6 @@ module Engine
                   'token area of its charter to the available token area, or vice versa. This company closes when '\
                   'its power is exercised.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P19-AEC (Perm. L Train)',
@@ -381,7 +364,6 @@ module Engine
                   'retains the dividend from the permanent L, this also still counts as a normal dividend for stock '\
                   'price movement purposes. Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P20-C&WR (£5x Phase)',
@@ -394,7 +376,6 @@ module Engine
                   'this private company closes. If not acquired beforehand, this company closes at the start of '\
                   'Phase 7 and all treasury credits are returned to the bank.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P21-HSBC (Grimsby/Hull Bridge)',
@@ -423,7 +404,6 @@ module Engine
                 consume_tile_lay: true,
               },
             ],
-            color: nil,
           },
           {
             name: 'CONCESSION: LNWR',
@@ -920,7 +900,6 @@ module Engine
             coordinates: 'H1',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '2',
@@ -936,7 +915,6 @@ module Engine
             coordinates: 'E2',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '3',
@@ -952,7 +930,6 @@ module Engine
             coordinates: 'H5',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '4',
@@ -968,7 +945,6 @@ module Engine
             coordinates: 'K10',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '5',
@@ -984,7 +960,6 @@ module Engine
             coordinates: 'J15',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '6',
@@ -1000,7 +975,6 @@ module Engine
             coordinates: 'G16',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '7',
@@ -1016,7 +990,6 @@ module Engine
             coordinates: 'H23',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '8',
@@ -1032,7 +1005,6 @@ module Engine
             coordinates: 'K24',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '9',
@@ -1048,7 +1020,6 @@ module Engine
             coordinates: 'N23',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '10',
@@ -1064,7 +1035,6 @@ module Engine
             coordinates: 'I30',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '11',
@@ -1080,7 +1050,6 @@ module Engine
             coordinates: 'M30',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '12',
@@ -1096,7 +1065,6 @@ module Engine
             coordinates: 'P35',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '13',
@@ -1112,7 +1080,6 @@ module Engine
             coordinates: 'O40',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '14',
@@ -1128,7 +1095,6 @@ module Engine
             coordinates: 'M38',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '15',
@@ -1145,7 +1111,7 @@ module Engine
             city: 4,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
+            abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['N37'], hidden: true }],
           },
           {
             sym: '16',
@@ -1162,7 +1128,7 @@ module Engine
             city: 2,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
+            abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['L37'], hidden: true }],
           },
           {
             sym: '17',
@@ -1178,7 +1144,6 @@ module Engine
             coordinates: 'J41',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '18',
@@ -1194,7 +1159,6 @@ module Engine
             coordinates: 'I42',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '19',
@@ -1210,7 +1174,6 @@ module Engine
             coordinates: 'F35',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '20',
@@ -1226,7 +1189,6 @@ module Engine
             coordinates: 'F33',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '21',
@@ -1242,7 +1204,6 @@ module Engine
             coordinates: 'E34',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '22',
@@ -1258,7 +1219,6 @@ module Engine
             coordinates: 'D41',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '23',
@@ -1274,7 +1234,6 @@ module Engine
             coordinates: 'A42',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '24',
@@ -1290,7 +1249,6 @@ module Engine
             coordinates: 'D35',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '25',
@@ -1306,7 +1264,6 @@ module Engine
             coordinates: 'Q30',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '26',
@@ -1322,7 +1279,6 @@ module Engine
             coordinates: 'N21',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '27',
@@ -1338,7 +1294,6 @@ module Engine
             coordinates: 'E6',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '28',
@@ -1354,7 +1309,6 @@ module Engine
             coordinates: 'G12',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '29',
@@ -1370,7 +1324,6 @@ module Engine
             coordinates: 'E28',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '30',
@@ -1386,7 +1339,6 @@ module Engine
             coordinates: 'B43',
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: 'LNWR',
@@ -1400,7 +1352,6 @@ module Engine
             coordinates: 'M38',
             city: 3,
             color: '#000',
-            reservation_color: nil,
             destination_coordinates: 'I22',
             destination_icon: '1822/LNWR_DEST',
             abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['M36'], hidden: true }],
@@ -1416,7 +1367,6 @@ module Engine
             coordinates: 'M38',
             city: 1,
             color: '#165016',
-            reservation_color: nil,
             destination_coordinates: 'G36',
             destination_icon: '1822/GWR_DEST',
             abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['L39'], hidden: true }],
@@ -1433,7 +1383,6 @@ module Engine
             city: 0,
             color: '#cccc00',
             text_color: 'black',
-            reservation_color: nil,
             destination_coordinates: 'M42',
             destination_icon: '1822/LBSCR_DEST',
             abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['M40'], hidden: true }],
@@ -1459,7 +1408,6 @@ module Engine
               { type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['N39'], hidden: true },
             ],
             color: '#ff7f2a',
-            reservation_color: nil,
             destination_coordinates: 'P41',
             destination_icon: '1822/SECR_DEST',
           },
@@ -1473,7 +1421,6 @@ module Engine
             always_market_price: true,
             coordinates: 'E6',
             color: '#5555ff',
-            reservation_color: nil,
             destination_coordinates: 'G12',
             destination_icon: '1822/CR_DEST',
           },
@@ -1487,7 +1434,6 @@ module Engine
             always_market_price: true,
             coordinates: 'J29',
             color: '#ff2a2a',
-            reservation_color: nil,
             destination_coordinates: 'L19',
             destination_icon: '1822/MR_DEST',
           },
@@ -1501,7 +1447,6 @@ module Engine
             always_market_price: true,
             coordinates: 'G22',
             color: '#5a2ca0',
-            reservation_color: nil,
             destination_coordinates: 'I22',
             destination_icon: '1822/LYR_DEST',
           },
@@ -1515,7 +1460,6 @@ module Engine
             always_market_price: true,
             coordinates: 'H5',
             color: '#a05a2c',
-            reservation_color: nil,
             destination_coordinates: 'H1',
             destination_icon: '1822/NBR_DEST',
           },
@@ -1530,7 +1474,6 @@ module Engine
             coordinates: 'H33',
             color: '#999999',
             text_color: 'black',
-            reservation_color: nil,
             destination_coordinates: 'C34',
             destination_icon: '1822/SWR_DEST',
           },
@@ -1544,7 +1487,6 @@ module Engine
             always_market_price: true,
             coordinates: 'L19',
             color: '#aade87',
-            reservation_color: nil,
             destination_coordinates: 'H5',
             destination_icon: '1822/NER_DEST',
           },

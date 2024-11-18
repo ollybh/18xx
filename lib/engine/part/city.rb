@@ -6,8 +6,8 @@ require_relative 'revenue_center'
 module Engine
   module Part
     class City < RevenueCenter
-      attr_accessor :reservations
-      attr_reader :tokens, :extra_tokens, :boom
+      attr_accessor :reservations, :slot_icons
+      attr_reader :tokens, :extra_tokens, :boom, :outline
 
       def initialize(revenue, **opts)
         super
@@ -17,6 +17,8 @@ module Engine
         @extra_tokens = []
         @reservations = []
         @boom = opts[:boom]
+        @outline = opts[:outline]
+        @slot_icons = {}
       end
 
       def slots(all: false)
@@ -80,7 +82,7 @@ module Engine
       end
 
       def tokenable?(corporation, free: false, tokens: corporation.tokens_by_type, cheater: false,
-                     extra_slot: false, spender: nil)
+                     extra_slot: false, spender: nil, same_hex_allowed: false)
         tokens = Array(tokens)
         @error = :generic
         if !extra_slot && tokens.empty?
@@ -97,13 +99,13 @@ module Engine
             @error = :no_money
             next false
           end
-          if @tile.cities.any? { |c| c.tokened_by?(t.corporation) }
+          if !same_hex_allowed && @tile.cities.any? { |c| c.tokened_by?(t.corporation) }
             @error = :existing_token
             next false
           end
           next true if reserved_by?(corporation)
 
-          if @tile.token_blocked_by_reservation?(corporation)
+          if @tile.token_blocked_by_reservation?(corporation) && !cheater
             @error = :blocked_reservation
             next false
           end
@@ -127,10 +129,16 @@ module Engine
       end
 
       def place_token(corporation, token, free: false, check_tokenable: true, cheater: false,
-                      extra_slot: false, spender: nil)
+                      extra_slot: false, spender: nil, same_hex_allowed: false)
         if check_tokenable && !tokenable?(
-            corporation, free: free, tokens: token, cheater: cheater, extra_slot: extra_slot, spender: spender
-          )
+             corporation,
+             free: free,
+             tokens: token,
+             cheater: cheater,
+             extra_slot: extra_slot,
+             spender: spender,
+             same_hex_allowed: same_hex_allowed
+           )
 
           case @error
           when :no_tokens
@@ -158,7 +166,7 @@ module Engine
       end
 
       def exchange_token(token, cheater: false, extra_slot: false)
-        token.place(self, extra: extra_slot)
+        token.place(self, extra: extra_slot, cheater: cheater)
         return @extra_tokens << token if extra_slot
 
         slot = get_slot(token.corporation, cheater: cheater)

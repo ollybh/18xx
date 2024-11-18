@@ -8,8 +8,9 @@ module Engine
     include Ownable
 
     attr_accessor :obsolete, :events, :variants, :obsolete_on, :rusted, :rusts_on, :index, :name,
-                  :distance, :reserved
-    attr_reader :available_on, :discount, :multiplier, :sym, :variant, :requires_token, :ever_operated, :operated, :salvage
+                  :distance, :reserved, :no_local, :multiplier, :track_type
+    attr_reader :available_on, :discount, :sym, :variant, :requires_token, :ever_operated, :operated, :salvage
+
     attr_writer :buyable
 
     def initialize(name:, distance:, price:, index: 0, **opts)
@@ -30,6 +31,7 @@ module Engine
       @obsolete = false
       @operated = false
       @ever_operated = false
+      @track_type = opts[:track_type] || :broad
       @events = (opts[:events] || []).select { |e| @index == (e['when'] || 1) - 1 }
       @reserved = opts[:reserved] || false
       @requires_token = opts[:requires_token].nil? ? true : opts[:requires_token]
@@ -53,6 +55,8 @@ module Engine
         obsolete_on: @obsolete_on,
         discount: @discount,
         salvage: @salvage,
+        track_type: @track_type,
+        buyable: @buyable,
       }
 
       # Primary variant should be at the head of the list.
@@ -68,6 +72,16 @@ module Engine
 
       # Remove the @local variable, this to get the local? method evaluate the new variant
       remove_instance_variable(:@local) if defined?(@local)
+    end
+
+    def add_variant(new_variant)
+      return if @variants.include?(new_variant[:name])
+
+      variant = {
+        **@variant,
+        **new_variant,
+      }
+      @variants[variant[:name]] = variant
     end
 
     # remove unused variants, i.e., the physical train card is not allowed to be
@@ -93,9 +107,12 @@ module Engine
     # if set ability must be a :train_discount ability
     def min_price(ability: nil)
       return 1 unless from_depot?
-      return @price unless ability
 
-      Array(ability).map { |a| a.discounted_price(self, @price) }.min
+      variants.keys.map do |v|
+        variant = clone
+        variant.variant = v
+        Array(ability).map { |a| a.discounted_price(variant, variant.price) }.min || variant.price
+      end.min
     end
 
     def from_depot?

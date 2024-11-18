@@ -103,6 +103,10 @@ module Engine
       @coordinates
     end
 
+    def full_name
+      "#{name} (#{location_name})"
+    end
+
     def tile=(new_tile)
       @original_tile = @tile = new_tile
       new_tile.hex = self
@@ -111,38 +115,7 @@ module Engine
     def lay(tile)
       # key: city on @tile (AKA old_city)
       # values: city on tile (AKA new_city)
-      #
-      # map old cities to new based on edges they are connected to
-      city_map =
-        # if @tile is blank, map cities by index
-        if @tile.cities.flat_map(&:exits).empty? && (@tile.cities.size == tile.cities.size)
-          @tile.cities.zip(tile.cities).to_h
-        # if @tile is not blank, ensure connectivity is maintained
-        else
-          @tile.cities.to_h do |old_city|
-            new_city = tile.cities.find do |city|
-              # we want old_edges to be subset of new_edges
-              # without the any? check, first city will always match
-              !old_city.exits.empty? && (old_city.exits - city.exits).empty?
-            end
-
-            [old_city, new_city]
-          end
-        end
-
-      # When downgrading from yellow to no-exit tiles, assume it's the same index
-      # Also, when upgrading a no-exit city, assume it's the same index if possible, otherwise
-      # pick first available city
-      new_cities = city_map.values.compact
-      @tile.cities.each_with_index do |old_city, index|
-        next if city_map[old_city]
-
-        new_city = tile.cities[index]
-        new_city = tile.cities.find { |city| !new_cities.include?(city) } if new_cities.include?(new_city)
-
-        city_map[old_city] = new_city
-        new_cities << new_city
-      end
+      city_map = city_map_for(tile)
 
       # when upgrading, preserve reservations on previous tile
       city_map.each do |old_city, new_city|
@@ -168,13 +141,16 @@ module Engine
 
       # when upgrading, preserve tokens on previous tile (must be handled after
       # reservations are completely done due to OO weirdness)
-      city_map.each do |old_city, new_city|
+      if city_map.one?
+        old_city, new_city = city_map.to_a[0]
         old_city.tokens.each.with_index do |token, index|
           cheater = (index >= old_city.normal_slots) && index
           new_city.exchange_token(token, cheater: cheater) if token
         end
         old_city.extra_tokens.each { |token| new_city.exchange_token(token, extra_slot: true) }
         old_city.reset!
+      elsif city_map.size > 1
+        move_tokens_to_new_tile_multi_city!(city_map)
       end
 
       new_icons = tile.icons.group_by(&:name)
@@ -273,6 +249,83 @@ module Engine
     def remove_token(token)
       @tile.icons.delete(@tile.icons.find { |icon| icon.name == token.corporation.id })
       @tokens.delete(token)
+    end
+
+    # key: city on @tile (AKA old_city)
+    # values: city on tile (AKA new_city)
+    #
+    # map old cities to new based on edges they are connected to
+    def city_map_for(tile)
+      # if @tile is blank, map cities by index
+      city_map =
+        if @tile.cities.flat_map(&:exits).empty? && (@tile.cities.size == tile.cities.size)
+          @tile.cities.zip(tile.cities).to_h
+        # if @tile is not blank, ensure connectivity is maintained
+        else
+          @tile.cities.to_h do |old_city|
+            new_city = tile.cities.find do |city|
+              # we want old_edges to be subset of new_edges
+              # without the any? check, first city will always match
+              !old_city.exits.empty? && (old_city.exits - city.exits).empty?
+            end
+
+            [old_city, new_city]
+          end
+        end
+
+      # When downgrading from yellow to no-exit tiles, assume it's the same index
+      # Also, when upgrading a no-exit city, assume it's the same index if possible, otherwise
+      # pick first available city
+      new_cities = city_map.values.compact
+      @tile.cities.each_with_index do |old_city, index|
+        next if city_map[old_city]
+
+        new_city = tile.cities[index]
+        new_city = tile.cities.find { |city| !new_cities.include?(city) } if new_cities.include?(new_city)
+
+        city_map[old_city] = new_city
+        new_cities << new_city
+      end
+
+      city_map
+    end
+
+    def move_tokens_to_new_tile_multi_city!(city_map)
+      # collect all tokens on the old tile, grouped by the city they will be
+      # placed in on the new tile
+      city_tokens = city_map.each_with_object(Hash.new { |h, k| h[k] = [] }) do |(old_city, new_city), tokens|
+        # some games replace hexes during setup for variants/etc by laying the
+        # alternate tile on the map, in which case the city map will not find a
+        # new city, but if they are no tokens anyway this is nothing to worry
+        # about
+        if new_city.nil?
+          next if tokens.empty?
+
+          raise GameError, "No city found on new tile #{tile.id} for #{token.corporation.id}'s token from #{@tile}"
+        end
+
+        tokens[new_city].concat(old_city.tokens.compact)
+      end
+
+      # sort cheater tokens to the end so the correct tokens (if any) are
+      # recognized as the cheaters on the new tile
+      city_tokens.transform_values do |tokens|
+        tokens.sort { |t1, t2| (t1.cheater ? 1 : 0) <=> (t2.cheater ? 1 : 0) }
+      end
+
+      # move normal and cheater tokens to new city
+      city_tokens.each do |new_city, tokens|
+        reserved = new_city.reservations.size
+        tokens.each.with_index do |token, index|
+          new_city.exchange_token(token, cheater: (reserved + index) >= new_city.normal_slots)
+        end
+      end
+
+      # move extra tokens to new city
+      city_map.each do |old_city, new_city|
+        old_city.extra_tokens.each { |token| new_city.exchange_token(token, extra_slot: true) }
+        old_city.reset!
+      end
     end
 
     def inspect

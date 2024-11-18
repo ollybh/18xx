@@ -17,7 +17,7 @@ module Engine
 
       def self.decode_lane_spec(x_lane)
         if x_lane
-          [x_lane.to_i, ((x_lane.to_f - x_lane.to_i) * 10).to_i]
+          [x_lane.to_i, ((x_lane.to_f - x_lane.to_i) * 10).round.to_i]
         else
           [1, 0]
         end
@@ -136,13 +136,18 @@ module Engine
         counter: Hash.new(0),
         skip_track: nil,
         converging: true,
+        walk_calls: Hash.new(0),
         &block
       )
+        walk_calls[:all] += 1
+
         return if visited[self] || skip_paths&.key?(self)
         return if @junction && counter[@junction] > 1
         return if edges.sum { |edge| counter[edge.id] }.positive?
         return if track == skip_track
         return if @junction && @terminal
+
+        walk_calls[:not_skipped] += 1
 
         visited[self] = true
         counter[@junction] += 1 if @junction
@@ -151,7 +156,15 @@ module Engine
 
         if @junction && @junction != jskip
           @junction.paths.each do |jp|
-            jp.walk(jskip: @junction, visited: visited, counter: counter, converging: converging, &block)
+            jp.walk(
+              jskip: @junction,
+              visited: visited,
+              skip_paths: skip_paths,
+              counter: counter,
+              converging: converging,
+              walk_calls: walk_calls,
+              &block
+            )
           end
         end
 
@@ -168,8 +181,8 @@ module Engine
             next unless lane_match?(@exit_lanes[edge], np.exit_lanes[np_edge])
             next if !@ignore_gauge_walk && !tracks_match?(np, dual_ok: true)
 
-            np.walk(skip: np_edge, visited: visited, counter: counter, skip_track: skip_track,
-                    converging: converging || @tile.converging_exit?(edge), &block)
+            np.walk(skip: np_edge, visited: visited, skip_paths: skip_paths, counter: counter, skip_track: skip_track,
+                    converging: converging || @tile.converging_exit?(edge), walk_calls: walk_calls, &block)
           end
 
           counter[edge_id] -= 1
@@ -180,16 +193,33 @@ module Engine
       end
 
       # return true if facing exits on adjacent tiles match up taking lanes into account
-      # TBD: support titles where lanes of different sizes can connect
       def lane_match?(lanes0, lanes1)
-        lanes0 &&
-          lanes1 &&
-          lanes1[LANE_WIDTH] == lanes0[LANE_WIDTH] &&
+        return false unless lanes0
+        return false unless lanes1
+
+        if lanes1[LANE_WIDTH] == lanes0[LANE_WIDTH]
           lanes1[LANE_INDEX] == lane_invert(lanes0)[LANE_INDEX]
+        else
+          lane_match_different_sizes?(lanes0, lanes1)
+        end
       end
 
       def lane_invert(lane)
         [lane[LANE_WIDTH], lane[LANE_WIDTH] - lane[LANE_INDEX] - 1]
+      end
+
+      # the important part of matching lanes of different sizes is to just use
+      # the larger width when doing the inverted comparison; the delta just
+      # allows the smaller-lane side to be more centered, i.e., it makes 1 lane
+      # match up with the middle of 3 lanes
+      def lane_match_different_sizes?(lanes0, lanes1)
+        lanes_a, lanes_b = [lanes0, lanes1].sort
+
+        larger_width = lanes_b[LANE_WIDTH]
+        delta = ((lanes_b[LANE_WIDTH] - lanes_a[LANE_WIDTH]) / 2).to_i
+        new_index = lanes_a[LANE_INDEX] + delta
+
+        [larger_width, new_index][LANE_INDEX] == lane_invert(lanes_b)[LANE_INDEX]
       end
 
       def path?

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../g_1822/game'
+require_relative '../g_1822/scenario'
 require_relative 'entities'
 require_relative 'map'
 require_relative 'meta'
@@ -12,6 +13,7 @@ module Engine
         include_meta(G1822MRS::Meta)
         include Entities
         include Map
+        include G1822::Scenario
 
         BIDDING_BOX_START_MINOR = 'M24'
         BIDDING_BOX_START_MINOR_ADV = 'M14'

@@ -18,7 +18,7 @@ module Engine
               price_drops =
                 if (pool_share_drop == :none) || (shares_in_pool = corp.num_market_shares).zero?
                   0
-                elsif pool_share_drop == :one
+                elsif pool_share_drop == :down_block
                   @game.frozen?(corp) ? 2 : 1
                 else
                   shares_in_pool
@@ -28,6 +28,14 @@ module Engine
               @game.log_share_price(corp, old_price)
             end
             @game.finish_stock_round
+          end
+
+          def sold_out?(corporation)
+            super && !@game.frozen?(corporation)
+          end
+
+          def corporations_to_move_price
+            @game.corporations.select(&:floated?)
           end
         end
       end

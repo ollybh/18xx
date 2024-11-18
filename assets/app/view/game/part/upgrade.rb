@@ -12,6 +12,7 @@ module View
         needs :cost
         needs :terrains, default: []
         needs :size, default: nil
+        needs :formatter, default: nil
 
         P_CENTER = {
           region_weights: CENTER,
@@ -78,7 +79,7 @@ module View
           else
             [
               P_CENTER,
-              PP_TOP_RIGHT_CORNER,
+              PP_UPPER_RIGHT_CORNER,
               PP_EDGE2,
               PP_BOTTOM_LEFT_CORNER,
               PP_RIGHT_CORNER,
@@ -93,7 +94,7 @@ module View
         end
 
         def render_part
-          cost = h('text.number', { attrs: { fill: 'black' } }, @cost)
+          cost = h('text.number', { attrs: { fill: 'black' } }, @formatter ? @formatter.call(@cost) : @cost)
 
           delta_x = -(size / 2)
 
@@ -110,6 +111,7 @@ module View
               cow_skull: svg(delta_x: delta_x, delta_y: delta_y, icon: 'cow_skull'),
               wall: svg(delta_x: delta_x, delta_y: delta_y, icon: 'wall'),
               forest: svg(delta_x: delta_x, delta_y: delta_y, icon: 'tree'),
+              mine: svg(delta_x: delta_x, delta_y: delta_y, icon: 'mine'),
             }[t]
           end
 

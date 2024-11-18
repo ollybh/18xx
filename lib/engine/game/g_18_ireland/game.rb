@@ -19,7 +19,6 @@ module Engine
         EBUY_DEPOT_TRAIN_MUST_BE_CHEAPEST = false
         EBUY_SELL_MORE_THAN_NEEDED_LIMITS_DEPOT_TRAIN = true
         EBUY_OTHER_VALUE = false
-        CERT_LIMIT_COUNTS_BANKRUPTED = true
         MUST_BID_INCREMENT_MULTIPLE = true
         MIN_BID_INCREMENT = 5
 
@@ -219,7 +218,7 @@ module Engine
           Graph.new(self, skip_track: :narrow)
         end
 
-        def skip_route_track_type
+        def skip_route_track_type(_train)
           :narrow
         end
 

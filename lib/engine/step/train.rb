@@ -13,9 +13,10 @@ module Engine
       def can_buy_train?(entity = nil, _shell = nil)
         entity ||= current_entity
 
-        can_buy_normal = room?(entity) && buying_power(entity) >= @depot.min_price(
-            entity, ability: @game.abilities(entity, :train_discount, time: ability_timing)
-          )
+        min_price = @depot.min_price(
+          entity, ability: @game.abilities(entity, :train_discount, time: ability_timing)
+        )
+        can_buy_normal = room?(entity) && min_price && buying_power(entity) >= min_price
 
         can_buy_normal || (discountable_trains_allowed?(entity) && @game
           .discountable_trains_for(entity)
@@ -27,11 +28,7 @@ module Engine
       end
 
       def room?(entity, _shell = nil)
-        if @game.class::OBSOLETE_TRAINS_COUNT_FOR_LIMIT
-          entity.trains
-        else
-          entity.trains.reject(&:obsolete)
-        end.size < @game.train_limit(entity)
+        @game.num_corp_trains(entity) < @game.train_limit(entity)
       end
 
       def can_entity_buy_train?(entity)
@@ -60,8 +57,10 @@ module Engine
         exchange = action.exchange
 
         # Check if the train is actually buyable in the current situation
-        raise GameError, 'Not a buyable train' unless buyable_exchangeable_train_variants(train, entity,
-                                                                                          exchange).include?(train.variant)
+        if !buyable_exchangeable_train_variants(train, entity, exchange).include?(train.variant) ||
+           !(@game.depot.available(entity).include?(train) || buyable_trains(entity).include?(train))
+          raise GameError, "Not a buyable train: #{train.id}"
+        end
         raise GameError, 'Must pay face value' if must_pay_face_value?(train, entity, price)
         raise GameError, 'An entity cannot buy a train from itself' if train.owner == entity
 
@@ -146,7 +145,7 @@ module Engine
 
       def buyable_trains(entity)
         depot_trains = @depot.depot_trains
-        other_trains = @game.class::ALLOW_TRAIN_BUY_FROM_OTHERS ? @depot.other_trains(entity) : []
+        other_trains = @game.can_buy_train_from_others? ? other_trains(entity) : []
 
         if entity.cash < @depot.min_depot_price
           depot_trains = [@depot.min_depot_train] if ebuy_offer_only_cheapest_depot_train?
@@ -175,6 +174,10 @@ module Engine
         depot_trains + other_trains
       end
 
+      def other_trains(entity)
+        @depot.other_trains(entity)
+      end
+
       def buyable_exchangeable_train_variants(train, entity, exchange)
         exchange ? exchangeable_train_variants(train, entity) : buyable_train_variants(train, entity)
       end
@@ -182,17 +185,17 @@ module Engine
       def buyable_train_variants(train, entity)
         return [] unless buyable_trains(entity).any? { |bt| bt.variants[bt.name] }
 
-        train_vatiant_helper(train, entity)
+        train_variant_helper(train, entity)
       end
 
       def exchangeable_train_variants(train, entity)
         discount_info = @game.discountable_trains_for(entity)
         return [] unless discount_info.any? { |_, discount_train, _, _| discount_train.variants[discount_train.name] }
 
-        train_vatiant_helper(train, entity)
+        train_variant_helper(train, entity)
       end
 
-      def train_vatiant_helper(train, entity)
+      def train_variant_helper(train, entity)
         variants = train.variants.values
         return variants if train.owned_by_corporation?
 
@@ -226,7 +229,7 @@ module Engine
       end
 
       def must_buy_at_face_value?(train, entity)
-        face_value_ability?(entity) || face_value_ability?(train.owner)
+        @game.class::ALWAYS_BUY_TRAINS_AT_FACE_VALUE || face_value_ability?(entity) || face_value_ability?(train.owner)
       end
 
       def spend_minmax(entity, train)

@@ -344,7 +344,6 @@ text.number {
   border: 1px solid gainsboro;
   border-radius: 0.7rem;
   align-self: start;
-  min-height: 100px;
 }
 .game.card {
   margin: 0 0.5rem 0.5rem 0;
@@ -369,7 +368,7 @@ text.number {
 
 @media only screen and (min-width: 421px) {
   #left {
-    width: 20rem;
+    width: 22rem;
     margin-right: 1rem;
   }
 }

@@ -299,6 +299,8 @@ module Engine
         HOME_TOKEN_TIMING = :operate
         ALLOW_REMOVING_TOWNS = true
 
+        EBUY_OTHER_VALUE = false
+
         RIGHT_COST = 50
 
         POST_NATIONALIZATION_CERT_LIMIT = {
@@ -1435,10 +1437,6 @@ module Engine
           train.operated = false
           @borrowed_trains[entity] = train
           @log << "#{entity.name} borrows a #{train.name}"
-        end
-
-        def train_limit(entity)
-          super + Array(abilities(entity, :train_limit)).sum(&:increase)
         end
 
         def eight_train_variant?

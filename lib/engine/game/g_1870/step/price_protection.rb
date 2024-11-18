@@ -39,7 +39,11 @@ module Engine
             @game.sell_queue.dig(0, 1)
           end
 
-          def can_sell?
+          def price_protection_seller
+            @game.sell_queue.dig(0, 2)
+          end
+
+          def can_sell?(_entity, _bundle)
             false
           end
 
@@ -52,8 +56,15 @@ module Engine
                              else
                                true # can price protect yellow/green/brown even if over cert limit
                              end
+
+            permitted_to_buy = if @game.can_protect_if_sold?
+                                 price_protection_seller != entity
+                               else
+                                 !@round.players_sold[entity][bundle.corporation]
+                               end
+
             entity.cash >= bundle.price &&
-              !@round.players_sold[entity][bundle.corporation] &&
+              permitted_to_buy &&
               have_cert_room
           end
 
@@ -89,7 +100,7 @@ module Engine
           end
 
           def process_pass(_action, forced = false)
-            bundle, corporation_owner = @game.sell_queue.shift
+            bundle, = @game.sell_queue.shift
 
             corporation = bundle.corporation
             old_price = corporation.share_price
@@ -112,7 +123,7 @@ module Engine
 
             verb = forced ? 'can\'t' : 'doesn\'t'
             num_presentation = @game.share_pool.num_presentation(bundle)
-            @log << "#{corporation_owner.name} #{verb} price protect #{num_presentation} of #{corporation.name}"
+            @log << "#{corporation.owner.name} #{verb} price protect #{num_presentation} of #{corporation.name}"
             @log << "#{corporation.name} hits the ledge" if hit_soft_ledge
 
             @game.log_share_price(corporation, old_price)

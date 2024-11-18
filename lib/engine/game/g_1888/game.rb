@@ -44,12 +44,12 @@ module Engine
           ['', '85', '90', '95p', '100', '110', '120', '130', '145', '160', '180', '200', '225', '250',
            '275', '300', '330', '360'],
           %w[75 80 85 90p 95 100 110 120 130 145 160 180 200 225 250],
-          %w[70y 75 80 85p 90 95 100 110 120 130 145 160],
-          %w[65y 70 75 80p 85 90 95 100 110 120],
-          %w[60y 65y 70 75p 80 85 90 95],
+          %w[70 75 80 85p 90 95 100 110 120 130 145 160],
+          %w[65 70 75 80p 85 90 95 100 110 120],
+          %w[60y 65 70 75p 80 85 90 95],
           %w[55y 60y 65 70p 75 80 85],
           %w[50y 55y 60y 65 70 75],
-          %w[40y 50y 55y 60y 65y],
+          %w[40y 50y 55y 60y 65],
         ].freeze
 
         PHASES = [
@@ -133,23 +133,33 @@ module Engine
             distance: 999,
             price: 900,
             num: 17,
-            available_on: '6',
             discount: { '4' => 200, '5' => 200, '6' => 200 },
           },
         ].freeze
 
-        DESTINATION_HEX = {
-          'JHR' => 'D12',
-          'SSL' => 'C13',
-          'CDL' => 'E17',
-          'HJR' => 'G9',
-          'TJL' => 'H4',
-          'LYR' => 'H14',
-          'JZR' => 'B6',
-          'ZDR' => 'F12',
+        DESTINATION_HEX_NORTH = {
+          'JHR' => ['D12'],
+          'SSL' => ['C13'],
+          'CDL' => ['E17'],
+          'HJR' => ['G9'],
+          'TJL' => ['H4'],
+          'LYR' => ['H14'],
+          'JZR' => ['B6'],
+          'ZDR' => ['F12'],
         }.freeze
 
-        DESTINATION_BONUS = {
+        DESTINATION_HEX_EAST = {
+          'LHR' => %w[B12 C3],
+          'XGY' => ['D8'],
+          'HEN' => ['E15'],
+          'HUN' => ['F20'],
+          'WJR' => ['G11'],
+          'XYR' => ['G19'],
+          'YTR' => ['I19'],
+          'HHR' => ['G17'],
+        }.freeze
+
+        DESTINATION_BONUS_NORTH = {
           'JHR' => 30,
           'SSL' => 20,
           'CDL' => 20,
@@ -158,6 +168,17 @@ module Engine
           'LYR' => 20,
           'JZR' => 40,
           'ZDR' => 40,
+        }.freeze
+
+        DESTINATION_BONUS_EAST = {
+          'LHR' => 20,
+          'XGY' => 50,
+          'HEN' => 20,
+          'HUN' => 10,
+          'WJR' => 30,
+          'XYR' => 20,
+          'YTR' => 30,
+          'HHR' => 20,
         }.freeze
 
         MINE_HEX = 'C5'
@@ -200,6 +221,14 @@ module Engine
           @log << ' * (Playing with deprecated option)' if @optional_rules.include?(:small_bank)
         end
 
+        def game_tiles
+          # When using the 1888-N variant, adjust the tile
+          # counts to the alternate values specified.
+          return TILES.merge(NORTH_VARIANT_TILES) if @optional_rules.include?(:north)
+
+          TILES
+        end
+
         def setup
           setup_company_price_50_to_150_percent
           @corporations.each { |c| c.float_percent = 50 } if prototype?
@@ -229,7 +258,7 @@ module Engine
                     (from.hex.id == YANTAI_HEX && to.name == YANTAI_FERRY_TILE))
           end
 
-          return (from.hex.id == XIAN_HEX && to.name == TERRACOTTA_TILE) if special && selected_company == terracotta
+          return from.hex.id == XIAN_HEX && to.name == TERRACOTTA_TILE if special && selected_company == terracotta
 
           return false if selected_company != heng_shan && to.name == MINE_TILE
 
@@ -276,29 +305,67 @@ module Engine
           routes.sum(&:subsidy)
         end
 
-        def destinated?(corp, stops)
+        def destinated?(corp, stops, hex)
           stops.any? { |s| s.hex.id == corp.coordinates } &&
-            stops.any? { |s| s.hex.id == DESTINATION_HEX[corp.name] }
+            stops.any? { |s| s.hex.id == hex }
         end
 
         def revenue_for(route, stops)
           corp = route.train.owner
-          bonus = destinated?(corp, stops) ? DESTINATION_BONUS[corp.name] : 0
+          bonus = destination_hex[corp.name].sum { |hex| destinated?(corp, stops, hex) ? destination_bonus[corp.name] : 0 }
           super + bonus
         end
 
         def revenue_str(route)
-          bonus = destinated?(route.train.owner, route.stops) ? ' (dest)' : ''
+          corp = route.train.owner
+          destination_count = destination_hex[corp.name].count { |hex| destinated?(corp, route.stops, hex) }
+          bonus = destination_count.positive? ? " (#{destination_count} dest)" : ''
           super + bonus
         end
 
         def destination_str(corp)
-          hexid = DESTINATION_HEX[corp.name]
-          "#{LOCATION_NAMES[hexid]} (#{hexid}) +#{DESTINATION_BONUS[corp.name]}"
+          hexes = destination_hex[corp.name].map { |hex| "#{location_name(hex)} (#{hex})" }
+          "#{hexes} +#{destination_bonus[corp.name]}"
         end
 
         def status_array(corp)
           ["Dest: #{destination_str(corp)}"]
+        end
+
+        def game_hexes
+          return self.class::EAST_HEXES if @optional_rules.include?(:east)
+
+          self.class::NORTH_HEXES
+        end
+
+        def destination_hex
+          return DESTINATION_HEX_EAST if @optional_rules.include?(:east)
+
+          DESTINATION_HEX_NORTH
+        end
+
+        def destination_bonus
+          return DESTINATION_BONUS_EAST if @optional_rules.include?(:east)
+
+          DESTINATION_BONUS_NORTH
+        end
+
+        def game_companies
+          return self.class::COMPANIES_EAST if @optional_rules.include?(:east)
+
+          self.class::COMPANIES_NORTH
+        end
+
+        def game_corporations
+          return self.class::CORPORATIONS_EAST if @optional_rules.include?(:east)
+
+          self.class::CORPORATIONS_NORTH
+        end
+
+        def location_name(coord)
+          return self.class::LOCATION_NAMES_EAST[coord] if @optional_rules.include?(:east)
+
+          self.class::LOCATION_NAMES_NORTH[coord]
         end
       end
     end

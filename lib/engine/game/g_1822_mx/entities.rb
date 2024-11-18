@@ -17,7 +17,6 @@ module Engine
                   'buying action.  However, once acquired the acquiring company must check whether it as at the '\
                   'train limit and must discard any trains held in excess of limit.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P2-MCSL (Permanent 2T)',
@@ -36,7 +35,6 @@ module Engine
                   'this also still counts as a normal dividend for share price movement purposes. '\
                   'Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P3-IGT (Permanent 3/2T)',
@@ -57,7 +55,6 @@ module Engine
                   'this also still counts as a normal dividend for share price movement purposes. '\
                   'Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P4-MCST (Permanent LT)',
@@ -76,7 +73,6 @@ module Engine
                   'this also still counts as a normal dividend for share price movement purposes. '\
                   'Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P5-Pullman (Pullman)',
@@ -89,7 +85,6 @@ module Engine
                   'not count toward the train limit. Cannot be sold to another company. Does '\
                   'not close. No company may own more than one Pullman.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P6-Pullman (Pullman)',
@@ -102,7 +97,6 @@ module Engine
                   'not count toward the train limit. Cannot be sold to another company. Does '\
                   'not close. No company may own more than one Pullman.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P7-EI (Double Cash)',
@@ -114,7 +108,6 @@ module Engine
                   'player turn order in the next stock round. If held by a company it pays '\
                   'revenue of $20 (green)/$40 (brown)/$60 (gray). Does not close.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P8-CMB (Adv. Tile Lay)',
@@ -143,7 +136,6 @@ module Engine
                 combo_entities: %w[P9 P12 P13],
               },
             ],
-            color: nil,
           },
           {
             name: 'P9-M&GNR (Extra Tile Lay)',
@@ -172,7 +164,6 @@ module Engine
                 combo_entities: %w[P8 P12 P13],
               },
             ],
-            color: nil,
           },
           {
             name: 'P10-CCNM (Three Builder Cubes)',
@@ -197,7 +188,6 @@ module Engine
                 tiles: [],
               },
             ],
-            color: nil,
           },
           {
             name: 'P11-SMB (Three Builder Cubes)',
@@ -222,7 +212,6 @@ module Engine
                 tiles: [],
               },
             ],
-            color: nil,
           },
           {
             name: 'P12-AIAS (Remove Town)',
@@ -249,7 +238,6 @@ module Engine
                 combo_entities: %w[P8 P9],
               },
             ],
-            color: nil,
           },
           {
             name: 'P13-AIDS (Remove Town)',
@@ -276,7 +264,6 @@ module Engine
                 combo_entities: %w[P8 P9],
               },
             ],
-            color: nil,
           },
           {
             name: 'P14-NMS (Mail Contract)',
@@ -293,7 +280,6 @@ module Engine
                   'towns. A company that owns more than one Mail Contract may not use '\
                   'more than one on any train.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P15-NMS (Mail Contract)',
@@ -310,7 +296,6 @@ module Engine
                   'towns. A company that owns more than one Mail Contract may not use '\
                   'more than one on any train.',
             abilities: [],
-            color: nil,
           },
           {
             name: 'P16-VTPN (Stock Drop)',
@@ -329,7 +314,6 @@ module Engine
                 choices: { 'close_p16' => 'Close P16' },
               },
             ],
-            color: nil,
           },
           {
             name: 'P17-UD (Small Port)',
@@ -356,7 +340,6 @@ module Engine
                 consume_tile_lay: false,
               },
             ],
-            color: nil,
           },
           {
             name: 'P18-HI (Large Port)',
@@ -383,7 +366,6 @@ module Engine
                 consume_tile_lay: false,
               },
             ],
-            color: nil,
           },
           {
             name: 'CONCESSION: FCM',
@@ -647,7 +629,7 @@ module Engine
             value: 100,
             revenue: 0,
             desc: 'A 50% director’s certificate in the associated minor company. Starting location is N23 (Mexico City).',
-            abilities: [],
+            abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['N21'], hidden: true }],
             color: '#ffffff',
             text_color: 'black',
           },
@@ -657,7 +639,7 @@ module Engine
             value: 100,
             revenue: 0,
             desc: 'A 50% director’s certificate in the associated minor company. Starting location is N23 (Mexico City).',
-            abilities: [],
+            abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['O22'], hidden: true }],
             color: '#ffffff',
             text_color: 'black',
           },
@@ -769,7 +751,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '2',
@@ -786,7 +767,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '3',
@@ -803,7 +783,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '4',
@@ -820,7 +799,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '5',
@@ -837,7 +815,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '6',
@@ -854,7 +831,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '7',
@@ -871,7 +847,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '8',
@@ -888,7 +863,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '9',
@@ -905,7 +879,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '10',
@@ -922,7 +895,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '11',
@@ -939,7 +911,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '12',
@@ -956,7 +927,6 @@ module Engine
             city: 1,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '13',
@@ -973,7 +943,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '14',
@@ -990,7 +959,6 @@ module Engine
             city: 1,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
             abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['N21'], hidden: true }],
           },
           {
@@ -1008,7 +976,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
             abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['O22'], hidden: true }],
           },
           {
@@ -1026,7 +993,6 @@ module Engine
             city: 2,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '17',
@@ -1043,7 +1009,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '18',
@@ -1060,7 +1025,6 @@ module Engine
             city: 1,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '19',
@@ -1077,7 +1041,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '20',
@@ -1094,7 +1057,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '21',
@@ -1111,7 +1073,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '22',
@@ -1128,7 +1089,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '23',
@@ -1145,7 +1105,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: '24',
@@ -1162,7 +1121,6 @@ module Engine
             city: 0,
             color: '#ffffff',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             sym: 'FCM',
@@ -1175,7 +1133,6 @@ module Engine
             coordinates: 'N23',
             city: 4,
             color: '#e51c00',
-            reservation_color: nil,
             destination_coordinates: 'N27',
             destination_icon: '1822_mx/FCM_DEST',
           },
@@ -1190,7 +1147,6 @@ module Engine
             coordinates: 'N23',
             city: 2,
             color: '#000000',
-            reservation_color: nil,
             destination_coordinates: 'F21',
             destination_icon: '1822_mx/MC_DEST',
             abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['M22'], hidden: true }],
@@ -1206,7 +1162,6 @@ module Engine
             coordinates: 'F15',
             color: '#ff7b93',
             text_color: 'black',
-            reservation_color: nil,
             destination_coordinates: 'H11',
             destination_icon: '1822_mx/CHP_DEST',
           },
@@ -1221,7 +1176,6 @@ module Engine
             coordinates: 'N23',
             city: 3,
             color: '#850040',
-            reservation_color: nil,
             destination_coordinates: 'G22',
             destination_icon: '1822_mx/FNM_DEST',
             abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['M24'], hidden: true }],
@@ -1236,7 +1190,6 @@ module Engine
             always_market_price: true,
             coordinates: 'F21',
             color: '#ff3600',
-            reservation_color: nil,
             destination_coordinates: 'J15',
             destination_icon: '1822_mx/MIR_DEST',
           },
@@ -1250,7 +1203,6 @@ module Engine
             always_market_price: true,
             coordinates: 'D9',
             color: '#fab506',
-            reservation_color: nil,
             destination_coordinates: 'L17',
             destination_icon: '1822_mx/FCP_DEST',
           },
@@ -1265,7 +1217,6 @@ module Engine
             coordinates: 'N23',
             city: 5,
             color: '#004c6c',
-            reservation_color: nil,
             destination_coordinates: 'N27',
             destination_icon: '1822_mx/IRM_DEST',
             abilities: [{ type: 'blocks_hexes_consent', owner_type: 'player', hexes: ['O24'], hidden: true }],
@@ -1280,7 +1231,6 @@ module Engine
             always_market_price: true,
             city: 5,
             color: '#525600',
-            reservation_color: nil,
           },
         ].freeze
       end

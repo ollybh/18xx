@@ -185,10 +185,10 @@ module Engine
         MUST_BUY_TRAIN = :never
         EBUY_PRES_SWAP = false # allow presidential swaps of other corps when ebuying
         CERT_LIMIT_INCLUDES_PRIVATES = false
-        POOL_SHARE_DROP = :each
+        POOL_SHARE_DROP = :down_share
         SELL_MOVEMENT = :none
         ALL_COMPANIES_ASSIGNABLE = true
-        SELL_AFTER = :after_ipo
+        SELL_AFTER = :after_sr_floated
         OBSOLETE_TRAINS_COUNT_FOR_LIMIT = true
         BANKRUPTCY_ENDS_GAME_AFTER = :all_but_one
 
@@ -440,7 +440,7 @@ module Engine
 
         def tokens_needed(corporation)
           tokens_needed = { 2 => 1, 5 => 2, 10 => 4 }[corporation.total_shares] - corporation.tokens.size
-          tokens_needed += 1 if corporation.companies.any? { |c| c.id == 'TS' }
+          tokens_needed += 1 if corporation.companies.any? { |c| c.id == TRAIN_STATION_PRIVATE_NAME }
           tokens_needed
         end
 
@@ -836,7 +836,8 @@ module Engine
         end
 
         def empty_auction_slot
-          @empty_auction_slot ||= Engine::Company.new(sym: '', name: '', value: nil, revenue: nil, desc: '', color: 'LightGrey')
+          @empty_auction_slot ||= Engine::Company.new(sym: '', name: '', value: nil, revenue: nil, desc: "\n" * 3,
+                                                      color: 'LightGrey')
         end
 
         def company_header(company)
@@ -977,6 +978,8 @@ module Engine
         end
 
         def or_round_finished
+          return if @depot.upcoming.empty?
+
           if @depot.upcoming.first.name == '2'
             depot.export_all!('2')
           else
@@ -998,7 +1001,7 @@ module Engine
               @stock_prices_start_merger = @corporations.to_h { |corp| [corp, corp.share_price] }
               @log << "-- #{round_description('Merger and Conversion', @round.round_num)} --"
               G1817::Round::Merger.new(self, [
-                Engine::Step::ReduceTokens,
+                G1817::Step::ReduceTokens,
                 Engine::Step::DiscardTrain,
                 G1817::Step::PostConversion,
                 G1817::Step::PostConversionLoans,
@@ -1007,7 +1010,7 @@ module Engine
             when G1817::Round::Merger
               @log << "-- #{round_description('Acquisition', @round.round_num)} --"
               G1817::Round::Acquisition.new(self, [
-                Engine::Step::ReduceTokens,
+                G1817::Step::ReduceTokens,
                 G1817::Step::Bankrupt,
                 G1817::Step::CashCrisis,
                 Engine::Step::DiscardTrain,

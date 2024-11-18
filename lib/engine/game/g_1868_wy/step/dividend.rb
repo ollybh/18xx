@@ -21,11 +21,17 @@ module Engine
             end
           end
 
-          def log_run_payout(entity, kind, revenue, action, payout)
+          def log_run_payout(entity, kind, revenue, subsidy, action, payout)
             super unless entity.minor?
           end
 
           def rust_obsolete_trains!(entity, log: false)
+            # reattach big boy token to individual train from before the
+            # double-heading
+            if entity == @game.big_boy_private.owner && @game.big_boy_train_dh_original
+              @game.attach_big_boy(@game.big_boy_train_dh_original, log: false)
+            end
+
             super(entity, log: false)
           end
 
@@ -47,6 +53,19 @@ module Engine
 
             @log << "#{entity.name} pays out #{@game.format_currency(revenue)} = "\
                     "$#{revenue / 10.0} per share, rounded up (#{receivers})"
+          end
+
+          def dividends_for_entity(entity, holder, per_share)
+            if (up = @game.union_pacific) == entity &&
+               up == holder &&
+               up == @game.up_double_share.owner &&
+               @game.ames_bros.owner&.player?
+              num_shares = up.num_shares_of(up) - 2
+              # Teapot Dome private can cause per_share to be a float
+              (num_shares * per_share).ceil
+            else
+              super
+            end
           end
         end
       end

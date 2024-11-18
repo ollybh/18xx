@@ -17,7 +17,7 @@ module Engine
     end
 
     def buying_train!(entity, train, source)
-      next! while @next_on.include?(train.sym)
+      next! while @next_on.include?(train.id) || @next_on.include?(train.sym)
 
       @game.rust_trains!(train, entity)
       @depot.depot_trains(clear: true)
@@ -29,12 +29,20 @@ module Engine
       @game.after_buying_train(train, source)
     end
 
+    def previous
+      @phases[0...@index]
+    end
+
     def current
       @phases[@index]
     end
 
     def upcoming
       @phases[@index + 1]
+    end
+
+    def future
+      @phases[@index + 1..-1]
     end
 
     def train_limit(entity)
@@ -70,6 +78,7 @@ module Engine
       log_msg += ') --'
       @log << log_msg
       trigger_events!
+      @game.after_phase_change(name)
     end
 
     def trigger_events!

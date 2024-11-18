@@ -66,7 +66,7 @@ module Engine
                   'this private company in lieu of performing both its tile '\
                   'and token placement steps. Performing this action allows '\
                   'the corporation to select any coastal city hex (all cities '\
-                  'except Foggia, Campobasso, and Potenza), optionally lay or '\
+                  "except Foggia, Campobasso, L'Aquila, and Potenza), optionally lay or "\
                   'upgrade a tile there, and optionally place a station token '\
                   'there. This power may be used even if the corporation is '\
                   'unable to trace a route to that city, but all other normal '\
@@ -107,7 +107,6 @@ module Engine
             shares: [20, 10, 10, 10, 10, 10, 10, 20],
             always_market_price: true,
             color: '#ff0000',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -120,7 +119,6 @@ module Engine
             coordinates: 'O9',
             always_market_price: true,
             color: :green,
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -134,7 +132,6 @@ module Engine
             always_market_price: true,
             color: '#f9b231',
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -147,7 +144,6 @@ module Engine
             coordinates: 'B14',
             always_market_price: true,
             color: '#0189d1',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -160,7 +156,6 @@ module Engine
             coordinates: 'G7',
             always_market_price: true,
             color: '#f48221',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -174,7 +169,6 @@ module Engine
             always_market_price: true,
             color: :pink,
             text_color: 'black',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -187,7 +181,6 @@ module Engine
             coordinates: 'A9',
             always_market_price: true,
             color: '#7b352a',
-            reservation_color: nil,
           },
           {
             float_percent: 20,
@@ -200,7 +193,6 @@ module Engine
             coordinates: 'L18',
             always_market_price: true,
             color: '#000',
-            reservation_color: nil,
           },
         ].freeze
       end

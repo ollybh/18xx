@@ -91,6 +91,9 @@ module Engine
 
           def remove_from_auction(entity)
             @active_bidders.delete(entity)
+            @bids[@auctioning]&.reject! do |bid|
+              bid.entity == entity
+            end
             resolve_bids
           end
 
@@ -99,6 +102,7 @@ module Engine
             entity = entities[entity_index]
             return next_entity! if entity&.passed?
             return unless @auctioning
+            return if @bids[@auctioning]&.any? { |bid| bid.entity == entity }
             return if can_afford?(entity)
 
             pass_auction(entity)
@@ -244,7 +248,7 @@ module Engine
             reduce_price
             entities.each(&:unpass!)
             next_entity!
-            force_purchase(@auction_triggerer, @auctioning) if min_bid(@auctioning).zero?
+            force_purchase(@auction_triggerer, @auctioning) if @auctioning && min_bid(@auctioning).zero?
           end
 
           def resolve_bids

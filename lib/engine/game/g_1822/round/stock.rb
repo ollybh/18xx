@@ -29,8 +29,8 @@ module Engine
           def update_stored_winning_bids(entity)
             winning_bids = []
             check_winning = lambda { |bid_target|
-              return unless (bid = highest_bid(bid_target))
-              return unless bid.entity == entity
+              next unless (bid = highest_bid(bid_target))
+              next unless bid.entity == entity
 
               winning_bids << bid_target
             }
@@ -43,7 +43,7 @@ module Engine
           end
 
           def finish_round
-            return @game.end_game! if @game.nothing_sold_in_sr?
+            return @game.end_game! if @game.class::GAME_END_ON_NOTHING_SOLD_IN_SR1 && @game.nothing_sold_in_sr?
 
             float_minors = []
             minor_count = 0
@@ -102,6 +102,9 @@ module Engine
             price = bid.price
 
             company.owner = player
+
+            @game.tax_haven.rename!("#{@game.tax_haven.name} (#{player.name})") if company.id == @game.class::COMPANY_OSTH
+
             player.companies << company
             player.spend(price, @game.bank) if price.positive?
             @log << "#{player.name} wins the bid #{company.name} for #{@game.format_currency(price)}"

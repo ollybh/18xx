@@ -4,6 +4,7 @@ require_relative 'meta'
 require_relative 'map'
 require_relative 'entities'
 require_relative 'market'
+require_relative 'graph'
 require_relative 'trains'
 require_relative '../base'
 require_relative '../stubs_are_restricted'
@@ -50,18 +51,10 @@ module Engine
           { lay: true, upgrade: true, cost: 20, cannot_reuse_same_hex: true },
         ].freeze
 
-        def init_optional_rules(optional_rules)
-          rules = super
+        GRAPH_CLASS = G1858::Graph
 
-          # Quick start variant doesn't work for two players.
-          rules -= [:quick_start] if two_player?
-
-          # The alternate set of private packets can only be used with the
-          # quick start variant.
-          rules -= [:set_b] unless rules.include?(:quick_start)
-
-          rules
-        end
+        # These are the train types that determine the rusting timing of phase 4 trains.
+        GREY_TRAINS = %w[7E 6M 5D].freeze
 
         def corporation_opts
           two_player? ? { max_ownership_percent: 70 } : {}
@@ -78,11 +71,11 @@ module Engine
         end
 
         def option_quick_start?
-          optional_rules.include?(:quick_start)
+          optional_rules.include?(:quick_start_a) || optional_rules.include?(:quick_start_b)
         end
 
         def option_quick_start_packets
-          if optional_rules.include?(:set_b)
+          if optional_rules.include?(:quick_start_b)
             QUICK_START_PACKETS_B
           else
             QUICK_START_PACKETS_A
@@ -101,13 +94,13 @@ module Engine
           #  - @graph uses any track. This is going to include illegal routes
           #    (using both broad and metre gauge track) but will just be used
           #    by things like the auto-router where the route will get rejected.
-          @graph_broad = Graph.new(self, skip_track: :narrow, home_as_token: true)
-          @graph_metre = Graph.new(self, skip_track: :broad, home_as_token: true)
+          @graph_broad = self.class::GRAPH_CLASS.new(self, skip_track: :narrow, home_as_token: true)
+          @graph_metre = self.class::GRAPH_CLASS.new(self, skip_track: :broad, home_as_token: true)
 
           # The rusting event for 6H/4M trains is triggered by the number of
-          # phase 7 trains purchased, so track the number of these sold.
-          @phase7_trains_bought = 0
-          @phase7_train_trigger = two_player? ? 3 : 5
+          # grey trains purchased, so track the number of these sold.
+          @grey_trains_bought = 0
+          @phase4_train_trigger = two_player? ? 3 : 5
 
           @unbuyable_companies = []
           setup_unbuyable_privates
@@ -197,6 +190,7 @@ module Engine
         def stock_round
           Engine::Round::Stock.new(self, [
             G1858::Step::Exchange,
+            G1858::Step::ExchangeApproval,
             G1858::Step::HomeToken,
             G1858::Step::BuySellParShares,
           ])
@@ -222,6 +216,7 @@ module Engine
 
         def closure_round(round_num)
           G1858::Round::Closure.new(self, [
+            G1858::Step::ExchangeApproval,
             G1858::Step::HomeToken,
             G1858::Step::PrivateClosure,
           ], round_num: round_num)
@@ -306,6 +301,14 @@ module Engine
           return [] if corporation.tokens.any?(&:used)
 
           super
+          return if corporation.companies.empty?
+
+          # We need to restrict home token locations to cities where the
+          # private railway company being used to start the corporation had
+          # reservations. This is to prevent the possibility of a token going
+          # in the wrong Madrid city if there are unreserved slots available.
+          cities = reserved_cities(corporation, corporation.companies.first)
+          @round.pending_tokens.first[:cities] = cities
         end
 
         def home_token_locations(corporation)
@@ -327,21 +330,12 @@ module Engine
         end
 
         # Returns true if the hex is this private railway's home hex.
-        def home_hex?(operator, hex)
+        # The gauge parameter is only used when this method is called from
+        # `corporation_private_connected?`. It is set to :broad or :narrow
+        # when testing whether this hex is part of the broad or narrow gauge
+        # graph. 1858 ignores the value of this parameter.
+        def home_hex?(operator, hex, _gauge = nil)
           operator.coordinates.include?(hex.coordinates)
-        end
-
-        # Constent for a share purchase is only needed in one circumstance:
-        # - A private railway company is being exchanged for a share.
-        # - The share is from the corporation's treasury (not the market).
-        # - The private railway and corporation are controlled by different players.
-        def consenter_for_buy_shares(entity, bundle)
-          return unless entity.minor?
-          return unless bundle.share_price.nil?
-          return if entity.owner == bundle.corporation.owner
-          return unless bundle.shares.first.owner.corporation?
-
-          bundle.corporation.owner
         end
 
         def tile_lays(entity)
@@ -491,18 +485,22 @@ module Engine
         def buy_train(operator, train, price = nil)
           bought_from_depot = (train.owner == @depot)
           super
-          return if @phase7_trains_bought >= @phase7_train_trigger
+          return if @grey_trains_bought >= @phase4_train_trigger
           return unless bought_from_depot
-          return unless %w[7E 6M 5D].include?(train.name)
+          return unless self.class::GREY_TRAINS.include?(train.name)
 
-          @phase7_trains_bought += 1
-          ordinal = %w[First Second Third Fourth Fifth][@phase7_trains_bought - 1]
-          @log << "#{ordinal} phase 7 train has been bought"
-          rust_phase4_trains!(train) if @phase7_trains_bought == @phase7_train_trigger
+          @grey_trains_bought += 1
+          ordinal = %w[First Second Third Fourth Fifth][@grey_trains_bought - 1]
+          @log << "#{ordinal} grey train has been bought"
+          maybe_rust_wounded_trains!(@grey_trains_bought, train)
         end
 
-        def rust_phase4_trains!(purchased_train)
-          trains.select { |train| %w[6H 3M].include?(train.name) }
+        def maybe_rust_wounded_trains!(grey_trains_bought, purchased_train)
+          rust_wounded_trains!(%w[6H 3M], purchased_train) if grey_trains_bought == @phase4_train_trigger
+        end
+
+        def rust_wounded_trains!(train_names, purchased_train)
+          trains.select { |train| train_names.include?(train.name) }
                 .each { |train| train.rusts_on = purchased_train.sym }
           rust_trains!(purchased_train, purchased_train.owner)
         end
@@ -533,9 +531,14 @@ module Engine
           @_shares[share.id] = share
         end
 
+        def private_colors_available(phase)
+          colors = [:yellow]
+          colors << :green if phase.status.include?('green_privates')
+          colors
+        end
+
         def buyable_bank_owned_companies
-          available_colors = [:yellow]
-          available_colors << :green if @phase.status.include?('green_privates')
+          available_colors = private_colors_available(@phase)
           @companies.select do |company|
             !company.closed? && (company.owner == @bank) &&
               available_colors.include?(company.color) &&
@@ -616,8 +619,8 @@ module Engine
           return false if corporation.closed?
           return false unless corporation.floated?
 
-          @graph_broad.reachable_hexes(corporation).any? { |hex, _| home_hex?(minor, hex) } ||
-            @graph_metre.reachable_hexes(corporation).any? { |hex, _| home_hex?(minor, hex) } ||
+          @graph_broad.reachable_hexes(corporation).any? { |hex, _| home_hex?(minor, hex, :broad) } ||
+            @graph_metre.reachable_hexes(corporation).any? { |hex, _| home_hex?(minor, hex, :narrow) } ||
             corporation.placed_tokens.any? { |token| home_hex?(minor, token.city.hex) }
         end
 
@@ -646,11 +649,47 @@ module Engine
           corporation
         end
 
+        # Finds any reservation abilities for a hex that have custom icons,
+        # and clears these icons. This is to be used for the cities which have
+        # two private railway companies competing for the same slots. Once one
+        # there is no longer competition for a slot (either because one of the
+        # reservation abilities is used, or the city is upgraded to two slots)
+        # then the default reservation display is needed to show a single
+        # company's name.
+        def clear_reservation_icons(hex)
+          hex.tile.cities.each do |city|
+            city.reservations.compact.each do |entity|
+              entity.all_abilities.each do |ability|
+                next unless ability.type == :reservation
+                next unless ability.hex == hex.coordinates
+                next unless ability.icon
+
+                ability.icon = nil
+              end
+            end
+
+            # If there's still a single slot in the city and one of the two
+            # companies reserving the slot has closed, make sure that its
+            # reservation is pointing to this slot. Without this the city's
+            # reservations array could be [nil, company] and no reservation
+            # would be shown on the map.
+            city.reservations.compact! if city.reservations.size > city.slots
+          end
+        end
+
         # Removes all of the icons on the map for a private railway company.
+        # Also resets reservation icons in the private's home cities.
         def delete_icons(company)
           icon_name = company.sym.delete('&')
           @hexes.each do |hex|
             hex.tile.icons.reject! { |icon| icon.name == icon_name }
+          end
+
+          minor = private_minor(company)
+          return unless minor
+
+          minor.coordinates.each do |coord|
+            clear_reservation_icons(hex_by_id(coord))
           end
         end
 
@@ -699,6 +738,8 @@ module Engine
           # have any routes to show.
           @corporations.select(&:operated?)
         end
+
+        def after_lay_tile(_hex, _tile, _entity); end
       end
     end
   end

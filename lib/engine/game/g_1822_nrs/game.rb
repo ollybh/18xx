@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../g_1822/game'
+require_relative '../g_1822/scenario'
 require_relative 'entities'
 require_relative 'map'
 require_relative 'meta'
@@ -12,6 +13,7 @@ module Engine
         include_meta(G1822NRS::Meta)
         include Entities
         include Map
+        include G1822::Scenario
 
         BIDDING_BOX_START_MINOR = nil
 
@@ -200,6 +202,7 @@ module Engine
             next unless starting_companies.include?(company[:sym])
 
             opts = self.class::STARTING_COMPANIES_OVERRIDE[company[:sym]] || {}
+            company = init_private_company_color(company)
             Company.new(**company.merge(opts))
           end.compact
         end

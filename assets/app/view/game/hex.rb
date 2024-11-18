@@ -44,7 +44,7 @@ module View
       needs :highlight, default: false
 
       def render
-        return nil if @hex.empty
+        return '' if @hex.empty
 
         @selected = @hex == @tile_selector&.hex || @selected_route&.last_node&.hex == @hex
         @tile =
@@ -79,13 +79,15 @@ module View
         children << hex_highlight if @highlight
 
         if (color = @tile&.stripes&.color)
-          Lib::Hex.stripe_points.each do |stripe|
+          stripes = Lib::Hex.stripe_points.map do |stripe|
             attrs = {
               fill: Lib::Hex::COLOR[color],
               points: stripe,
             }
-            children << h(:polygon, attrs: attrs)
+            h(:polygon, attrs: attrs)
           end
+          attrs = @hex.layout == :flat ? { attrs: { transform: 'rotate(60)' } } : {}
+          children << h(:g, attrs, stripes)
         end
 
         if @tile
@@ -189,7 +191,10 @@ module View
 
         case @role
         when :map
-          return process_action(Engine::Action::Assign.new(@entity, target: @hex)) if @actions.include?('assign')
+          if @actions.include?('assign')
+            process_action(Engine::Action::Assign.new(@entity, target: @hex))
+            return store(:selected_company, nil, skip: true)
+          end
 
           step = @game.round.active_step
           if @actions.include?('remove_hex_token') && @hex.tokens.find { |t| t.corporation == @entity }
@@ -208,6 +213,12 @@ module View
               cost: step.token_cost_override(@entity, @hex, nil, @entity.find_token_by_type(next_token&.to_sym)),
               token_type: next_token
             ))
+          end
+          if @actions.include?('choose') && step.choices.include?(@hex.id)
+            return process_action(Engine::Action::Choose.new(
+                @entity,
+                choice: @hex.id,
+              ))
           end
           return unless @actions.include?('lay_tile')
 

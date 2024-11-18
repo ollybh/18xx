@@ -14,12 +14,13 @@ module Engine
         include G1850::Entities
         include G1850::Map
 
-        attr_accessor :sell_queue, :connection_run, :reissued, :mesabi_token_counter, :mesabi_compnay_sold_or_closed
+        attr_accessor :sell_queue, :connection_run, :reissued, :mesabi_token_counter, :mesabi_company_sold_or_closed
 
         CORPORATION_CLASS = G1850::Corporation
         COMPANY_CLASS = G1850::Company
         CORPORATE_BUY_SHARE_ALLOW_BUY_FROM_PRESIDENT = true
         MULTIPLE_BUY_ONLY_FROM_MARKET = true
+        EBUY_OTHER_VALUE = false
 
         CERT_LIMIT = {
           2 => { 9 => 24, 8 => 21 },
@@ -137,6 +138,8 @@ module Engine
           phase_2_companies.each { |c| c.max_price = c.value }
 
           @corporations.each do |corporation|
+            corporation.tokens.pop if reduced_tokens? && corporation.tokens.size == 4
+
             ability = abilities(corporation, :assign_hexes)
             next unless ability
 
@@ -148,8 +151,6 @@ module Engine
         def event_companies_buyable!
           phase_2_companies.each { |c| c.max_price = 2 * c.value }
         end
-
-        # Everything below this line is also included in 1870's game.rb file
 
         CURRENCY_FORMAT_STR = '$%s'
 
@@ -166,7 +167,7 @@ module Engine
           %w[60y 64y 68 72 76 82 90p 100 110 120 140 160 180 200 225 250 275 300 325 350 375],
           %w[55y 60y 64y 68 72 76 82p 90 100 110 120 140 160 180 200 225 250i 275i 300i 325i 350i],
           %w[50o 55y 60y 64y 68 72 76p 82 90 100 110 120 140 160i 180i 200i 225i 250i 275i 300i 325i],
-          %w[40b 50o 55y 60y 64 68 72p 76 82 90 100 110i 120i 140i 160i 180i],
+          %w[40o 50o 55y 60y 64 68 72p 76 82 90 100 110i 120i 140i 160i 180i],
           %w[30b 40o 50o 55y 60y 64 68p 72 76 82 90i 100i 110i],
           %w[20b 30b 40o 50o 55y 60 64 68 72 76i 82i],
           %w[10b 20b 30b 40o 50y 55y 60 64 68i 72i],
@@ -190,7 +191,7 @@ module Engine
             Engine::Step::DiscardTrain,
             G1850::Step::BuyTrain,
             [G1870::Step::BuyCompany, { blocks: true }],
-            G1870::Step::PriceProtection,
+            G1850::Step::PriceProtection,
           ], round_num: round_num)
         end
 
@@ -198,7 +199,7 @@ module Engine
           G1870::Round::Stock.new(self, [
             Engine::Step::DiscardTrain,
             G1870::Step::BuySellParShares,
-            G1870::Step::PriceProtection,
+            G1850::Step::PriceProtection,
           ])
         end
 
@@ -243,7 +244,7 @@ module Engine
         end
 
         def wlg_company
-          @wlg_compnay ||= company_by_id('WLG')
+          @wlg_company ||= company_by_id('WLG')
         end
 
         def gbc_company
@@ -262,15 +263,16 @@ module Engine
           @log << '-- Event: Private companies close --'
           @companies.each do |company|
             if company == gbc_company ||
-              (company == wlg_company && wlg_company.abilities&.first&.count == 3) ||
+              company == wlg_company ||
               (company == cm_company && cm_company.abilities&.first)
+
               company.revenue = 0
               next
             end
 
             company.close!
           end
-          @mesabi_compnay_sold_or_closed = true
+          @mesabi_company_sold_or_closed = true
         end
 
         def event_close_remaining_companies!
@@ -296,7 +298,7 @@ module Engine
 
           buyer.mesabi_token = true
           @mesabi_token_counter -= 1
-          @mesabi_compnay_sold_or_closed = true
+          @mesabi_company_sold_or_closed = true
           log << "#{buyer.name} receives Mesabi token. #{@mesabi_token_counter} Mesabi tokens left in the game."
           log << '-- Corporations can now buy Mesabi tokens --'
         end
@@ -331,7 +333,9 @@ module Engine
         end
 
         def sell_shares_and_change_price(bundle, allow_president_change: true, swap: nil, movement: nil)
-          @sell_queue << [bundle, bundle.corporation.owner]
+          return super if @round.current_entity == bundle.corporation
+
+          @sell_queue << [bundle, bundle.corporation.owner, bundle.owner]
 
           @share_pool.sell_shares(bundle)
         end
@@ -378,6 +382,10 @@ module Engine
           end
 
           @skip_paths
+        end
+
+        def reduced_tokens?
+          @reduced_tokens ||= @optional_rules&.include?(:reduced_tokens)
         end
       end
     end

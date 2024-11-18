@@ -38,7 +38,7 @@ module Engine
 
             @round.routes = []
 
-            log_run_payout(entity, kind, revenue, action, payout)
+            log_run_payout(entity, kind, revenue, 0, action, payout)
 
             @game.bank.spend(payout[:corporation], entity) if payout[:corporation].positive?
 
@@ -50,6 +50,7 @@ module Engine
             @round.steps.each do |step|
               step.unpass! if step.class < Connection
             end
+            @round.recalculate_order
           end
         end
       end

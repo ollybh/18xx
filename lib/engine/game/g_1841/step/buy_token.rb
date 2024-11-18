@@ -84,7 +84,7 @@ module Engine
               token.used &&
               city &&
               can_token_city?(entity, city) &&
-              other_corporation.placed_tokens.size > 1 &&
+              (city.pass? || other_corporation.placed_tokens.count { |t| !t.city.pass? } > 1) &&
               @game.token_graph_for_entity(entity).connected_nodes(entity)[city]
           end
 
@@ -123,6 +123,9 @@ module Engine
 
             @round.bought_token = true
             @game.token_graph_for_entity(entity).clear
+
+            # kill routes for corp selling token
+            @game.graph.clear_graph_for(old_token.corporation)
           end
 
           def real_owner(corporation)

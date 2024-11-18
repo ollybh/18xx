@@ -10,6 +10,14 @@ module Engine
         class BuySellParShares < Engine::Step::BuySellParShares
           include BidboxAuction
 
+          def round_state
+            super.merge(
+              {
+                tax_haven_bought: false,
+              }
+            )
+          end
+
           def actions(entity)
             return ['choose_ability'] unless choices_ability(entity).empty?
             return [] unless entity == current_entity
@@ -22,7 +30,10 @@ module Engine
             actions << 'par' if @bid_actions.zero? && can_ipo_any?(entity) && player_debt.zero?
             actions << 'sell_shares' if can_sell_any?(entity)
             actions << 'bid' if player_debt.zero?
-            actions << 'payoff_player_debt' if player_debt.positive? && entity.cash.positive?
+            if player_debt.positive? && entity.cash.positive?
+              actions << 'payoff_player_debt'
+              actions << 'payoff_player_debt_partial'
+            end
             actions << 'pass' unless actions.empty?
             actions
           end
@@ -151,14 +162,19 @@ module Engine
             end
 
             bundle = @game.company_tax_haven_bundle(action.choice)
-            entity = action.entity.owner
-            if available_cash(entity) < bundle.price || @round.players_sold[entity][bundle.corporation]
+            player = action.entity.owner
+            spender = @game.tax_haven_spender(action.entity)
+            if available_cash(spender) < bundle.price ||
+               @round.players_sold[player][bundle.corporation] ||
+               @round.tax_haven_bought
               raise GameError, "Can't buy a share of #{bundle&.corporation&.name}"
             end
 
+            @round.tax_haven_bought = true
+
             @game.company_made_choice(action.entity, action.choice, :stock_round)
             track_action(action, action.entity)
-            log_pass(entity)
+            log_pass(player)
             pass!
           end
 
@@ -206,6 +222,13 @@ module Engine
           def process_payoff_player_debt(action)
             player = action.entity
             @game.payoff_player_loan(player)
+            @round.last_to_act = player
+            @round.current_actions << action
+          end
+
+          def process_payoff_player_debt_partial(action)
+            player = action.entity
+            @game.payoff_player_loan(player, payoff_amount: action.amount)
             @round.last_to_act = player
             @round.current_actions << action
           end

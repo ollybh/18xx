@@ -29,7 +29,7 @@ module View
       end
 
       def par_choices
-        return unless @corporation_to_par
+        return '' unless @corporation_to_par
 
         props = {
           style: {
@@ -181,7 +181,7 @@ module View
           },
           style: {
             stroke: 'black',
-            'stroke-width' => '0.1rem',
+            'stroke-width': '0.1rem',
           },
         }
 

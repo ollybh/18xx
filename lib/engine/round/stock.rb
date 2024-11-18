@@ -74,16 +74,18 @@ module Engine
           old_price = corp.share_price
 
           sold_out_stock_movement(corp) if sold_out?(corp) && @game.sold_out_increase?(corp)
+
           pool_share_drop = @game.class::POOL_SHARE_DROP
-          price_drops =
-            if (pool_share_drop == :none) || (shares_in_pool = corp.num_market_shares).zero?
-              0
-            elsif pool_share_drop == :one
-              1
-            else
-              shares_in_pool
+          if pool_share_drop != :none && corp.num_market_shares.positive?
+            case pool_share_drop
+            when :down_block
+              @game.stock_market.move_down(corp)
+            when :down_share
+              corp.num_market_shares.times { @game.stock_market.move_down(corp) }
+            when :left_block
+              @game.stock_market.move_left(corp)
             end
-          price_drops.times { @game.stock_market.move_down(corp) }
+          end
 
           @game.log_share_price(corp, old_price)
         end
@@ -99,6 +101,10 @@ module Engine
 
       def sold_out?(corporation)
         corporation.player_share_holders.values.sum == 100
+      end
+
+      def inspect
+        "<#{self.class.name} Round #{@game.turn}>"
       end
     end
   end

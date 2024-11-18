@@ -33,7 +33,7 @@ module Engine
 
       def get_tile_lay(entity)
         corporation = get_tile_lay_corporation(entity)
-        action = @game.tile_lays(corporation)[@round.num_laid_track]&.clone
+        action = @game.tile_lays(corporation)[tile_lay_index]&.clone
         return unless action
 
         action[:lay] = !@round.upgraded_track if action[:lay] == :not_if_upgraded
@@ -44,12 +44,17 @@ module Engine
         action
       end
 
+      def tile_lay_index
+        @round.num_laid_track
+      end
+
       def get_tile_lay_corporation(entity)
         entity.company? ? entity.owner : entity
       end
 
       def lay_tile_action(action, entity: nil, spender: nil)
         tile = action.tile
+        hex = action.hex
 
         old_tile = action.hex.tile
         tile_lay = get_tile_lay(action.entity)
@@ -57,10 +62,10 @@ module Engine
                                                                        action.hex) && !(tile_lay && tile_lay[:upgrade])
         raise GameError, 'Cannot lay a yellow now' if tile.color == :yellow && !(tile_lay && tile_lay[:lay])
         if tile_lay[:cannot_reuse_same_hex] && @round.laid_hexes.include?(action.hex)
-          raise GameError, "#{action.hex.id} cannot be layed as this hex was already layed on this turn"
+          raise GameError, "#{action.hex.id} cannot be laid as this hex was already laid on this turn"
         end
 
-        extra_cost = tile.color == :yellow ? tile_lay[:cost] : tile_lay[:upgrade_cost]
+        extra_cost = extra_cost(tile, tile_lay, hex)
 
         lay_tile(action, extra_cost: extra_cost, entity: entity, spender: spender)
         if track_upgrade?(old_tile, tile, action.hex)
@@ -71,12 +76,19 @@ module Engine
         @round.laid_hexes << action.hex
       end
 
+      def extra_cost(tile, tile_lay, _hex)
+        tile.color == :yellow ? tile_lay[:cost] : tile_lay[:upgrade_cost]
+      end
+
       def track_upgrade?(from, _to, _hex)
         from.color != :white
       end
 
       def tile_lay_abilities_should_block?(entity)
-        Array(abilities(entity, time: type, passive_ok: false)).any? { |a| !a.consume_tile_lay }
+        abilities = [type, 'owning_player_track'].flat_map do |time|
+          Array(abilities(entity, time: time, passive_ok: false))
+        end
+        abilities.any? { |a| !a.consume_tile_lay }
       end
 
       def abilities(entity, **kwargs, &block)
@@ -97,7 +109,7 @@ module Engine
         hex = action.hex
         rotation = action.rotation
         old_tile = hex.tile
-        graph = @game.graph_for_entity(entity)
+        graph = @game.graph_for_entity(spender)
 
         if !@game.loading && (blocking_ability = ability_blocking_hex(entity, hex))
           raise GameError, "#{hex.id} is blocked by #{blocking_ability.owner.name}"
@@ -375,7 +387,10 @@ module Engine
         end.compact
 
         if (!hex.tile.cities.empty? && @game.class::TILE_UPGRADES_MUST_USE_MAX_EXITS.include?(:cities)) ||
-          (hex.tile.cities.empty? && hex.tile.towns.empty? && @game.class::TILE_UPGRADES_MUST_USE_MAX_EXITS.include?(:track))
+           (!hex.tile.cities.empty? &&
+            hex.tile.labels.empty? &&
+            @game.class::TILE_UPGRADES_MUST_USE_MAX_EXITS.include?(:unlabeled_cities)) ||
+           (hex.tile.cities.empty? && hex.tile.towns.empty? && @game.class::TILE_UPGRADES_MUST_USE_MAX_EXITS.include?(:track))
           max_exits(tiles)
         else
           tiles
@@ -396,24 +411,50 @@ module Engine
 
         return false unless @game.legal_tile_rotation?(entity, hex, tile)
 
-        old_paths = hex.tile.paths
         old_ctedges = hex.tile.city_town_edges
 
-        new_paths = tile.paths
         new_exits = tile.exits
         new_ctedges = tile.city_town_edges
-        extra_cities = [0, new_ctedges.size - old_ctedges.size].max
+        added_cities = [0, new_ctedges.size - old_ctedges.size].max
         multi_city_upgrade = tile.cities.size > 1 && hex.tile.cities.size > 1
 
-        new_exits.all? { |edge| hex.neighbors[edge] } &&
-          !(new_exits & hex_neighbors(entity, hex)).empty? &&
-          old_paths.all? { |path| new_paths.any? { |p| path <= p } } &&
-          # Count how many cities on the new tile that aren't included by any of the old tile.
-          # Make sure this isn't more than the number of new cities added.
-          # 1836jr30 D6 -> 54 adds more cities
-          extra_cities >= new_ctedges.count { |newct| old_ctedges.all? { |oldct| (newct & oldct).none? } } &&
-          # 1867: Does every old city correspond to exactly one new city?
-          (!multi_city_upgrade || old_ctedges.all? { |oldct| new_ctedges.one? { |newct| (oldct & newct) == oldct } })
+        all_new_exits_valid = new_exits.all? { |edge| hex.neighbors[edge] }
+        return false unless all_new_exits_valid
+
+        entity_reaches_a_new_exit = !(new_exits & hex_neighbors(entity, hex)).empty?
+        return false unless entity_reaches_a_new_exit
+
+        return false unless old_paths_maintained?(hex, tile)
+
+        # Count how many cities on the new tile that aren't included by any of the old tile.
+        # Make sure this isn't more than the number of new cities added.
+        # 1836jr30 D6 -> 54 adds more cities
+        valid_added_city_count = added_cities >= new_ctedges.count { |newct| old_ctedges.all? { |oldct| (newct & oldct).none? } }
+        return false unless valid_added_city_count
+
+        # 1867: Does every old city correspond to exactly one new city?
+        old_cities_map_to_new =
+          !multi_city_upgrade ||
+          old_ctedges.all? { |oldct| new_ctedges.one? { |newct| (oldct & newct) == oldct } }
+        return false unless old_cities_map_to_new
+
+        return false unless city_sizes_maintained(hex, tile)
+
+        true
+      end
+
+      def old_paths_maintained?(hex, tile)
+        old_paths = hex.tile.paths
+        new_paths = tile.paths
+        old_paths.all? { |path| new_paths.any? { |p| path <= p } }
+      end
+
+      # 1822CA: some big cities have a mix of 2-slot and 1-slot cities; don't
+      # reduce slots in a city
+      def city_sizes_maintained(hex, tile)
+        return true unless hex.tile.cities.map(&:normal_slots).uniq.size > 1
+
+        hex.city_map_for(tile).all? { |old_c, new_c| new_c.normal_slots >= old_c.normal_slots }
       end
 
       def legal_tile_rotations(entity_or_entities, hex, tile)

@@ -45,10 +45,10 @@ module Engine
             company.value
           end
 
-          def next_entity!(auction_triggerer)
+          def next_entity!
             @round.next_entity_index!
             entity = entities[entity_index]
-            next_entity!(auction_triggerer) if entity != auction_triggerer && (entity&.passed || !entity.companies.empty?)
+            next_entity! if entity != @auction_triggerer && (entity&.passed || !entity.companies.empty?)
           end
 
           def process_bid(action)
@@ -115,6 +115,7 @@ module Engine
             player.spend(price, @game.bank)
             @companies.delete(company)
             @log << "#{player.name} wins the auction for #{company.name} with a bid of #{@game.format_currency(price)}"
+            @game.after_buy_company(player, company, price)
           end
 
           def resolve_bids
@@ -124,7 +125,7 @@ module Engine
             if initial_auction_entities.empty?
               finish_auction
             else
-              next_entity!(@auction_triggerer)
+              next_entity!
             end
           end
 

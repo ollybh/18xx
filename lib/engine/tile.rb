@@ -15,10 +15,10 @@ module Engine
     include Config::Tile
 
     attr_accessor :blocks_lay, :hex, :icons, :index, :legal_rotations, :location_name,
-                  :name, :opposite, :reservations, :upgrades, :color, :future_label, :future_paths
+                  :name, :opposite, :reservations, :upgrades, :color, :future_label, :future_paths, :halts
     attr_reader :borders, :cities, :edges, :junction, :nodes, :labels, :parts, :preprinted, :rotation, :stops, :towns,
                 :offboards, :blockers, :city_towns, :unlimited, :stubs, :partitions, :id, :frame, :stripes, :hidden,
-                :hidden_blockers
+                :hidden_blockers, :code
     attr_writer :revenue_to_render
 
     ALL_EDGES = [0, 1, 2, 3, 4, 5].freeze
@@ -118,6 +118,7 @@ module Engine
                               route: params['route'],
                               format: params['format'],
                               boom: params['boom'],
+                              outline: params['outline'],
                               loc: params['loc'])
         cache << city
         city
@@ -150,6 +151,7 @@ module Engine
         town
       when 'halt'
         halt = Part::Halt.new(params['symbol'],
+                              revenue: params['revenue'],
                               groups: params['groups'],
                               hide: params['hide'],
                               visit_cost: params['visit_cost'],
@@ -164,7 +166,8 @@ module Engine
                                       hide: params['hide'],
                                       visit_cost: params['visit_cost'],
                                       route: params['route'],
-                                      format: params['format'])
+                                      format: params['format'],
+                                      rows: params['rows'])
         cache << offboard
         offboard
       when 'label'
@@ -239,6 +242,7 @@ module Engine
       @unlimited = opts[:unlimited] || false
       @labels = []
       @future_label = nil
+      @halts = []
       @opposite = nil
       @hidden = opts[:hidden] || false
       @id = "#{@name}-#{@index}"
@@ -343,9 +347,14 @@ module Engine
       end
     end
 
-    def add_blocker!(private_company, hidden: false)
-      @blockers << private_company
-      @hidden_blockers << private_company if hidden
+    def add_blocker!(entity, hidden: false)
+      @blockers << entity
+      @hidden_blockers << entity if hidden
+    end
+
+    def remove_blocker!(entity)
+      @blockers.delete(entity)
+      @hidden_blockers.delete(entity)
     end
 
     def inspect
@@ -373,6 +382,14 @@ module Engine
         @cities[city].add_reservation!(entity, slot)
       else
         @reservations << entity
+      end
+    end
+
+    def remove_reservation!(entity)
+      if (city = @cities.find { |c| c.reserved_by?(entity) })
+        city.remove_reservation!(entity)
+      else
+        @reservations.delete(entity)
       end
     end
 
@@ -615,6 +632,7 @@ module Engine
         elsif part.town?
           @towns << part
           @city_towns << part
+          @halts << part if part.halt?
         elsif part.upgrade?
           @upgrades << part
         elsif part.offboard?

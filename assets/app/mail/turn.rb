@@ -1,35 +1,18 @@
 # frozen_string_literal: true
 
-require_tree 'engine'
-require_relative '../view/game/game_log'
-require_relative '../view/game/players'
-require_relative '../view/game/spreadsheet'
+# This file generates a backtick warning when running tests, but resolving it by adding
+# the same warning suppression comment as other files breaks the e-mail notifications.
+# See: https://github.com/tobymao/18xx/pull/10382
+#      https://github.com/tobymao/18xx/pull/10479
+#      https://github.com/tobymao/18xx/pull/10531
 
 class Turn < Snabberb::Component
-  needs :game_data, store: true
   needs :game_url
-  needs :game, store: true, default: nil
-  needs :hide_logo, store: true, default: true
+  needs :game_id
 
   def render
-    @game = Engine::Game.load(@game_data)
-
-    store(:game, @game, skip: true)
-    store(:hide_logo, @hide_logo, skip: true)
-
     h(:div, [
-      render_link,
-      h(View::Game::GameLog, limit: 10),
-      h(View::Game::Players, game: @game),
-      h(View::Game::Spreadsheet, game: @game),
+      h(:a, { attrs: { href: @game_url } }, "Go To Game #{@game_id}"),
     ])
-  end
-
-  def render_link
-    props = {
-      attrs: { href: @game_url },
-    }
-
-    h(:a, props, "Go To Game #{@game_data[:id]}")
   end
 end

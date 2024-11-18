@@ -73,7 +73,6 @@ module Engine
 
           def can_buy?(entity, bundle)
             return false if mandatory_nyc_buy?(entity) && bundle.corporation != @game.nyc_corporation
-            return false if bundle.presidents_share&.owner == @game.nyc_corporation
 
             super
           end
@@ -84,7 +83,7 @@ module Engine
             super
           end
 
-          def can_bid?(entity)
+          def can_bid_any?(entity)
             return false if max_bid(entity) < MIN_BID || bought?
 
             @game.corporations.any? { |c| c.type == :minor && @game.can_par?(c, entity) }

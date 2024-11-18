@@ -10,14 +10,17 @@ module View
       needs :entity, default: nil
 
       def render
-        choices = if @game.round.active_step.respond_to?(:entity_choices)
-                    @game.round.active_step.entity_choices(@entity)
+        step = @game.round.active_step
+        return '' if step.respond_to?(:render_choices?) && !step.render_choices?
+
+        choices = if step.respond_to?(:entity_choices)
+                    step.entity_choices(@entity)
                   else
-                    @game.round.active_step.choices
+                    step.choices
                   end
 
-        choice_is_amount = if @game.round.active_step.respond_to?(:choice_is_amount?)
-                             @game.round.active_step.choice_is_amount?
+        choice_is_amount = if step.respond_to?(:choice_is_amount?)
+                             step.choice_is_amount?
                            else
                              false
                            end
@@ -26,27 +29,39 @@ module View
 
         choice_buttons = choices.map do |choice, label|
           label ||= choice
-          click = lambda do
-            process_action(Engine::Action::Choose.new(
-              @game.current_entity,
-              choice: choice,
-            ))
+          process_choose = lambda do
+            choose = lambda do
+              process_action(Engine::Action::Choose.new(
+                @game.current_entity,
+                choice: choice,
+              ))
+            end
+
+            if (consenter = @game.consenter_for_choice(@game.current_entity, choice, label))
+              check_consent(@game.current_entity, consenter, choose)
+            else
+              choose.call
+            end
           end
 
           props = {
             style: {
               padding: '0.2rem 0.2rem',
             },
-            on: { click: click },
+            on: { click: process_choose },
           }
           h('button', props, label)
         end
 
+        children = []
         div_class = choice_buttons.size < 5 ? '.inline' : ''
-        h(:div, [
-          h("div#{div_class}", { style: { marginTop: '0.5rem' } }, "#{@game.round.active_step.choice_name}: "),
-          h(:div, choice_buttons),
-        ])
+        children << h("div#{div_class}", { style: { marginTop: '0.5rem' } }, "#{step.choice_name}: ") if step.choice_name
+        children << h(:div, choice_buttons)
+        if step.respond_to?(:choice_explanation) && (explanation = step.choice_explanation)
+          paragraphs = explanation.map { |text_block| h(:p, text_block) }
+          children << h(:div, { style: { marginTop: '0.5rem' } }, paragraphs)
+        end
+        h(:div, children)
       end
 
       def render_choice_amount(amounts)
