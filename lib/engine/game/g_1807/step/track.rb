@@ -4,7 +4,7 @@ require_relative '../../g_1867/step/track'
 
 module Engine
   module Game
-    module G18BF
+    module G1807
       module Step
         class Track < G1867::Step::Track
           def available_hex(entity, hex)
