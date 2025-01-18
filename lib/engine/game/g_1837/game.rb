@@ -27,11 +27,15 @@ module Engine
 
         SELL_AFTER = :operate
         SELL_MOVEMENT = :down_block
+        MUST_SELL_IN_BLOCKS = true
 
         HOME_TOKEN_TIMING = :float
 
         EBUY_DEPOT_TRAIN_MUST_BE_CHEAPEST = false
         MUST_BUY_TRAIN = :always
+
+        BANKRUPTCY_ENDS_GAME_AFTER = :all_but_one
+        GAME_END_CHECK = { bankrupt: :immediate, bank: :current_or }.freeze
 
         MARKET = [
           %w[95 99 104p 114 121 132 145 162 181 205 240 280 350 400 460],
@@ -330,7 +334,7 @@ module Engine
         def event_sd_formation!
           @log << "-- Event: #{EVENTS_TEXT['sd_formation'][1]} --"
           national = corporation_by_id('SD')
-          minors = %w[SD1 SD2 SD3 SD4 SD5].map { |id| minor_by_id(id) }
+          minors = %w[SD1 SD2 SD3 SD4 SD5].map { |id| corporation_by_id(id) }
           form_national_railway!(national, minors)
         end
 
@@ -348,7 +352,7 @@ module Engine
         end
 
         def event_kk_formation!
-          open_minors = %w[KK1 KK2 KK3].map { |id| minor_by_id(id) }.reject(&:closed?)
+          open_minors = %w[KK1 KK2 KK3].map { |id| corporation_by_id(id) }.reject(&:closed?)
           return if open_minors.empty?
 
           @log << "-- Event: #{EVENTS_TEXT['kk_formation'][1]} --"
@@ -363,7 +367,7 @@ module Engine
         end
 
         def event_ug_formation!
-          open_minors = %w[UG1 UG2 UG3].map { |id| minor_by_id(id) }.reject(&:closed?)
+          open_minors = %w[UG1 UG2 UG3].map { |id| corporation_by_id(id) }.reject(&:closed?)
           return if open_minors.empty?
 
           national = corporation_by_id('UG')
@@ -380,6 +384,11 @@ module Engine
         def event_exchange_coal_companies!
           @log << "-- Event: #{EVENTS_TEXT['exchange_coal_companies'][1]} --"
           coal_company_exchange_order.each { |c| exchange_coal_company(c) }
+        end
+
+        def operating_order
+          minors, majors = @corporations.select(&:floated?).partition { |c| c.type == :minor }
+          @minors.select(&:floated?) + minors + majors.sort
         end
 
         def coal_company_exchange_order
@@ -451,10 +460,11 @@ module Engine
             minor.tokens.first.swap!(blocking_token, check_tokenable: false)
           else
             token = minor.tokens.first
-            num_unused = corporation.tokens.count { |t| !t.used }
-            new_token = Token.new(corporation, price: num_unused.zero? ? 20 : 40)
+            new_token = Token.new(corporation)
             corporation.tokens << new_token
-            if !%w[L2 L8].include?(token.hex.id) && token.city.tokenable?(corporation, free: true, cheater: true)
+            if %w[L2 L8].include?(token.hex.id)
+              token.price = 20
+            else
               token.swap!(new_token, check_tokenable: false)
             end
             @log << "#{corporation.name} receives token (#{new_token.used ? new_token.city.hex.id : 'charter'})"
@@ -503,7 +513,7 @@ module Engine
             G1837::Step::HomeToken,
             G1837::Step::DiscardTrain,
             G1837::Step::SpecialTrack,
-            Engine::Step::Track,
+            G1837::Step::Track,
             G1837::Step::Token,
             Engine::Step::Route,
             G1837::Step::Dividend,
@@ -519,24 +529,32 @@ module Engine
           @companies.select { |c| c.owner == @bank }
         end
 
-        def after_company_acquisition(company)
-          player = company.owner
+        def after_buy_company(player, company, _price)
+          close_company = false
 
-          case company.meta[:type]
-          when :minor, :coal
+          abilities(company, :shares) do |ability|
+            share = ability.shares.first
+            @share_pool.buy_shares(player, share, exchange: :free)
+            float_minor!(share.corporation) if share.president
+            close_company = true
+          end
+
+          if company.meta[:type] == :coal
             minor = minor_by_id(company.id)
             minor.owner = player
             float_minor!(minor)
-          when :minor_share
-            # todo
-            puts 'todo'
           end
 
-          Array(company.meta[:additional_companies]).each do |c_id|
-            additional_company = company_by_id(c_id)
-            additional_company.owner = player
-            player.companies << additional_company
+          abilities(company, :acquire_company) do |ability|
+            acquired_company = company_by_id(ability.company)
+            acquired_company.owner = player
+            player.companies << acquired_company
+            @log << "#{player.name} receives #{acquired_company.name}"
+            after_buy_company(player, acquired_company, 0)
           end
+          return unless close_company
+
+          company.close!
         end
 
         def float_str(entity)
@@ -555,7 +573,11 @@ module Engine
             remove_reservations!(minor, coordinates)
           end
           place_home_token(minor) unless minor.coordinates.is_a?(Array)
-          minor.float!
+          if minor.corporation?
+            minor.floated = true
+          else
+            minor.float!
+          end
         end
 
         def float_corporation(corporation)
@@ -580,6 +602,10 @@ module Engine
           train_name.end_with?('G')
         end
 
+        def express_train?(train_name)
+          train_name.end_with?('E')
+        end
+
         def can_buy_train_from_others?
           @phase.name.to_i >= 3
         end
@@ -589,6 +615,10 @@ module Engine
         end
 
         def check_other(route)
+          if express_train?(route.train.name) && (route.stops.count { |s| s.type == :city } < 2)
+            raise GameError, 'Must include at least two cities'
+          end
+
           mine_stops = route.stops.count { |s| s.hex.assigned?(:coal) }
           if goods_train?(route.train.name)
             raise GameError, 'Must visit one mine' if mine_stops.zero?
@@ -596,6 +626,12 @@ module Engine
           elsif mine_stops.positive?
             raise GameError, 'Only goods trains can visit a mine'
           end
+        end
+
+        def route_distance(route)
+          return route.stops.count { |s| s.type == :city } if express_train?(route.train.name)
+
+          super
         end
 
         def routes_subsidy(routes)
@@ -613,6 +649,24 @@ module Engine
         def blocking_token
           @blocker ||= Corporation.new(sym: 'B', name: '', logo: '1837/blocking', tokens: [])
           Token.new(@blocker)
+        end
+
+        def token_graph_for_entity
+          @token_graph ||= Graph.new(self, backtracking: true)
+        end
+
+        def legal_tile_rotation?(entity, hex, tile)
+          return tile.rotation == 5 if tile.name == '436'
+
+          super
+        end
+
+        def sold_out_stock_movement(corp)
+          if corp.owner.percent_of(corp) <= 40
+            @stock_market.move_up(corp)
+          else
+            @stock_market.move_diagonally_up_left(corp)
+          end
         end
       end
     end
