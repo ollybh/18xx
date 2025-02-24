@@ -60,21 +60,21 @@ module Engine
         PHASES = [
           {
             name: '2',
-            train_limit: { coal: 2, minor: 2, major: 4 },
+            train_limit: { coal: 2, minor: 2, major: 4, national: 4 },
             tiles: [:yellow],
             operating_rounds: 1,
           },
           {
             name: '3',
             on: '3',
-            train_limit: { coal: 2, minor: 2, major: 3 },
+            train_limit: { coal: 2, minor: 2, major: 3, national: 4 },
             tiles: %i[yellow green],
             operating_rounds: 2,
           },
           {
             name: '3+1',
             on: '3+1',
-            train_limit: { coal: 1, minor: 1, major: 3 },
+            train_limit: { coal: 1, minor: 1, major: 3, national: 4 },
             tiles: %i[yellow green],
             operating_rounds: 2,
           },
@@ -436,6 +436,8 @@ module Engine
           if coal_minor?(entity)
             target_id = abilities(entity, :exchange, time: 'any')&.corporations&.first
             corporation_by_id(target_id)
+          elsif sd_minors.include?(entity)
+            corporation_by_id('SD')
           elsif kk_minors.include?(entity)
             corporation_by_id('KK')
           elsif ug_minors.include?(entity)
@@ -668,9 +670,9 @@ module Engine
           @bank.spend(cash, minor)
           @log << "#{minor.name} receives #{format_currency(cash)}"
           if !@round.is_a?(Engine::Round::Auction) && minor.id == 'SD5'
-            coordinates = minor.coordinates
-            minor.coordinates = coordinates.shift
-            remove_reservations!(minor, coordinates)
+            coordinates = minor.coordinates.dup
+            minor.coordinates = coordinates[0]
+            remove_reservation!(minor, coordinates[1])
           end
           place_home_token(minor) unless minor.coordinates.is_a?(Array)
           if minor.corporation?
@@ -690,8 +692,8 @@ module Engine
           Array(corporation.coordinates).map { |coord| hex_by_id(coord) }
         end
 
-        def remove_reservations!(entity, coordinates)
-          coordinates.each { |coord| hex_by_id(coord).tile.remove_reservation!(entity) }
+        def remove_reservation!(entity, coordinates)
+          hex_by_id(coordinates).tile.remove_reservation!(entity)
         end
 
         def train_limit(entity)
@@ -805,6 +807,12 @@ module Engine
           if entity.corporation? && entity.type != :minor && entity.receivership?
             return @players.find { |p| p.num_shares_of(entity).positive? } || @players.first
           end
+
+          super
+        end
+
+        def sellable_bundles(player, corporation)
+          return [] unless corporation.share_price
 
           super
         end
