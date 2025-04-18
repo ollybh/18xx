@@ -28,7 +28,6 @@ module Engine
         def setup
           # TODO: check which bits of this are needed, just cut-n-pasted from 1867.
           @interest = {}
-          setup_company_price_up_to_face
 
           @show_majors = false
           setup_london_hexes
@@ -124,11 +123,6 @@ module Engine
 
         def buyable_bank_owned_companies
           @companies.select { |company| !company.closed? && !company.owner }
-        end
-
-        def purchasable_companies(_entity)
-          # Private companies cannot be bought, they must be auctioned.
-          []
         end
 
         def unowned_purchasable_companies(_entity)
