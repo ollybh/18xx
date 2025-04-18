@@ -746,7 +746,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#008bd2',
             text_color: 'white',
@@ -758,7 +758,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#c2e6fb',
             text_color: 'black',
@@ -770,7 +770,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#a7d3ae',
             text_color: 'black',
@@ -782,7 +782,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#ffcc00',
             text_color: 'black',
@@ -794,7 +794,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#878786',
             text_color: 'white',
@@ -806,7 +806,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#f2f1ed',
             text_color: 'black',
@@ -818,7 +818,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#d1999c',
             text_color: 'black',
@@ -830,7 +830,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#fdaf94',
             text_color: 'black',
@@ -842,7 +842,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#ae9675',
             text_color: 'white',
@@ -854,7 +854,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#dbe283',
             text_color: 'black',
@@ -866,7 +866,7 @@ module Engine
             float_percent: 20,
             always_market_price: true,
             tokens: [0, 20, 20, 20],
-            type: 'major',
+            type: 'public',
             shares: [20, 10, 10, 10, 10, 10, 10, 10, 10],
             color: '#fff7b2',
             text_color: 'black',
@@ -954,10 +954,10 @@ module Engine
         def unstarted_corporation_summary
           unipoed = (@corporations + @future_corporations).reject(&:ipoed)
           minor = unipoed.select { |c| c.type == :minor }
-          major = unipoed.select { |c| c.type == :major }
+          major = unipoed.select { |c| c.type == :public }
           system = unipoed.select { |c| c.type == :system }
           summary = "#{minor.size} #{minor.one? ? 'minor' : 'minors'}, " \
-                    "#{major.size} #{major.one? ? 'major' : 'majors'}, " \
+                    "#{major.size} public, " \
                     "#{system.size} #{system.one? ? 'system' : 'systems'}"
           [summary, unipoed]
         end
@@ -966,7 +966,7 @@ module Engine
           case entity.type
           when :minor
             2
-          when :major
+          when :public
             5
           when :system
             10
