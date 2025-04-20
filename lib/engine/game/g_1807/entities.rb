@@ -979,6 +979,7 @@ module Engine
         MINORS_COLOR_BATCH1 = '#f5b4d2' # minors available from the start of the game
         MINORS_COLOR_BATCH2 = '#d7ead8' # minors available from the second stock round
         MINORS_COLOR_BATCH3 = '#fff381' # minors available phase 3
+        IRISH_FERRIES = %w[F1 F2 F3].freeze
 
         def company_header(company)
           case company.type
@@ -1045,6 +1046,10 @@ module Engine
                   "#{minors_sr2.map(&:id).sort.join(', ')}."
           @log << 'The minor companies available from phase 3 are: ' \
                   "#{minors_phase3.map(&:id).sort.join(', ')}."
+        end
+
+        def irish_ferry?(company)
+          IRISH_FERRIES.include?(company.sym)
         end
       end
     end
