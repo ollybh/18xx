@@ -20,6 +20,8 @@ module Engine
 
         include_meta(G1807::Meta)
 
+        attr_reader :london_small, :london_zoomed
+
         GAME_END_REASONS_TEXT = Base::GAME_END_REASONS_TEXT.merge(
           custom: 'The first 4+4 or 6G train is purchased.',
         )
@@ -44,7 +46,7 @@ module Engine
             company.type == :railway
           end
           @corporations, @future_corporations = @corporations.partition do |corporation|
-            corporation.type == :minor && corporation.reservation_color == MINORS_COLOR_BATCH1
+            corporation.type != :minor || corporation.reservation_color == MINORS_COLOR_BATCH1
           end
         end
 
@@ -83,6 +85,16 @@ module Engine
           ])
         end
 
+        def merger_round
+          G1867::Round::Merger.new(self, [
+            G1867::Step::MajorTrainless,
+            G1867::Step::ReduceTokens,
+            G1867::Step::PostMergerShares,
+            Engine::Step::DiscardTrain,
+            G1807::Step::Merge,
+          ], round_num: @round.round_num)
+        end
+
         def operating_round(round_num)
           calculate_interest
           G1867::Round::Operating.new(self, [
@@ -90,7 +102,7 @@ module Engine
             Engine::Step::BuyCompany,
             G1867::Step::RedeemShares,
             G1807::Step::SpecialTrack,
-            G1867::Step::Track,
+            G1807::Step::Track,
             G1867::Step::Token,
             Engine::Step::Route,
             G1867::Step::Dividend,
@@ -139,7 +151,8 @@ module Engine
 
         def revenue_for(route, stops)
           train = route.train
-          bonuses =
+          revenue = stops.sum { |stop| stop.route_revenue(route.phase, train) }
+          bonuses = bonus_privates(train, stops, route.routes) +
             if goods_train?(train)
               bonus_mine(train, stops)
             else
@@ -147,7 +160,7 @@ module Engine
               bonus_welsh_border(train, stops) +
               bonus_london_offboard(train, stops)
             end
-          super + bonuses
+          revenue + bonuses
         end
 
         private
@@ -166,6 +179,19 @@ module Engine
                   "#{available.map(&:id).join(', ')}."
           @corporations += available
           update_cache(:corporations)
+        end
+
+        def check_other(route)
+          check_london(route)
+        end
+
+        def check_london(route)
+          # Can only run to London if running to your own token.
+          london_stops = route.visited_stops & @london_cities
+          return if london_stops.all? { |city| city.tokened_by?(current_entity) }
+
+          raise GameError, 'Route may not include London unless running to a ' \
+                           "#{current_entity.id} token."
         end
       end
     end
