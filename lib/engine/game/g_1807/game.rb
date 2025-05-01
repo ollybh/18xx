@@ -22,11 +22,6 @@ module Engine
 
         attr_reader :london_small, :london_zoomed
 
-        GAME_END_REASONS_TEXT = Base::GAME_END_REASONS_TEXT.merge(
-          custom: 'The first 4+4 or 6G train is purchased.',
-        )
-        GAME_END_CHECK = { custom: :one_more_full_or_set }.freeze
-
         def setup
           # TODO: check which bits of this are needed, just cut-n-pasted from 1867.
           @interest = {}
