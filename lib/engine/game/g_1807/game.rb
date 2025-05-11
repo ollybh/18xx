@@ -20,7 +20,7 @@ module Engine
 
         include_meta(G1807::Meta)
 
-        attr_reader :london_small, :london_zoomed
+        attr_reader :london_small, :london_zoomed, :london_cities
 
         def setup
           # TODO: check which bits of this are needed, just cut-n-pasted from 1867.
