@@ -20,7 +20,7 @@ module Engine
 
         include_meta(G1807::Meta)
 
-        attr_reader :london_small, :london_zoomed
+        attr_reader :london_small, :london_zoomed, :london_cities
 
         def setup
           # TODO: check which bits of this are needed, just cut-n-pasted from 1867.
@@ -187,9 +187,7 @@ module Engine
 
         def merge_corporations
           corps = []
-          if phase.status.include?('minors_convert')
-            corps += @corporations.select { |c| c.floated? && c.type == :minor }
-          end
+          corps += @corporations.select { |c| c.floated? && c.type == :minor } if phase.status.include?('minors_convert')
           # TODO: add public companies if systems can form
           corps
         end
