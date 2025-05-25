@@ -53,6 +53,8 @@ module Engine
                 target.type == :public &&
                 !target.floated?
               end
+            elsif @merging
+              mergeable_candidates(corporation)
             else
               {
                 mergeable_type(corporation) => mergeable_candidates(corporation),
@@ -77,6 +79,23 @@ module Engine
 
             @game.share_pool.buy_shares(player, bundle, exchange: :free)
             takeover(minor, major)
+          end
+
+          def exchange_allowed?(minor, major)
+            return false unless minor.type == :minor
+            return false unless major.type == :public
+
+            exchange_candidates(minor).include?(major)
+          end
+
+          def merge_allowed?(corp1, corp2)
+            return false unless corp1.type == :minor
+
+            if @merge_major
+              corp2.type == :public
+            else
+              mergeable_candidates(corp1).include?(corp2)
+            end
           end
 
           private
@@ -109,6 +128,8 @@ module Engine
           # must be able to trace a route to one of the minor's tokens, or have
           # tokens co-located on the same tile.
           def exchange_candidates(minor)
+            return [] if @converting || @merge_major || @merging
+
             cities = connected_cities(minor) | colocated_cities(minor)
             cities.flat_map { |city| city.tokens.compact.map(&:corporation) }
                   .uniq
