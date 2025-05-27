@@ -58,6 +58,27 @@ module Engine
             @round.next_entity!
           end
 
+          def ipo_type(entity)
+            case entity.type
+            when :minor
+              :bid
+            when :public
+              @game.phase.status.include?('float_public') ? :par : nil
+            when :system
+              nil
+            end
+          end
+
+          def can_ipo_any?(entity)
+            return false unless @game.phase.status.include?('float_public')
+
+            @game.corporations.any? do |corporation|
+              @game.major?(corporation) &&
+                @game.can_par?(corporation, entity) &&
+                can_buy?(entity, corporation.shares.first&.to_bundle)
+            end
+          end
+
           private
 
           def auctionable_companies

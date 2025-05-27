@@ -91,7 +91,7 @@ module Engine
           def merge_allowed?(corp1, corp2)
             return false unless corp1.type == :minor
 
-            if @merge_major
+            if @converting || @merge_major
               corp2.type == :public
             else
               mergeable_candidates(corp1).include?(corp2)
