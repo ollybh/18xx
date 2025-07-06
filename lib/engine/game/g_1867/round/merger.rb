@@ -36,9 +36,8 @@ module Engine
           end
 
           def next_entity!
-            return if @entity_index == @entities.size - 1
-
             next_entity_index! if @entities.any?
+            return if @entity_index.zero?
 
             @steps.each(&:unpass!)
             @steps.each(&:setup)
