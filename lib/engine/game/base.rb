@@ -26,6 +26,7 @@ require_relative '../minor'
 require_relative '../phase'
 require_relative '../player'
 require_relative '../publisher'
+require_relative '../route_graph/graph'
 require_relative '../share_pool'
 require_relative '../stock_market'
 require_relative '../tile'
@@ -2554,6 +2555,10 @@ module Engine
 
       def to_json(*args)
         to_h.to_json(*args)
+      end
+
+      def route_graph
+        Engine::RouteGraph::Graph.new(self)
       end
 
       private
