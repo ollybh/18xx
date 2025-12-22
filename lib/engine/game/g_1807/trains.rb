@@ -15,9 +15,6 @@ module Engine
                              'Underground railway company U2 becomes available for purchase.'],
           'cert_limit_reduced' => ['Certificate limit',
                                    'The certificate limit is reduced.'],
-          'signal_end_game' => ['End of game triggered',
-                                'The current set of operating rounds is completed, then there ' \
-                                'is a stock round followed by a set of three operating rounds.'],
         ).freeze
 
         STATUS_TEXT = Base::STATUS_TEXT.merge(
@@ -217,10 +214,7 @@ module Engine
               '2+2' => 150,
               '5+5E' => 375,
             },
-            events: [
-              { 'type' => 'cert_limit_reduced' },
-              { 'type' => 'signal_end_game' },
-            ],
+            events: [{ 'type' => 'cert_limit_reduced' }],
           },
           {
             name: '2+2',

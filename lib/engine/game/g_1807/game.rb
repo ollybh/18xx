@@ -23,9 +23,18 @@ module Engine
         attr_reader :london_small, :london_zoomed, :london_cities
 
         GAME_END_REASONS_TEXT = Base::GAME_END_REASONS_TEXT.merge(
-          train: 'The first 4+4 or 6G train is purchased.',
+          final_phase: 'The first 4+4 or 6G train is purchased.',
         )
-        GAME_END_CHECK = { train: :one_more_full_or_set }.freeze
+        GAME_END_REASONS_TIMING_TEXT = Base::GAME_END_REASONS_TIMING_TEXT.merge(
+          one_more_full_or_set: 'Three operating rounds after the current one, ' \
+                                'with a single stock round in the normal sequence.'
+        )
+        GAME_END_CHECK = { final_phase: :one_more_full_or_set }.freeze
+
+        def game_end_set_final_turn!(reason, after)
+          @final_operating_rounds = 3 if @round.round_num == 2
+          @final_turn ||= @turn + 1
+        end
 
         def setup
           # TODO: check which bits of this are needed, just cut-n-pasted from 1867.
