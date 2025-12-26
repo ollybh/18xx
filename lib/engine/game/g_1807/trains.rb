@@ -193,7 +193,7 @@ module Engine
                        { 'nodes' => ['town'], 'pay' => 0, 'visit' => 99 }],
             multiplier: 2,
             price: 1000,
-            num: 22,
+            num: 'unlimited',
             variants: [
               {
                 name: '6G',
@@ -222,7 +222,7 @@ module Engine
                        { 'nodes' => ['town'], 'pay' => 0, 'visit' => 99 }],
             multiplier: 2,
             price: 600,
-            num: 22,
+            num: 'unlimited',
             available_on: '8',
             discount: {
               '4' => 0,
