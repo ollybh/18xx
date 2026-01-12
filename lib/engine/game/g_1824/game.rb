@@ -282,7 +282,6 @@ module Engine
         def operating_round(round_num)
           G1824::Round::Operating.new(self, [
             G1824::Step::KkTokenChoice,
-            G1837::Step::Bankrupt,
             G1824::Step::DiscardTrain,
             G1824::Step::ForcedMountainRailwayExchange,
             Engine::Step::SpecialTrack,
@@ -465,7 +464,13 @@ module Engine
         end
 
         def exchange_entities
-          @companies.reject(&:closed?)
+          candidates = @companies.reject(&:closed?)
+          return candidates if forced_mountain_railway_exchange.empty?
+
+          # In case of a forced MR exchange, we only want to show one MR for a player
+          # as the player can only exchange the MR with the lowest number. We do not
+          # do this always as a player can do an unforced exchange with any MR.
+          candidates.group_by(&:owner).map { |_o, c| c.first }
         end
 
         def mountain_railway?(entity)
@@ -741,10 +746,11 @@ module Engine
         end
 
         # Modifed 1837 version as it will log incorrect received amount after
-        # formation + float.
+        # formation + float. Also use special float amount factor to handle unreserve of
+        # IPO shares, which caused a bug previously.
         def float_corporation(corporation)
           @log << "#{corporation.name} floats"
-          capitilization = corporation.par_price.price * corporation.total_ipo_shares
+          capitilization = corporation.par_price.price * corporation.capitalization_share_count
           @bank.spend(capitilization, corporation)
           @log << "#{corporation.name} receives #{format_currency(capitilization)}"
         end
@@ -769,6 +775,10 @@ module Engine
             end
           token = Engine::Token.new(national, price: price)
           national.tokens.unshift(token)
+        end
+
+        def can_go_bankrupt?(_entity, _corporation)
+          false
         end
 
         private

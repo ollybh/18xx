@@ -4,7 +4,7 @@ require 'spec_helper'
 
 require 'json'
 
-SKIP_ALPHA = Set.new(['18Norway', '1824 Cisleithania'])
+SKIP_ALPHA = [].freeze
 
 SKIP_BETA_PROD = {
 
@@ -45,6 +45,7 @@ SKIP_BETA_PROD = {
   '18ZOO - Map E' => %i[stock_market fixed_round],
   '18ZOO - Map F' => %i[stock_market fixed_round],
   '18ZOO' => %i[stock_market fixed_round],
+  'Steam Over Holland' => [:stock_market],
 }.freeze
 
 def fixtures(meta)

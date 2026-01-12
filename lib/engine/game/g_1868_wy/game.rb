@@ -1035,6 +1035,10 @@ module Engine
           timeline
         end
 
+        def development_company_by_id(id)
+          minor_by_id(id)
+        end
+
         def init_coal_companies
           @players.map.with_index do |player, index|
             coal_company = DevelopmentCompany.new(
@@ -1819,10 +1823,6 @@ module Engine
           train.buyable = buyable
           train.reserved = true
           train
-        end
-
-        def update_trains_cache
-          update_cache(:trains)
         end
 
         def attach_big_boy(train, entity = nil, log: true, double_head: false)

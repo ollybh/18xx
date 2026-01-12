@@ -30,13 +30,29 @@ module Engine
               actions << 'payoff_player_debt_partial'
             end
 
+            actions << 'pass' if add_pass_to_actions_as_mr_exchange_available?(entity, actions)
+
             actions
           end
 
-          def company_actions(entity)
-            return EXCHANGE_ACTIONS if @game.mountain_railway?(entity) && @game.mountain_railway_exchangable?
+          def add_pass_to_actions_as_mr_exchange_available?(entity, actions)
+            return false if actions.include?('pass')
+            return false unless entity == current_entity
 
-            []
+            @game.companies.any? { |c| !c.closed? && c.owner == entity && !company_actions(c).empty? }
+          end
+
+          def company_actions(entity)
+            return [] if bought?
+            return [] unless entity.owned_by?(current_entity)
+            return [] unless @game.mountain_railway?(entity)
+            return [] unless @game.mountain_railway_exchangable?
+
+            EXCHANGE_ACTIONS
+          end
+
+          def blocking?
+            super || @game.companies.any? { |c| !c.closed? && !company_actions(c).empty? }
           end
 
           def can_buy?(entity, bundle)

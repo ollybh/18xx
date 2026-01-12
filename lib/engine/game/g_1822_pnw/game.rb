@@ -165,7 +165,7 @@ module Engine
           'P18' => 'P18 (Special Tile Upgrade)',
           'P19' => 'P19 (Rockport Coal Mine)',
           'P20' => 'P20 (Backroom Negotiations)',
-          'P21' => 'P21 (Credit Mobiier)',
+          'P21' => 'P21 (Credit Mobilier)',
           'M1' => '1',
           'M2' => '2',
           'M3' => '3',
@@ -1141,12 +1141,7 @@ module Engine
           company.close!
         end
 
-        def company_status_str(company)
-          index = bidbox_minors.index(company) || bidbox_privates.index(company)
-          return "Bid box #{index + 1}" if index
-
-          nil
-        end
+        def company_status_game_specific(_company); end
 
         def status_str(corporation)
           return super unless regional_railway?(corporation)
