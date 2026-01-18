@@ -1,3 +1,5 @@
+/* global d3 */
+
 function addOffboardNodes(nodes) {
   nodes.append("rect")
     .attr("stroke", "#000000")
@@ -58,7 +60,7 @@ function addJunctionNodes(nodes) {
 
 function addHexEdgeNodes(nodes) {
   // Tracks ending at hex edges
-  const ends = nodes.filter((d, i) => d.connections == 1)
+  const ends = nodes.filter((d) => d.connections == 1)
   ends.append("polygon")
     .attr("points", "10,0 5,-8.7 -5,-8.7 -10,0 -5,8.7 5,8.7")
     .attr("stroke", "#000000")
@@ -74,7 +76,7 @@ function addHexEdgeNodes(nodes) {
     .text(d => d.description);
 
   // Gauge changes at hex edges
-  const gchange = nodes.filter((d, i) => d.connections == 2)
+  const gchange = nodes.filter((d) => d.connections == 2)
   gchange.append("polygon")
     .attr("points", "0,5 4.3,-2.5 -4.3,-2.5")
     .attr("stroke", "none")
@@ -100,8 +102,6 @@ function showD3Graph(data) {
 
   const nodes = data.get("nodes").map(d => Object.fromEntries(d));
   const links = data.get("links").map(d => Object.fromEntries(d));
-
-  const color = d3.scaleOrdinal(d3.schemePastel2);
 
   const svg = d3.create("svg:svg")
     .attr("width", width)
@@ -133,11 +133,11 @@ function showD3Graph(data) {
     .enter()
     .append("g");
 
-  addOffboardNodes(node.filter((d, i) => d.type == "Offboard"));
-  addCityNodes(node.filter((d, i) => d.type == "City"));
-  addTownNodes(node.filter((d, i) => d.type == "Town"));
-  addJunctionNodes(node.filter((d, i) => d.type == "Junction"));
-  addHexEdgeNodes(node.filter((d, i) => d.type == "Edge"));
+  addOffboardNodes(node.filter((d) => d.type == "Offboard"));
+  addCityNodes(node.filter((d) => d.type == "City"));
+  addTownNodes(node.filter((d) => d.type == "Town"));
+  addJunctionNodes(node.filter((d) => d.type == "Junction"));
+  addHexEdgeNodes(node.filter((d) => d.type == "Edge"));
 
   simulation.on("tick", () => {
     link
@@ -149,5 +149,5 @@ function showD3Graph(data) {
       .attr("transform", d => "translate(" + d.x + "," + d.y + ")");
   });
 
-  route_graph.append(svg.node());
+  document.getElementById("route_graph").append(svg.node());
 }
