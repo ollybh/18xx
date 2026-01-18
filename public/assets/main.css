@@ -423,18 +423,6 @@ div#game:focus {
   float: right;
 }
 
-div#route_graph {
-  position: fixed;
-  z-index: 1;
-  top: 5%;
-  left: 5%;
-  height: 90%;
-  width: 90%;
-  border-style: solid;
-  background-color: white;
-  display: none;
-}
-
 @media only screen and (max-width: 420px) {
   #undo_redo {
     float: left;

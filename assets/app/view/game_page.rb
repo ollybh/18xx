@@ -132,6 +132,8 @@ module View
           h(Game::Tools, game: @game, game_data: @game_data, user: @user)
         when 'auto'
           h(Game::Auto, game: @game, game_data: @game_data, user: @user)
+        when 'graph'
+          h(Game::RouteGraph, game: @game)
         end
       LOGGER.debug do
         "Done rendering game view: #{Time.now - @_logger[:render]} seconds"
@@ -234,18 +236,6 @@ module View
       Native(`document.getElementById(#{id})`)&.click()
     end
 
-    def toggle_graph_display
-      elm = Native(`document.getElementById('route_graph')`)
-      elm.style.display =
-      if elm.style.display == 'block'
-        elm.style.display = 'none'
-        return
-      end
-
-      elm.style.display = 'block'
-      Native(`showD3Graph`).call(@game.route_graph.to_d3)
-    end
-
     def hotkey_check(event)
       # 'search for text when you start typing' feature of browser prevents execution
       # catch modifiers to not interfere with OS shortcuts
@@ -284,6 +274,8 @@ module View
           change_anchor('#tools')
         when 'a'
           change_anchor('#auto')
+        when 'r'
+          change_anchor('#graph')
         when '1'
           button_click('pass')
         when '2'
@@ -304,8 +296,6 @@ module View
         when 'Home', 'End', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'
           button_click('hist_' + key)
           event.preventDefault
-        when 'v'
-          toggle_graph_display
         end
       end
     end
@@ -373,6 +363,7 @@ module View
 
       enabled = !@game.programmed_actions[@game.player_by_id(@user['id'])].empty? if @user
       menu_items << item("A|uto#{' ✅' if enabled}", '#auto') if @game_data[:mode] != :hotseat && !cursor
+      menu_items << item('Gr|aph', '#graph')
 
       h('nav#game_menu', nav_props, [
         h('ul.no_margin.no_padding', { style: { width: 'max-content' } }, menu_items),
@@ -505,7 +496,6 @@ module View
                     end
       end
       children << render_action
-      children << h("div#route_graph")
 
       h('div.game', children)
     end

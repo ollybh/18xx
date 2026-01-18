@@ -104,6 +104,7 @@ function showD3Graph(data) {
   const links = data.get("links").map(d => Object.fromEntries(d));
 
   const svg = d3.create("svg:svg")
+    .attr("id", "d3_graph")
     .attr("width", width)
     .attr("height", height)
     .attr("viewBox", [-width / 2, -height / 2, width, height])
@@ -149,5 +150,5 @@ function showD3Graph(data) {
       .attr("transform", d => "translate(" + d.x + "," + d.y + ")");
   });
 
-  document.getElementById("route_graph").append(svg.node());
+  document.getElementById("d3_graph").replaceWith(svg.node());
 }
