@@ -8,6 +8,12 @@ module Engine
     class Graph
       attr_accessor :vertices, :edges
 
+      # The dimensions of the SVG canvas for the visualisation of the graph.
+      VIEW_WIDTH = 1_000
+      VIEW_HEIGHT = 1_000
+      VIEW_MIN_X = VIEW_WIDTH / 2
+      VIEW_MIN_Y = VIEW_HEIGHT / 2
+
       def initialize(game)
         @vertices = []
         @edges = []
@@ -79,6 +85,9 @@ module Engine
       end
 
       def to_d3
+        hexes = @vertices.map(&:hex)
+        min_x, max_x = hexes.map(&:x).minmax
+        min_y, max_y = hexes.map(&:y).minmax
         {
           nodes: @vertices.map.with_index do |v, i|
             {
@@ -87,12 +96,8 @@ module Engine
               description: v.description,
               name: v.name,
               connections: @edges.count { |e| e.ends.include?(v) },
-              # FIXME: these give a vaguely geographical layout of the nodes,
-              # but the diagram has (0, 0) in the centre, so it would be better
-              # adjust for this here, so all the nodes don't shoot in from the
-              # bottom-left corner.
-              x: v.hex.x * 100,
-              y: v.hex.y * 100,
+              x: ((v.hex.x - min_x) / (max_x - min_x) * VIEW_WIDTH) - VIEW_MIN_X,
+              y: ((v.hex.y - min_y) / (max_y - min_y) * VIEW_HEIGHT) - VIEW_MIN_Y,
             }
           end,
           links: @edges.map.with_index do |e, i|
