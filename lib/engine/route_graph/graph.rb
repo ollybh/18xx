@@ -43,7 +43,7 @@ module Engine
         # Treat this similar to a Lawson-type tile, with a junction near the
         # edge of the tile and a single path from the junction to the edge.
         edge_vertex = @vertices.find { |vertex| vertex.id == edge_id(edge) }
-        edge_vertex = add_edge_vertex(edge, edge_id(edge)) unless edge_vertex
+        edge_vertex ||= add_edge_vertex(edge, edge_id(edge))
 
         junction_vertex = @vertices.find { |vertex| vertex.id == edge_junction_id(edge) }
         unless junction_vertex
@@ -59,7 +59,7 @@ module Engine
       end
 
       def vertex(place)
-        vertex = @vertices.find { |vertex| vertex.id == vertex_id(place) }
+        vertex = @vertices.find { |v| v.id == vertex_id(place) }
         return vertex if vertex
 
         case place
@@ -80,7 +80,7 @@ module Engine
 
       def to_d3
         {
-          nodes: vertices.map.with_index do |v, i|
+          nodes: @vertices.map.with_index do |v, i|
             {
               id: "node#{i}",
               type: v.type,
@@ -95,7 +95,7 @@ module Engine
               y: v.hex.y * 100,
             }
           end,
-          links: edges.map.with_index do |e, i|
+          links: @edges.map.with_index do |e, i|
             {
               id: "link#{i}",
               source: "node#{@vertices.index(e.left)}",

@@ -6,7 +6,7 @@ module View
       needs :game
 
       def render
-        h("div#route_graph", [render_buttons, h("svg#d3_graph")])
+        h('div#route_graph', [render_buttons, h('svg#d3_graph')])
       end
 
       def render_buttons
