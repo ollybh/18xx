@@ -2,6 +2,7 @@
 
 require_relative 'edge'
 require_relative 'vertex'
+require_relative 'graph_walker'
 
 module Engine
   module RouteGraph
@@ -109,6 +110,11 @@ module Engine
             }
           end,
         }
+      end
+
+      def walk(entity)
+        walker = GraphWalker.new(self)
+        walker.walk(entity)
       end
 
       private
