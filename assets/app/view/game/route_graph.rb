@@ -15,6 +15,17 @@ module View
         end
 
         children = [h(:button, { on: { click: add_graph } }, 'Show graph')]
+        @game.corporations.sort_by(&:id).each do |corp|
+          next if corp.closed?
+          next unless corp.floated?
+
+          walk_graph = lambda do
+            @game.route_graph.walk(corp)
+          end
+
+          children << h(:button, { on: { click: walk_graph } }, corp.id)
+        end
+
         h(:div, children)
       end
     end

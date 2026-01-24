@@ -423,6 +423,15 @@ div#game:focus {
   float: right;
 }
 
+div#route_graph div {
+  float: left;
+  width: 8em;
+}
+
+div#route_graph div button {
+  width: 8em;
+}
+
 @media only screen and (max-width: 420px) {
   #undo_redo {
     float: left;
