@@ -1,0 +1,6 @@
+--use-cache
+--no-private
+--protected
+{lib,assets}/**/*.rb
+-
+LICENSE TILES.md DEVELOPMENT.md
