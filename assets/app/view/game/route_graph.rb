@@ -20,13 +20,24 @@ module View
           next unless corp.floated?
 
           walk_graph = lambda do
-            @game.route_graph.walk(corp)
+            walker = @game.route_graph.walker(corp)
+            benchmark { walker.walk }
+            puts walker.debug
           end
 
           children << h(:button, { on: { click: walk_graph } }, corp.id)
         end
 
         h(:div, children)
+      end
+
+      private
+
+      def benchmark
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        yield
+        t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        puts "Real: #{t1- t0}"
       end
     end
   end
