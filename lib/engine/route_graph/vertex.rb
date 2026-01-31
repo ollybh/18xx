@@ -23,7 +23,10 @@ module Engine
     end
 
     class NodeVertex < Vertex
+      attr_reader :node
+
       def initialize(node)
+        @node = node
         @id = node.id
         @hex = node.tile.hex
         @type = node.class.name.split('::').last

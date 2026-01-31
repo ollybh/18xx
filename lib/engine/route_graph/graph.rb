@@ -112,9 +112,8 @@ module Engine
         }
       end
 
-      def walk(entity)
-        walker = GraphWalker.new(self)
-        walker.walk(entity)
+      def walker(entity)
+        GraphWalker.new(self, entity)
       end
 
       private
