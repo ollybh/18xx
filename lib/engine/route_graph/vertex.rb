@@ -2,15 +2,36 @@
 
 module Engine
   module RouteGraph
+    # Vertices occur in the {RouteGraph RouteGraph} at the ends of, and junctions between,
+    # {Edge edges}. There are several different types of vertex representing different
+    # things, these are represented by subclasses of Vertex.
+    #
+    # {HexEdgeVertex}::
+    #   The edge of a hex tile. These can be where a track Path
+    #   ends at a hex edge or where two paths join from two adjacent hexes. In
+    #   the latter case the vertex might be removed and the edges joined if they
+    #   both have the same track gauge and the same lane.
+    #
+    # {NodeVertex}::
+    #   These correspond to a {Part::RevenueCenter RevenueCenter} (City/Town/Halt) on the map.
+    #
+    # {JunctionVertex}::
+    #   Junctions in the middle of Lawson-type plain track tiles.
+    #
+    # {ConvergingJunctionVertex}::
+    #   Junctions on the edges of curvilinear-type
+    #   plain track or town tiles. These will generally include restrictions on
+    #   valid entry/exit combinations, to avoid a route backtracking at the
+    #   junction.
     class Vertex
-      attr_reader :id, :hex, :location, :type
+      attr_reader :id       # @return [String] A unique identifier for this vertex.
+      attr_reader :hex      # @return [Hex]    The hex that this vertex is on.
+      attr_reader :location # @return [String] The location name, for named hexes.
+      attr_reader :type     # @return [String] A string describing the type of vertex.
 
-      def name
-        hex.coordinates
-      end
-
+      # A description of the type of hex and its location.
       def description
-        desc = "#{@type} #{name} #{@id}"
+        desc = "#{@type} #{@hex.coordinates} #{@id}"
         desc += " [#{@location}]" if @location
         desc
       end
@@ -22,9 +43,14 @@ module Engine
       end
     end
 
+    # Represents a city, town or halt in the route graph.
     class NodeVertex < Vertex
+      # The {Part::City City}, {Part::Town Town} or {Part::Halt Halt} object
+      # for the revenue center represented by this vertex in the route graph.
+      # @return [Part::RevenueCenter]
       attr_reader :node
 
+      # @param [Part::RevenueCenter] The node to create a graph vertex for.
       def initialize(node)
         @node = node
         @id = node.id
@@ -34,6 +60,10 @@ module Engine
       end
     end
 
+    # The edge of a hex tile. These can be where a track Path
+    # ends at a hex edge or where two paths join from two adjacent hexes. In
+    # the latter case the vertex might be removed and the edges joined if they
+    # both have the same track gauge and the same lane.
     class HexEdgeVertex < Vertex
       def initialize(edge, id)
         @id = id
@@ -44,6 +74,7 @@ module Engine
       end
     end
 
+    # Represents a junction in the middle of Lawson-type plain track tile.
     class JunctionVertex < Vertex
       def initialize(junction)
         @id = junction.id
@@ -52,6 +83,8 @@ module Engine
       end
     end
 
+    # Represents a junction between two or more track paths on the edge of a
+    # curvilinear-type plain track or town tile.
     class ConvergingJunctionVertex < JunctionVertex
       def initialize(edge, id)
         @id = id

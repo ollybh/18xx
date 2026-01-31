@@ -95,7 +95,7 @@ module Engine
               id: "node#{i}",
               type: v.type,
               description: v.description,
-              name: v.name,
+              name: v.hex.coordinates,
               connections: @edges.count { |e| e.ends.include?(v) },
               x: ((v.hex.x - min_x) / (max_x - min_x) * VIEW_WIDTH) - VIEW_MIN_X,
               y: ((v.hex.y - min_y) / (max_y - min_y) * VIEW_HEIGHT) - VIEW_MIN_Y,
