@@ -29,7 +29,7 @@ module Engine
       attr_reader :location # @return [String] The location name, for named hexes.
       attr_reader :type     # @return [String] A string describing the type of vertex.
 
-      # A description of the type of hex and its location.
+      # @return [String] A description of the type of hex and its location.
       def description
         desc = "#{@type} #{@hex.coordinates} #{@id}"
         desc += " [#{@location}]" if @location
@@ -50,7 +50,7 @@ module Engine
       # @return [Part::RevenueCenter]
       attr_reader :node
 
-      # @param [Part::RevenueCenter] The node to create a graph vertex for.
+      # @param [Part::RevenueCenter] node The node to create a graph vertex for.
       def initialize(node)
         @node = node
         @id = node.id
@@ -65,6 +65,8 @@ module Engine
     # the latter case the vertex might be removed and the edges joined if they
     # both have the same track gauge and the same lane.
     class HexEdgeVertex < Vertex
+      # @param [Part::Edge] edge The tile edge to be added to the graph.
+      # @param [String] id The unique identifier for the tile edge.
       def initialize(edge, id)
         @id = id
         # Set the hex to the one adjacent to the hex, so the link from this
@@ -76,6 +78,7 @@ module Engine
 
     # Represents a junction in the middle of Lawson-type plain track tile.
     class JunctionVertex < Vertex
+      # @param [Part::Junction] junction The track junction to be added to the graph.
       def initialize(junction)
         @id = junction.id
         @hex = junction.tile.hex
@@ -86,6 +89,8 @@ module Engine
     # Represents a junction between two or more track paths on the edge of a
     # curvilinear-type plain track or town tile.
     class ConvergingJunctionVertex < JunctionVertex
+      # @param [Part::Edge] edge The tile edge to be added to the graph.
+      # @param [String] id The unique identifier for the tile edge.
       def initialize(edge, id)
         @id = id
         @hex = edge.tile.hex
