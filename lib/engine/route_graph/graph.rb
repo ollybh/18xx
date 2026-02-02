@@ -3,6 +3,7 @@
 require_relative 'edge'
 require_relative 'vertex'
 require_relative 'graph_walker'
+require_relative 'hex_boundary'
 
 module Engine
   module RouteGraph
@@ -27,8 +28,9 @@ module Engine
         e
       end
 
-      def add_edge_vertex(edge, id)
-        v = HexEdgeVertex.new(edge, id)
+      def add_edge_vertex(edge)
+        hb = HexBoundary.new(edge)
+        v = HexEdgeVertex.new(hb)
         @vertices << v
         v
       end
@@ -45,26 +47,6 @@ module Engine
         v
       end
 
-      def add_converging_junction_vertex(edge)
-        # This tile has two (or more) paths that converge on the same edge.
-        # Treat this similar to a Lawson-type tile, with a junction near the
-        # edge of the tile and a single path from the junction to the edge.
-        edge_vertex = @vertices.find { |vertex| vertex.id == edge_id(edge) }
-        edge_vertex ||= add_edge_vertex(edge, edge_id(edge))
-
-        junction_vertex = @vertices.find { |vertex| vertex.id == edge_junction_id(edge) }
-        unless junction_vertex
-          junction_vertex = ConvergingJunctionVertex.new(edge, edge_junction_id(edge))
-          @vertices << junction_vertex
-        end
-
-        if @edges.none? { |e| (e.ends - [edge_vertex, junction_vertex]).empty? }
-          add_edge(edge_vertex, junction_vertex, :broad) # FIXME: gauge from paths
-        end
-
-        junction_vertex
-      end
-
       def vertex(place)
         vertex = @vertices.find { |v| v.id == vertex_id(place) }
         return vertex if vertex
@@ -73,11 +55,7 @@ module Engine
         when Engine::Part::Node
           add_node_vertex(place)
         when Engine::Part::Edge
-          if multiple_paths?(place)
-            add_converging_junction_vertex(place)
-          else
-            add_edge_vertex(place, vertex_id(place))
-          end
+          add_edge_vertex(place)
         when Engine::Part::Junction
           add_junction_vertex(place)
         else
@@ -148,22 +126,10 @@ module Engine
         end
       end
 
-      def edge_id(edge)
-        [edge.hex, edge.hex.all_neighbors[edge.num]].map(&:coordinates).sort.join('-')
-      end
-
-      def edge_junction_id(edge)
-        "#{edge.tile.hex.coordinates}-junction-edge#{edge.num}"
-      end
-
       def vertex_id(place)
         return place.id unless place.is_a? Engine::Part::Edge
 
-        if multiple_paths?(place)
-          edge_junction_id(place)
-        else
-          edge_id(place)
-        end
+        HexBoundary.new(place).id
       end
 
       # Tests whether there are multiple converging paths meeting on this edge.

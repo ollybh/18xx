@@ -7,29 +7,22 @@ module Engine
     # things, these are represented by subclasses of Vertex.
     #
     # {HexEdgeVertex}::
-    #   The edge of a hex tile. These can be where a track Path
-    #   ends at a hex edge or where two paths join from two adjacent hexes. In
-    #   the latter case the vertex might be removed and the edges joined if they
-    #   both have the same track gauge and the same lane.
+    #   The edge of a hex tile. These can be where a track Path ends at a hex
+    #   edge, where two paths join from two adjacent hexes, or where two or
+    #   more paths on the same tile meet at an edge.
     #
     # {NodeVertex}::
     #   These correspond to a {Part::RevenueCenter RevenueCenter} (City/Town/Halt) on the map.
     #
     # {JunctionVertex}::
     #   Junctions in the middle of Lawson-type plain track tiles.
-    #
-    # {ConvergingJunctionVertex}::
-    #   Junctions on the edges of curvilinear-type
-    #   plain track or town tiles. These will generally include restrictions on
-    #   valid entry/exit combinations, to avoid a route backtracking at the
-    #   junction.
     class Vertex
-      attr_reader :id       # @return [String] A unique identifier for this vertex.
+      attr_reader :id       # @return [string] A unique identifier for this vertex.
       attr_reader :hex      # @return [Hex]    The hex that this vertex is on.
-      attr_reader :location # @return [String] The location name, for named hexes.
-      attr_reader :type     # @return [String] A string describing the type of vertex.
+      attr_reader :location # @return [string] The location name, for named hexes.
+      attr_reader :type     # @return [string] A string describing the type of vertex.
 
-      # @return [String] A description of the type of hex and its location.
+      # @return [string] A description of the type of hex and its location.
       def description
         desc = "#{@type} #{@hex.coordinates} #{@id}"
         desc += " [#{@location}]" if @location
@@ -65,13 +58,19 @@ module Engine
     # the latter case the vertex might be removed and the edges joined if they
     # both have the same track gauge and the same lane.
     class HexEdgeVertex < Vertex
-      # @param [Part::Edge] edge The tile edge to be added to the graph.
-      # @param [String] id The unique identifier for the tile edge.
-      def initialize(edge, id)
-        @id = id
-        # Set the hex to the one adjacent to the hex, so the link from this
-        # vertex is to the hex where track could be laid.
-        @hex = edge.hex.all_neighbors[edge.num]
+      # @param [HexBoundary] hex_edge The hex edge to be added to the graph.
+      def initialize(hex_edge)
+        @id = hex_edge.id
+        # This is the boundary between two hexes. If there is track on both
+        # sides of the boundary then both hexes will be reachable from the
+        # edges joined to this vertex, but if there is only track on one hex
+        # we need to have a way of recording that the adjacent hex can be
+        # reached. This is done by setting this vertex's hex attribute to be
+        # the adjacent hex.
+        # This is done by a bit of a hack, the initial hex added to the
+        # HexBoundary will be the one with track on, the adjacent hex is added
+        # last.
+        @hex = hex_edge.hexes.last
         @type = 'Edge'
       end
     end
@@ -82,18 +81,6 @@ module Engine
       def initialize(junction)
         @id = junction.id
         @hex = junction.tile.hex
-        @type = 'Junction'
-      end
-    end
-
-    # Represents a junction between two or more track paths on the edge of a
-    # curvilinear-type plain track or town tile.
-    class ConvergingJunctionVertex < JunctionVertex
-      # @param [Part::Edge] edge The tile edge to be added to the graph.
-      # @param [String] id The unique identifier for the tile edge.
-      def initialize(edge, id)
-        @id = id
-        @hex = edge.tile.hex
         @type = 'Junction'
       end
     end
