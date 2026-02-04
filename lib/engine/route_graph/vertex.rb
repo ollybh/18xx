@@ -17,10 +17,17 @@ module Engine
     # {JunctionVertex}::
     #   Junctions in the middle of Lawson-type plain track tiles.
     class Vertex
-      attr_reader :id       # @return [string] A unique identifier for this vertex.
-      attr_reader :hex      # @return [Hex]    The hex that this vertex is on.
-      attr_reader :location # @return [string] The location name, for named hexes.
-      attr_reader :type     # @return [string] A string describing the type of vertex.
+      # @return [string] A unique identifier for this vertex.
+      attr_reader :id
+
+      # @return [Hex] The hex that this vertex is on.
+      attr_reader :hex
+
+      # @return [string] The location name, for named hexes.
+      attr_reader :location
+
+      # @return [string] A string describing the type of vertex.
+      attr_reader :type
 
       # @return [string] A description of the type of hex and its location.
       def description

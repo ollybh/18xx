@@ -6,9 +6,14 @@ module Engine
     # represent a section of track and corresponds to one or more
     # {Part::Path paths} on tiles.
     class Edge
-      attr_reader :left  # @return [Vertex] One end of the edge.
-      attr_reader :right # @return [Vertex] The other end of the edge.
-      attr_reader :gauge # @return [Label] The gauge of the track.
+      # @return [Vertex] One end of the edge.
+      attr_reader :left
+
+      # @return [Vertex] The other end of the edge.
+      attr_reader :right
+
+      # @return [Label] The gauge of the track.
+      attr_reader :gauge
 
       # @param [Vertex] left  The first vertex joined by this edge.
       # @param [Vertex] right The second vertex joined by this edge.
