@@ -28,8 +28,8 @@ module Engine
         e
       end
 
-      def add_edge_vertex(edge)
-        hb = HexBoundary.new(edge)
+      def add_edge_vertex(edge, lanes, lane)
+        hb = HexBoundary.new(edge, lanes, lane)
         v = HexEdgeVertex.new(hb)
         @vertices << v
         v
@@ -47,15 +47,15 @@ module Engine
         v
       end
 
-      def vertex(place)
-        vertex = @vertices.find { |v| v.id == vertex_id(place) }
+      def vertex(place, lanes, lane)
+        vertex = @vertices.find { |v| v.id == vertex_id(place, lanes, lane) }
         return vertex if vertex
 
         case place
         when Engine::Part::Node
           add_node_vertex(place)
         when Engine::Part::Edge
-          add_edge_vertex(place)
+          add_edge_vertex(place, lanes, lane)
         when Engine::Part::Junction
           add_junction_vertex(place)
         else
@@ -103,8 +103,8 @@ module Engine
           end
 
           tile.paths.each do |path|
-            left = vertex(path.a)
-            right = vertex(path.b)
+            left = vertex(path.a, path.lanes[0][0], path.lanes[0][1])
+            right = vertex(path.b, path.lanes[1][0], path.lanes[1][1])
             add_edge(left, right, path.track) if left && right
           end
         end
@@ -126,10 +126,10 @@ module Engine
         end
       end
 
-      def vertex_id(place)
+      def vertex_id(place, lanes, lane)
         return place.id unless place.is_a? Engine::Part::Edge
 
-        HexBoundary.new(place).id
+        HexBoundary.new(place, lanes, lane).id
       end
 
       # Tests whether there are multiple converging paths meeting on this edge.
