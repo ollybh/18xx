@@ -37,7 +37,7 @@ module View
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         yield
         t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        puts "Real: #{t1- t0}"
+        puts "Real: #{t1 - t0}"
       end
     end
   end
