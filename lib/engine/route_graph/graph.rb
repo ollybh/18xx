@@ -8,19 +8,52 @@ require_relative 'hex_boundary'
 module Engine
   module RouteGraph
     class Graph
-      attr_accessor :vertices, :edges
-
-      # The dimensions of the SVG canvas for the visualisation of the graph.
-      VIEW_WIDTH = 1_000
-      VIEW_HEIGHT = 1_000
-      VIEW_MIN_X = VIEW_WIDTH / 2
-      VIEW_MIN_Y = VIEW_HEIGHT / 2
+      attr_reader :vertices, :edges
 
       def initialize(game)
         @vertices = []
         @edges = []
         load_map(game) if game
       end
+
+      def to_d3
+        hexes = @vertices.map(&:hex)
+        min_x, max_x = hexes.map(&:x).minmax
+        min_y, max_y = hexes.map(&:y).minmax
+        {
+          nodes: @vertices.map.with_index do |v, i|
+            {
+              id: "node#{i}",
+              type: v.type,
+              description: v.description,
+              name: v.hex.coordinates,
+              connections: @edges.count { |e| e.ends.include?(v) },
+              x: ((v.hex.x - min_x) / (max_x - min_x) * VIEW_WIDTH) - VIEW_MIN_X,
+              y: ((v.hex.y - min_y) / (max_y - min_y) * VIEW_HEIGHT) - VIEW_MIN_Y,
+            }
+          end,
+          links: @edges.map.with_index do |e, i|
+            {
+              id: "link#{i}",
+              source: "node#{@vertices.index(e.left)}",
+              target: "node#{@vertices.index(e.right)}",
+              gauge: e.gauge,
+            }
+          end,
+        }
+      end
+
+      def walker(entity)
+        GraphWalker.new(self, entity)
+      end
+
+      private
+
+      # The dimensions of the SVG canvas for the visualisation of the graph.
+      VIEW_WIDTH = 1_000
+      VIEW_HEIGHT = 1_000
+      VIEW_MIN_X = VIEW_WIDTH / 2
+      VIEW_MIN_Y = VIEW_HEIGHT / 2
 
       def add_edge(left, right, gauge)
         e = Edge.new(left, right, gauge)
@@ -62,39 +95,6 @@ module Engine
           raise NotImplementedError
         end
       end
-
-      def to_d3
-        hexes = @vertices.map(&:hex)
-        min_x, max_x = hexes.map(&:x).minmax
-        min_y, max_y = hexes.map(&:y).minmax
-        {
-          nodes: @vertices.map.with_index do |v, i|
-            {
-              id: "node#{i}",
-              type: v.type,
-              description: v.description,
-              name: v.hex.coordinates,
-              connections: @edges.count { |e| e.ends.include?(v) },
-              x: ((v.hex.x - min_x) / (max_x - min_x) * VIEW_WIDTH) - VIEW_MIN_X,
-              y: ((v.hex.y - min_y) / (max_y - min_y) * VIEW_HEIGHT) - VIEW_MIN_Y,
-            }
-          end,
-          links: @edges.map.with_index do |e, i|
-            {
-              id: "link#{i}",
-              source: "node#{@vertices.index(e.left)}",
-              target: "node#{@vertices.index(e.right)}",
-              gauge: e.gauge,
-            }
-          end,
-        }
-      end
-
-      def walker(entity)
-        GraphWalker.new(self, entity)
-      end
-
-      private
 
       def load_map(game)
         game.hexes.map(&:tile).each do |tile|
