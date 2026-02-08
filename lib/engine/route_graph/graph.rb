@@ -6,16 +6,30 @@ require_relative 'graph_walker'
 require_relative 'hex_boundary'
 
 module Engine
+  # The route graph is an abstracted representation of the state of the game
+  # map. The graph's edges represent sections of track. The vertices represent
+  # cities, towns, track junctions and edges of hexes where track paths end.
   module RouteGraph
     class Graph
-      attr_reader :vertices, :edges
+      # @return [Array<Vertex>] The graph's vertices.
+      attr_reader :vertices
 
+      # @return [Array<Edge>] The graph's edges.
+      attr_reader :edges
+
+      # Builds a new route graph from the current game state.
       def initialize(game)
         @vertices = []
         @edges = []
         load_map(game) if game
       end
 
+      # Converts the graph state into a hash that can be consumed by the
+      # Javascript {D3}[https://d3js.org] library to produce a visualisation
+      # of the graph.
+      # @todo See if this can be method can be removed, and the visualisation
+      #   produced directly from the RouteGraph object.
+      # @return [Hash<nodes, links>] The graph state in a JSON-friendly format.
       def to_d3
         hexes = @vertices.map(&:hex)
         min_x, max_x = hexes.map(&:x).minmax
@@ -43,6 +57,10 @@ module Engine
         }
       end
 
+      # Creates a {GraphWalker} for the specified entity.
+      # @param [Operator] entity The corporation/minor/system to compute the
+      #   possible graph connections for.
+      # @return [GraphWalker]
       def walker(entity)
         GraphWalker.new(self, entity)
       end
