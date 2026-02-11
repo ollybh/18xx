@@ -60,24 +60,17 @@ module Engine
       end
     end
 
-    # The edge of a hex tile. These can be where a track Path
-    # ends at a hex edge or where two paths join from two adjacent hexes. In
-    # the latter case the vertex might be removed and the edges joined if they
-    # both have the same track gauge and the same lane.
+    # The edge of a hex tile. These can be where a track Path ends at a hex edge
+    # or where two paths join from two adjacent hexes. In the latter case the
+    # vertex might be removed and the edges joined if they both have the same
+    # track gauge and the same lane.
     class HexEdgeVertex < Vertex
-      # @param [HexBoundary] hex_edge The hex edge to be added to the graph.
-      def initialize(hex_edge)
-        @id = hex_edge.id
-        # This is the boundary between two hexes. If there is track on both
-        # sides of the boundary then both hexes will be reachable from the
-        # edges joined to this vertex, but if there is only track on one hex
-        # we need to have a way of recording that the adjacent hex can be
-        # reached. This is done by setting this vertex's hex attribute to be
-        # the adjacent hex.
-        # This is done by a bit of a hack, the initial hex added to the
-        # HexBoundary will be the one with track on, the adjacent hex is added
-        # last.
-        @hex = hex_edge.hexes.last
+      # @param [HexEdgeCrossing] crossing The point boundary between two hexes
+      #   where the track path ends.
+      def initialize(crossing)
+        @id = crossing.id
+        # TODO: This is where two hexes meet. How does this map to a single hex?
+        @hex = crossing.exits.first.hex
         @type = 'Edge'
       end
     end

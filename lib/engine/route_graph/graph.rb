@@ -3,7 +3,7 @@
 require_relative 'edge'
 require_relative 'vertex'
 require_relative 'graph_walker'
-require_relative 'hex_boundary'
+require_relative 'hex_exit'
 
 module Engine
   # The route graph is an abstracted representation of the state of the game
@@ -80,8 +80,7 @@ module Engine
       end
 
       def add_edge_vertex(edge, lanes, lane)
-        hb = HexBoundary.new(edge, lanes, lane)
-        v = HexEdgeVertex.new(hb)
+        v = HexEdgeVertex.new(HexEdgeCrossing.new(edge, lanes, lane))
         @vertices << v
         v
       end
@@ -136,6 +135,8 @@ module Engine
           edges = @edges.select { |edge| edge.linked?(vertex) }
           next unless edges.size == 2
           next unless edges.map(&:gauge).uniq.one?
+          # FIXME: needs to work with converging track, where the two paths
+          # could be on the same hex. Only merge if they are on different hexes.
 
           edge_ends = edges.flat_map(&:ends).reject { |v| v == vertex }
           add_edge(*edge_ends, edges.first.gauge)
@@ -147,13 +148,7 @@ module Engine
       def vertex_id(place, lanes, lane)
         return place.id unless place.is_a? Engine::Part::Edge
 
-        HexBoundary.new(place, lanes, lane).id
-      end
-
-      # Tests whether there are multiple converging paths meeting on this edge.
-      # FIXME: needs to work with lanes.
-      def multiple_paths?(edge)
-        edge.tile.paths.count { |path| path.exits.include?(edge.num) } > 1
+        HexEdgeCrossing.new(place, lanes, lane).id
       end
     end
   end
