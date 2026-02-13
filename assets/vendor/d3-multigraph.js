@@ -103,6 +103,16 @@ function showD3Graph(data) {
   const nodes = data.get("nodes").map(d => Object.fromEntries(d));
   const links = data.get("links").map(d => Object.fromEntries(d));
 
+  // Identify where there are multiple links between two nodes.
+  links.forEach((link) => {
+    const src = link.source;
+    const tgt = link.target;
+    const group = links.filter((lnk) =>
+      (lnk.source == src && lnk.target == tgt) || (lnk.source == tgt && lnk.target == src)
+    );
+    group.forEach((l, i) => l.linkIndex = i);
+  });
+
   const svg = d3.create("svg:svg")
     .attr("id", "d3_graph")
     .attr("width", width)
@@ -117,11 +127,13 @@ function showD3Graph(data) {
     .force("y", d3.forceY());
 
   const link = svg.append("svg:g")
-      .attr("stroke", "#000000")
-      .attr("stroke-width", 1)
     .selectAll("line")
     .data(links)
-    .join("line")
+    .enter()
+    .append("path")
+      .attr("fill", "none")
+      .attr("stroke", "#000000")
+      .attr("stroke-width", 1)
       .attr("stroke-dasharray", d => dashArray(d.gauge));
 
   link.append("title")
@@ -142,10 +154,15 @@ function showD3Graph(data) {
 
   simulation.on("tick", () => {
     link
-      .attr("x1", d => d.source.x)
-      .attr("y1", d => d.source.y)
-      .attr("x2", d => d.target.x)
-      .attr("y2", d => d.target.y);
+      .attr("d",  d => {
+        const x0 = d.source.x,
+              y0 = d.source.y,
+              x1 = d.target.x,
+              y1 = d.target.y,
+              dr = 50 / d.linkIndex,
+              d_line = d.linkIndex ? `A${dr},${dr} 0 0,1 ` : 'L';
+        return `M${x0},${y0}${d_line}${x1},${y1}`;
+      });
     node
       .attr("transform", d => "translate(" + d.x + "," + d.y + ")");
   });
