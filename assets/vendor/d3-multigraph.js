@@ -2,18 +2,12 @@
 
 function addOffboardNodes(nodes) {
   nodes.append("rect")
-    .attr("stroke", "#000000")
-    .attr("stroke-width", 2)
+    .attr("class", "offboard")
     .attr("x", -12)
     .attr("y", -12)
     .attr("width", 24)
-    .attr("height", 24)
-    .attr("fill", "#ec232a");
+    .attr("height", 24);
   nodes.append("text")
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "central")
-    .attr("font-size", 12)
-    .attr("font-weight", "bold")
     .text(d => d.name);
   nodes.append("title")
     .text(d => d.description);
@@ -21,15 +15,9 @@ function addOffboardNodes(nodes) {
 
 function addCityNodes(nodes) {
   nodes.append("circle")
-    .attr("stroke", "#000000")
-    .attr("stroke-width", 2)
-    .attr("r", 15)
-    .attr("fill", "#ffffff");
+    .attr("class", "city")
+    .attr("r", 15);
   nodes.append("text")
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "central")
-    .attr("font-size", 12)
-    .attr("font-weight", "bold")
     .text(d => d.name);
   nodes.append("title")
     .text(d => d.description);
@@ -37,23 +25,18 @@ function addCityNodes(nodes) {
 
 function addTownNodes(nodes) {
   nodes.append("circle")
-    .attr("stroke", "#000000")
-    .attr("stroke-width", 3)
-    .attr("r", 8)
-    .attr("fill", "#ffffff");
+    .attr("class", "town")
+    .attr("r", 8);
   nodes.append("circle")
-    .attr("stroke", "none")
-    .attr("r", 4)
-    .attr("fill", "#000000");
+    .attr("r", 4);
   nodes.append("title")
     .text(d => d.description);
 }
 
 function addJunctionNodes(nodes) {
   nodes.append("circle")
-    .attr("stroke", "none")
+    .attr("class", "junction")
     .attr("r", 4)
-    .attr("fill", "#626569");
   nodes.append("title")
     .text(d => d.description);
 }
@@ -62,15 +45,9 @@ function addHexEdgeNodes(nodes) {
   // Tracks ending at hex edges
   const ends = nodes.filter((d) => d.connections == 1)
   ends.append("polygon")
-    .attr("points", "10,0 5,-8.7 -5,-8.7 -10,0 -5,8.7 5,8.7")
-    .attr("stroke", "#000000")
-    .attr("stroke-width", 1)
-    .attr("fill", "#fde900");
+    .attr("class", "hex")
+    .attr("points", "10,0 5,-8.7 -5,-8.7 -10,0 -5,8.7 5,8.7");
   ends.append("text")
-    .attr("text-anchor", "middle")
-    .attr("dominant-baseline", "central")
-    .attr("font-size", 8)
-    .attr("font-weight", "bold")
     .text(d => d.name);
   ends.append("title")
     .text(d => d.description);
@@ -78,22 +55,10 @@ function addHexEdgeNodes(nodes) {
   // Gauge changes at hex edges
   const gchange = nodes.filter((d) => d.connections == 2)
   gchange.append("polygon")
-    .attr("points", "0,5 4.3,-2.5 -4.3,-2.5")
-    .attr("stroke", "none")
-    .attr("fill", "#626569");
+    .attr("class", "edge")
+    .attr("points", "0,5 4.3,-2.5 -4.3,-2.5");
   gchange.append("title")
     .text(d => d.description);
-}
-
-function dashArray(gauge) {
-  switch (gauge) {
-    case "narrow":
-      return "4 2";
-    case "broad":
-      return "8 2";
-    default:
-      return "none";
-  }
 }
 
 function showD3Graph(data) {
@@ -117,8 +82,7 @@ function showD3Graph(data) {
     .attr("id", "d3_graph")
     .attr("width", width)
     .attr("height", height)
-    .attr("viewBox", [-width / 2, -height / 2, width, height])
-    .attr("style", "max-width: 100%; height: 100%;");
+    .attr("viewBox", [-width / 2, -height / 2, width, height]);
 
   const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links).id(d => d.id).iterations(10))
@@ -127,14 +91,12 @@ function showD3Graph(data) {
     .force("y", d3.forceY());
 
   const link = svg.append("svg:g")
+      .attr("class", "links")
     .selectAll("line")
     .data(links)
     .enter()
     .append("path")
-      .attr("fill", "none")
-      .attr("stroke", "#000000")
-      .attr("stroke-width", 1)
-      .attr("stroke-dasharray", d => dashArray(d.gauge));
+      .attr("class", d => d.gauge);
 
   link.append("title")
     .text(d => d.gauge);
