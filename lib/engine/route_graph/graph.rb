@@ -11,12 +11,6 @@ module Engine
   # cities, towns, track junctions and edges of hexes where track paths end.
   module RouteGraph
     class Graph
-      # @return [Array<Vertex>] The graph's vertices.
-      attr_reader :vertices
-
-      # @return [Array<Edge>] The graph's edges.
-      attr_reader :edges
-
       # Builds a new route graph from the current game state.
       def initialize(game)
         @vertices = []
