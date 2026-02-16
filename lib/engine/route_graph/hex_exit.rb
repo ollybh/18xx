@@ -27,7 +27,7 @@ module Engine
       # @return [integer]
       attr_reader :lane_offset
 
-      # Creates a {HexBoundary} object from a {Part::Edge}.
+      # Creates a HexEdgeCrossing object from a {Part::Edge}.
       # @param [Part::Edge] edge A tile edge.
       # @param [integer] lanes The number of lanes on this edge.
       # @param [integer] lane  The lane position.
@@ -101,6 +101,22 @@ module Engine
       # @return [string] A text description of the hex crossing point.
       def id
         @exits.map(&:id).join('|')
+      end
+
+      # Override the default hash calculation, to cause HexEdgeCrossing objects
+      # that represent the same location to return the same hash value.
+      # @return [integer] The hash value.
+      def hash
+        [self.class, *@exits.map(&:id)].hash
+      end
+
+      # Override the default method, to prevent duplication of HexEdgeCrossing
+      # objects in a hash where different objects represent the same location.
+      # @param [HexEdgeCrossing] other The HexEdgeCrossing object to compare.
+      # @return [boolean] True if this and the other object represent the same
+      #   hex edge crossing location, false if not.
+      def eql?(other)
+        self.hash == other.hash
       end
     end
   end
