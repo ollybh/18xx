@@ -107,7 +107,7 @@ module Engine
       # that represent the same location to return the same hash value.
       # @return [integer] The hash value.
       def hash
-        [self.class, *@exits.map(&:id)].hash
+        [self.class, @exits.map { |e| [e.hex, e.edge, e.lane_offset] }].hash
       end
 
       # Override the default method, to prevent duplication of HexEdgeCrossing
@@ -116,7 +116,9 @@ module Engine
       # @return [boolean] True if this and the other object represent the same
       #   hex edge crossing location, false if not.
       def eql?(other)
-        self.hash == other.hash
+        # The opalrb array hash algorithm seems to often produce collisions.
+        # Add an extra check to avoid these.
+        self.hash == other.hash && self.id == other.id
       end
     end
   end
