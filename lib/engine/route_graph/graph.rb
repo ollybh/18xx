@@ -13,8 +13,8 @@ module Engine
     class Graph
       # Builds a new route graph from the current game state.
       def initialize(game)
-        @vertices = []
         @edges = []
+        @vertices = Hash.new { |h, k| h[k] = new_vertex(k) }
         load_map(game) if game
       end
 
@@ -25,11 +25,12 @@ module Engine
       #   produced directly from the RouteGraph object.
       # @return [Hash<nodes, links>] The graph state in a JSON-friendly format.
       def to_d3
-        hexes = @vertices.map(&:hex)
+        vertices = @vertices.values
+        hexes = vertices.map(&:hex)
         min_x, max_x = hexes.map(&:x).minmax
         min_y, max_y = hexes.map(&:y).minmax
         {
-          nodes: @vertices.map.with_index do |v, i|
+          nodes: vertices.map.with_index do |v, i|
             {
               id: "node#{i}",
               type: v.type,
@@ -43,8 +44,8 @@ module Engine
           links: @edges.map.with_index do |e, i|
             {
               id: "link#{i}",
-              source: "node#{@vertices.index(e.left)}",
-              target: "node#{@vertices.index(e.right)}",
+              source: "node#{vertices.index(e.left)}",
+              target: "node#{vertices.index(e.right)}",
               gauge: e.gauge,
             }
           end,
@@ -73,35 +74,14 @@ module Engine
         e
       end
 
-      def add_edge_vertex(edge, lanes, lane)
-        v = HexEdgeVertex.new(HexEdgeCrossing.new(edge, lanes, lane))
-        @vertices << v
-        v
-      end
-
-      def add_node_vertex(node)
-        v = NodeVertex.new(node)
-        @vertices << v
-        v
-      end
-
-      def add_junction_vertex(junction)
-        v = JunctionVertex.new(junction)
-        @vertices << v
-        v
-      end
-
-      def vertex(place, lanes, lane)
-        vertex = @vertices.find { |v| v.id == vertex_id(place, lanes, lane) }
-        return vertex if vertex
-
+      def new_vertex(place)
         case place
         when Engine::Part::Node
-          add_node_vertex(place)
-        when Engine::Part::Edge
-          add_edge_vertex(place, lanes, lane)
+          NodeVertex.new(place)
+        when HexEdgeCrossing
+          HexEdgeVertex.new(place)
         when Engine::Part::Junction
-          add_junction_vertex(place)
+          JunctionVertex.new(place)
         else
           raise NotImplementedError
         end
@@ -110,20 +90,26 @@ module Engine
       def load_map(game)
         game.hexes.map(&:tile).each do |tile|
           tile.nodes.each do |node|
-            add_node_vertex(node)
+            @vertices[node]
           end
 
           tile.paths.each do |path|
-            left = vertex(path.a, path.lanes[0][0], path.lanes[0][1])
-            right = vertex(path.b, path.lanes[1][0], path.lanes[1][1])
+            left = @vertices[node_or_exit(path.a, *path.lanes.first)]
+            right = @vertices[node_or_exit(path.b, *path.lanes.last)]
             add_edge(left, right, path.track) if left && right
           end
         end
         join_edges!
       end
 
+      def node_or_exit(place, lanes, lane)
+        return place unless place.is_a?(Engine::Part::Edge)
+
+        HexEdgeCrossing.new(place, lanes, lane)
+      end
+
       def join_edges!
-        @vertices.dup.each do |vertex|
+        @vertices.dup.each do |place, vertex|
           next unless vertex.is_a? HexEdgeVertex
 
           edges = @edges.select { |edge| edge.linked?(vertex) }
@@ -135,14 +121,8 @@ module Engine
           edge_ends = edges.flat_map(&:ends).reject { |v| v == vertex }
           add_edge(*edge_ends, edges.first.gauge)
           edges.each { |edge| @edges.delete(edge) }
-          @vertices.delete(vertex)
+          @vertices.delete(place)
         end
-      end
-
-      def vertex_id(place, lanes, lane)
-        return place.id unless place.is_a? Engine::Part::Edge
-
-        HexEdgeCrossing.new(place, lanes, lane).id
       end
     end
   end
