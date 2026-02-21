@@ -47,6 +47,7 @@ module Engine
               source: "node#{vertices.index(e.left)}",
               target: "node#{vertices.index(e.right)}",
               gauge: e.gauge,
+              hexes: e.paths.map { |p| p.hex.coordinates }.join('-'),
             }
           end,
         }
@@ -68,8 +69,8 @@ module Engine
       VIEW_MIN_X = VIEW_WIDTH / 2
       VIEW_MIN_Y = VIEW_HEIGHT / 2
 
-      def add_edge(left, right, gauge)
-        e = Edge.new(left, right, gauge)
+      def add_edge(left, right, paths)
+        e = Edge.new(left, right, paths)
         @edges << e
         e
       end
@@ -96,7 +97,7 @@ module Engine
           tile.paths.each do |path|
             left = @vertices[node_or_exit(path.a, *path.lanes.first)]
             right = @vertices[node_or_exit(path.b, *path.lanes.last)]
-            add_edge(left, right, path.track) if left && right
+            add_edge(left, right, [path]) if left && right
           end
         end
         join_edges!
@@ -118,8 +119,9 @@ module Engine
           # FIXME: needs to work with converging track, where the two paths
           # could be on the same hex. Only merge if they are on different hexes.
 
-          edge_ends = edges.flat_map(&:ends).reject { |v| v == vertex }
-          add_edge(*edge_ends, edges.first.gauge)
+          left, right = edges.flat_map(&:ends).reject { |v| v == vertex }
+          paths = edges.first.paths_to(vertex) + edges.last.paths_from(vertex)
+          add_edge(left, right, paths)
           edges.each { |edge| @edges.delete(edge) }
           @vertices.delete(place)
         end

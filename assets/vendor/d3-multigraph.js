@@ -99,7 +99,7 @@ function showD3Graph(data) {
       .attr("class", d => d.gauge);
 
   link.append("title")
-    .text(d => d.gauge);
+    .text(d => `${d.gauge} gauge track, hexes ${d.hexes}`);
 
   const node = svg.append("svg:g")
       .attr("class", "nodes")
