@@ -27,9 +27,6 @@ module Engine
         TRACK_RESTRICTION = :permissive
         CURRENCY_FORMAT_STR = '$%s'
 
-        COMPANY_CONCESSION_PREFIX = 'C'
-        COMPANY_COMMISIONER_PREFIX = 'M'
-
         BANK_CASH = 10_000
 
         CERT_LIMIT = { 2 => 35, 3 => 30, 4 => 20, 5 => 17, 6 => 15 }.freeze
@@ -41,6 +38,7 @@ module Engine
              151 158 172 180 188 196 204 013 222 231 240 250 260 275 290 300],
         ].freeze
 
+        # Currently variants 2p medium, 3p short setup. Further variant support to be added later.
         TRAIN_FOR_PLAYER_COUNT = {
           2 => { '2': 5, '3': 4, '4': 2, '5': 3, '6': 3, '8': 4, '2n': 7, '3n': 5, '4n': 4, '5n': 5 },
           3 => { '2': 7, '3': 5, '4': 3, '5': 3, '6': 3, '8': 6, '2n': 5, '3n': 5, '4n': 3, '5n': 4 },
@@ -207,7 +205,7 @@ module Engine
             Engine::Step::Track,
             Engine::Step::Token,
             Engine::Step::Route,
-            Engine::Step::Dividend,
+            G18Cuba::Step::Dividend,
             Engine::Step::DiscardTrain,
             Engine::Step::BuyTrain,
             [Engine::Step::BuyCompany, { blocks: true }],
@@ -228,17 +226,113 @@ module Engine
         end
 
         def company_header(company)
-          company.id[0] == self.class::COMPANY_CONCESSION_PREFIX ? 'CONCESSION' : 'COMMISSIONER'
+          case company.type
+          when :concession
+            'CONCESSION'
+          when :commission
+            'COMMISSIONER'
+          else
+            raise "Unknown company type: #{company.type}"
+          end
+        end
+
+        def commissioners
+          @commissioners ||= @companies.select { |c| c.type == :commission }
+        end
+
+        def concessions
+          @concessions ||= @companies.select { |c| c.type == :concession }
         end
 
         def setup
           super
           @tile_groups = init_tile_groups
           initialize_tile_opposites!
+          @unused_tiles = []
+          @sugar_cubes = {}
         end
 
         def init_tile_groups
           self.class::TILE_GROUPS
+        end
+
+        def new_auction_round
+          Engine::Round::Auction.new(self, [G18Cuba::Step::SelectionAuction])
+        end
+
+        def new_draft_round
+          Engine::Round::Draft.new(self, [G18Cuba::Step::SimpleDraft], reverse_order: false)
+        end
+
+        def stock_round
+          Round::Stock.new(self, [
+            G18Cuba::Step::BuySellParShares,
+          ])
+        end
+
+        def close_unopened_minors
+          @corporations.each { |c| c.close! if c.type == :minor && !c.floated? }
+          @log << 'Unopened minors close'
+        end
+
+        def can_par?(corporation, entity)
+          # FC cannot be parred
+          # Minors can only be parred by players with a concession to exchange
+          return false if corporation.type == :state
+          return super unless corporation.type == :minor
+
+          entity.companies.any? { |c| abilities(c, :exchange) }
+        end
+
+        def next_round!
+          # After Init -> Auction Commissions -> Draft Concessions -> Stock Round -> Operating Rounds
+          @round =
+            case @round
+            when Round::Draft
+              new_stock_round
+            when Round::Stock
+              close_unopened_minors if @turn == 1
+              @operating_rounds = @phase.operating_rounds
+              reorder_players
+              new_operating_round
+            when Round::Operating
+              if @round.round_num < @operating_rounds
+                or_round_finished
+                new_operating_round(@round.round_num + 1)
+              else
+                @turn += 1
+                or_round_finished
+                or_set_finished
+                new_stock_round
+              end
+            when init_round.class
+              init_round_finished
+              reorder_players(:least_cash, log_player_order: true)
+              new_draft_round
+            end
+        end
+
+        def sugar_production(corporation, total_revenue)
+          return if total_revenue.zero? || corporation.type != :minor
+
+          sugar_cubes = case total_revenue
+                        when 0..29 then 0
+                        when 30..79 then 1
+                        when 80..150 then 2
+                        else 3
+                        end
+
+          @sugar_cubes[corporation] = sugar_cubes
+          @log << "#{corporation.name} produces #{sugar_cubes} sugar cube(s) "\
+                  "from #{format_currency(total_revenue)} revenue."
+        end
+
+        def or_round_finished
+          # For the moment reset sugar cubes, handling for FC to be implemented later
+          return if @sugar_cubes.values.none?(&:positive?)
+
+          @sugar_cubes.clear
+          @log << 'All remaining sugar cubes are removed at the end of the Operating Round.'
         end
       end
     end
