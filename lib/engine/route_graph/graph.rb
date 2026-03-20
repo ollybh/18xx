@@ -36,7 +36,7 @@ module Engine
               type: v.type,
               description: v.description,
               name: v.hex.coordinates,
-              connections: @edges.count { |e| e.ends.include?(v) },
+              connections: v.edges.size,
               x: ((v.hex.x - min_x) / (max_x - min_x) * VIEW_WIDTH) - VIEW_MIN_X,
               y: ((v.hex.y - min_y) / (max_y - min_y) * VIEW_HEIGHT) - VIEW_MIN_Y,
             }
@@ -71,6 +71,8 @@ module Engine
 
       def add_edge(left, right, paths)
         e = Edge.new(left, right, paths)
+        left.edges << e
+        right.edges << e
         @edges << e
         e
       end
@@ -122,7 +124,11 @@ module Engine
           left, right = edges.flat_map(&:ends).reject { |v| v == vertex }
           paths = edges.first.paths_to(vertex) + edges.last.paths_from(vertex)
           add_edge(left, right, paths)
-          edges.each { |edge| @edges.delete(edge) }
+          edges.each do |edge|
+            left.edges.delete(edge)
+            right.edges.delete(edge)
+            @edges.delete(edge)
+          end
           @vertices.delete(place)
         end
       end

@@ -17,6 +17,9 @@ module Engine
     # {JunctionVertex}::
     #   Junctions in the middle of Lawson-type plain track tiles.
     class Vertex
+      # @return [Array<Edge>] The edges directly connected to this vertex.
+      attr_reader :edges
+
       # @return [string] A unique identifier for this vertex.
       attr_reader :id
 
@@ -36,6 +39,10 @@ module Engine
         desc
       end
 
+      def initialize
+        @edges = []
+      end
+
       private
 
       def inspect
@@ -52,6 +59,7 @@ module Engine
 
       # @param [Part::RevenueCenter] node The node to create a graph vertex for.
       def initialize(node)
+        super
         @node = node
         @id = node.id
         @hex = node.tile.hex
@@ -68,6 +76,7 @@ module Engine
       # @param [HexEdgeCrossing] crossing The point boundary between two hexes
       #   where the track path ends.
       def initialize(crossing)
+        super
         @id = crossing.id
         # TODO: This is where two hexes meet. How does this map to a single hex?
         @hex = crossing.exits.first.hex
@@ -79,6 +88,7 @@ module Engine
     class JunctionVertex < Vertex
       # @param [Part::Junction] junction The track junction to be added to the graph.
       def initialize(junction)
+        super
         @id = junction.id
         @hex = junction.tile.hex
         @type = 'Junction'
