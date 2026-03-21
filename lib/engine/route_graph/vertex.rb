@@ -87,7 +87,14 @@ module Engine
         @id = crossing.id
         # TODO: This is where two hexes meet. How does this map to a single hex?
         @hex = crossing.exits.first.hex
-        @type = 'Edge'
+      end
+
+      def type
+        case @edges.size
+        when 1 then 'Edge'
+        when 2 then paths_cross_edge? ? 'Junction' : 'Edge'
+        else 'Junction'
+        end
       end
 
       # A hex edge vertex can be optimised out of the route graph by merging
@@ -95,11 +102,16 @@ module Engine
       # different hexes, and they both have the same track gauge.
       # @return [boolean] True if this vertex's edges can be merged.
       def edges_mergeable?
-        return false unless @edges.size == 2
+        @edges.size == 2 && paths_cross_edge? && @edges.map(&:gauge).uniq.one?
+      end
 
-        @edges.map(&:gauge).uniq.one?
-        # FIXME: needs to work with converging track, where the two paths
-        # could be on the same hex. Only merge if they are on different hexes.
+      private
+
+      # Tests if the hex edge crossing point represented by this vertex has
+      # path connections on both adjoining hexes.
+      # @return [boolean] True if track paths cross the hex edge at this point.
+      def paths_cross_edge?
+        @edges.map { |e| e.paths_from(self).first.hex }.uniq.size > 1
       end
     end
 
