@@ -113,18 +113,13 @@ module Engine
 
       def join_edges!
         @vertices.dup.each do |place, vertex|
-          next unless vertex.is_a? HexEdgeVertex
+          next unless vertex.edges_mergeable?
 
-          edges = @edges.select { |edge| edge.linked?(vertex) }
-          next unless edges.size == 2
-          next unless edges.map(&:gauge).uniq.one?
-          # FIXME: needs to work with converging track, where the two paths
-          # could be on the same hex. Only merge if they are on different hexes.
-
-          left, right = edges.flat_map(&:ends).reject { |v| v == vertex }
-          paths = edges.first.paths_to(vertex) + edges.last.paths_from(vertex)
+          left, right = vertex.edges.flat_map(&:ends).reject { |v| v == vertex }
+          paths = vertex.edges.first.paths_to(vertex) +
+                  vertex.edges.last.paths_from(vertex)
           add_edge(left, right, paths)
-          edges.each do |edge|
+          vertex.edges.each do |edge|
             left.edges.delete(edge)
             right.edges.delete(edge)
             @edges.delete(edge)

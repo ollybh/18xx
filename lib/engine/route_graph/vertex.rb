@@ -43,6 +43,13 @@ module Engine
         @edges = []
       end
 
+      # Tests whether it is possible to optimise the route graph by removing
+      # this vertex and merging its edges.
+      # @return [boolean] True if this vertex's edges can be merged.
+      def edges_mergeable?
+        false
+      end
+
       private
 
       def inspect
@@ -81,6 +88,18 @@ module Engine
         # TODO: This is where two hexes meet. How does this map to a single hex?
         @hex = crossing.exits.first.hex
         @type = 'Edge'
+      end
+
+      # A hex edge vertex can be optimised out of the route graph by merging
+      # its edges if there are two paths meeting at this hex edge, they are on
+      # different hexes, and they both have the same track gauge.
+      # @return [boolean] True if this vertex's edges can be merged.
+      def edges_mergeable?
+        return false unless @edges.size == 2
+
+        @edges.map(&:gauge).uniq.one?
+        # FIXME: needs to work with converging track, where the two paths
+        # could be on the same hex. Only merge if they are on different hexes.
       end
     end
 
