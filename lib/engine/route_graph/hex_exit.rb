@@ -36,7 +36,7 @@ module Engine
 
         @hex = edge.hex
         @edge = edge.num
-        @lane_offset = lanes - 1 - lane * 2
+        @lane_offset = lanes - 1 - (lane * 2)
       end
 
       # The hex next to this exit.
@@ -118,7 +118,7 @@ module Engine
       def eql?(other)
         # The opalrb array hash algorithm seems to often produce collisions.
         # Add an extra check to avoid these.
-        self.hash == other.hash && self.id == other.id
+        hash == other.hash && id == other.id
       end
     end
   end
