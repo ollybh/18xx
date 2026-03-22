@@ -61,8 +61,10 @@ module Engine
       # @return [HexExit, nil] The adjacent exit point, or nil if there is not
       #   an adjacent hex to this one.
       def adjacent_exit
+        return unless (neighbor = adjacent_hex)
+
         adjacent = HexExit.new
-        adjacent.hex = adjacent_hex
+        adjacent.hex = neighbor
         adjacent.edge = (@edge + 3) % 6
         adjacent.lane_offset = -1 * @lane_offset
         adjacent
