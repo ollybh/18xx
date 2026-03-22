@@ -84,17 +84,40 @@ module Engine
       #   where the track path ends.
       def initialize(crossing)
         super
+        @crossing = crossing
         @id = crossing.id
-        # TODO: This is where two hexes meet. How does this map to a single hex?
-        @hex = crossing.exits.first.hex
       end
 
+      # @return [string] A string describing the type of vertex.
       def type
         case @edges.size
         when 1 then 'Edge'
         when 2 then paths_cross_edge? ? 'Junction' : 'Edge'
         else 'Junction'
         end
+      end
+
+      # There are usually two hexes associated with a hex edge (the exception
+      # is at the edge of maps). This returns one of the two hexes for the
+      # vertex's location. If there is only track on one of the two hexes then
+      # the hex with no track is returned, so the hex where new track could be
+      # built can be shown in the graph visualisation.
+      # @return [Hex] A hex associated with this vertex.
+      def hex
+        # Doesn't make much difference which hex we use where there is track
+        # on both sides of the hex edge crossing.
+        return @crossing.exits.first.hex if paths_cross_edge?
+
+        hex = @crossing.exits.map(&:hex).difference(path_hexes).first
+        return hex if hex
+
+        # Track pointing off the edge of the map, with no adjacent hex.
+        @crossing.exits.first.hex
+      end
+
+      # @return [string] A description of the type of hex and its location.
+      def description
+        "#{@type} #{@id}"
       end
 
       # A hex edge vertex can be optimised out of the route graph by merging
@@ -107,11 +130,15 @@ module Engine
 
       private
 
+      def path_hexes
+        @edges.map { |e| e.paths_from(self).first.hex }.uniq
+      end
+
       # Tests if the hex edge crossing point represented by this vertex has
       # path connections on both adjoining hexes.
       # @return [boolean] True if track paths cross the hex edge at this point.
       def paths_cross_edge?
-        @edges.map { |e| e.paths_from(self).first.hex }.uniq.size > 1
+        path_hexes.size > 1
       end
     end
 
