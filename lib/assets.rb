@@ -62,6 +62,26 @@ class Assets
     @source_maps = source_maps
   end
 
+  # Write a file atomically: write to a tempfile on the same filesystem, then
+  # rename (which is atomic).  This prevents concurrent readers from seeing
+  # partially-written content, which is important under parallel test workers
+  # that share the same build and output directories.
+  def self.atomic_write(path, content)
+    dir = File.dirname(path)
+    FileUtils.mkdir_p(dir)
+    basename = File.basename(path)
+    tmpfile = Tempfile.new([basename, '.tmp'], dir)
+    tmpfile.write(content)
+    tmpfile.close
+    File.rename(tmpfile.path, path)
+  end
+
+  def atomic_write(path, content)
+    self.class.atomic_write(path, content)
+  end
+
+  private :atomic_write
+
   def context(titles)
     combine(titles)
     @context ||= JsContext.new(@server_path)
@@ -89,7 +109,7 @@ class Assets
         filename = "#{@out_path}/#{game}.js"
         next if File.exist?(filename)
 
-        File.write(filename, '')
+        atomic_write(filename, '')
         file = File.new(filename)
         FileUtils.touch(file, mtime: 0)
         puts "Stubbing #{filename}"
@@ -207,8 +227,8 @@ class Assets
       source += "\n//# sourceMappingURL=#{build['path'].delete_prefix('public')}.map\n" if @source_maps
 
       source = compress(key, source) if @compress
-      File.write(build['path'], source)
-      File.write(build['path'] + '.map', source_map.to_json) if @source_maps
+      atomic_write(build['path'], source)
+      atomic_write(build['path'] + '.map', source_map.to_json) if @source_maps
 
       next if !@gzip || build['path'] == @server_path
 
@@ -231,8 +251,8 @@ class Assets
     path = "#{@out_path}/#{output_name}.js"
     if !@cache || !File.exist?(path) || (@source_maps && !File.exist?("#{path}.map"))
       time = Time.now
-      File.write(path, builder.build(name))
-      File.write("#{path}.map", builder.source_map.map.to_json) if @source_maps
+      atomic_write(path, builder.build(name))
+      atomic_write("#{path}.map", builder.source_map.map.to_json) if @source_maps
       puts "Compiling #{name} - #{Time.now - time}"
     end
     path
@@ -259,8 +279,8 @@ class Assets
       raise "#{file} not found put in deps." unless (opts = metadata[file])
 
       time = Time.now
-      File.write(opts[:js_path], compiler.compile)
-      File.write(opts[:js_path] + '.map', compiler.source_map.map.to_json) if @source_maps
+      atomic_write(opts[:js_path], compiler.compile)
+      atomic_write(opts[:js_path] + '.map', compiler.source_map.map.to_json) if @source_maps
       puts "Compiling #{file} - #{Time.now - time}"
     end
 
@@ -274,8 +294,8 @@ class Assets
     opal_load = game ? "engine/game/#{game}" : name
     source += "\nOpal.load('#{opal_load}')"
 
-    File.write(output, source)
-    File.write(output + '.map', source_map.to_json) if @source_maps
+    atomic_write(output, source)
+    atomic_write(output + '.map', source_map.to_json) if @source_maps
     output
   end
 
@@ -316,7 +336,7 @@ class Assets
 
         source = (combine - prealphas).map { |file| File.read(file).to_s }.join
         source = compress('pin', source)
-        File.write(pin_path.gsub('.gz', ''), source)
+        atomic_write(pin_path.gsub('.gz', ''), source)
         Zlib::GzipWriter.open(pin_path) { |gz| gz.write(source) }
         FileUtils.rm(pin_path.gsub('.gz', ''))
       end
