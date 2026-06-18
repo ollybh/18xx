@@ -2,6 +2,7 @@
 
 require 'snabberb/component'
 
+require_relative 'opal_silencer'
 require_relative '../lib/engine'
 require_relative 'fixture_cache'
 require_relative 'matchers'
