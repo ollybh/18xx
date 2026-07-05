@@ -6,6 +6,7 @@ require_relative 'meta'
 require_relative '../base'
 require_relative '../double_sided_tiles'
 require_relative 'trains'
+require_relative 'sugar'
 
 module Engine
   module Game
@@ -15,16 +16,18 @@ module Engine
         include Entities
         include Map
         include Trains
+        include Sugar
 
         include DoubleSidedTiles
-
-        def sugar_cane_open_for_majors?
-          @sugar_cane_open_for_majors
-        end
 
         TRACK_RESTRICTION = :permissive
         CURRENCY_FORMAT_STR = '$%s'
         HOME_TOKEN_TIMING = :operate
+
+        EBUY_FROM_OTHERS = :never
+        EBUY_DEPOT_TRAIN_MUST_BE_CHEAPEST = true
+
+        DEPOT_CLASS = G18Cuba::Depot
 
         BANK_CASH = 10_000
 
@@ -37,42 +40,58 @@ module Engine
              151 158 172 180 188 196 204 013 222 231 240 250 260 275 290 300],
         ].freeze
 
-        PHASES = [{ name: '2', train_limit: 4, tiles: [:yellow], operating_rounds: 1 },
+        STATUS_TEXT = Base::STATUS_TEXT.merge(
+          'can_buy_trains' => ['Buy trains', 'Can buy trains from other corporations'],
+        ).freeze
+
+        PHASES = [{ name: '2', train_limit: { minor: 2, major: 4 }, tiles: [:yellow], operating_rounds: 1 },
                   {
                     name: '3',
                     on: '3',
-                    train_limit: 4,
+                    train_limit: { minor: 2, major: 4 },
                     tiles: %i[yellow green],
+                    status: ['can_buy_trains'],
                     operating_rounds: 2,
                   },
                   {
                     name: '4',
                     on: '4',
-                    train_limit: 3,
+                    train_limit: { minor: 2, major: 3 },
                     tiles: %i[yellow green],
+                    status: ['can_buy_trains'],
                     operating_rounds: 2,
                   },
                   {
                     name: '5',
                     on: '5',
-                    train_limit: 2,
+                    train_limit: { minor: 2, major: 2 },
                     tiles: %i[yellow green brown],
+                    status: ['can_buy_trains'],
                     operating_rounds: 3,
                   },
                   {
                     name: '6',
                     on: '6',
-                    train_limit: 2,
+                    train_limit: { minor: 2, major: 2 },
                     tiles: %i[yellow green brown],
+                    status: ['can_buy_trains'],
                     operating_rounds: 3,
                   },
                   {
-                    name: '8',
-                    on: '8',
-                    train_limit: 2,
+                    name: '8+',
+                    on: '8+',
+                    train_limit: { minor: 2, major: 2 },
                     tiles: %i[yellow green brown gray],
+                    status: ['can_buy_trains'],
                     operating_rounds: 3,
                   }].freeze
+
+        def operating_order
+          # Minors operate before majors per game rules.
+          floated = @corporations.select(&:floated?)
+          minors, majors = floated.partition { |c| c.type == :minor }
+          minors.sort_by { |c| minor_operating_sort_key(c) } + majors.sort
+        end
 
         def operating_round(round_num)
           Round::Operating.new(self, [
@@ -84,9 +103,9 @@ module Engine
             Engine::Step::HomeToken,
             G18Cuba::Step::Track,
             Engine::Step::Token,
-            Engine::Step::Route,
+            G18Cuba::Step::Route,
             G18Cuba::Step::Dividend,
-            Engine::Step::DiscardTrain,
+            G18Cuba::Step::DiscardTrain,
             G18Cuba::Step::BuyTrain,
             [Engine::Step::BuyCompany, { blocks: true }],
           ], round_num: round_num)
@@ -124,12 +143,64 @@ module Engine
           @concessions ||= @companies.select { |c| c.type == :concession }
         end
 
+        def skip_route_track_type(train)
+          # Wagons cannot run routes independently; only regular trains enforce track type.
+          return if wagon?(train)
+
+          opposite_gauge(train.track_type)
+        end
+
+        def check_other(route)
+          # A cube-carrying wagon train must run to a harbor, and only load mills on its route (rule VII.10).
+          if train_with_cubes?(route.train)
+            raise GameError, 'A wagon carrying sugar cubes must run to a harbor' if route.visited_stops.none? { |s| harbor?(s) }
+
+            mills = mill_corps_on_route(route)
+            raise GameError, 'Sugar mill is not on the route' unless cubes_on_train(route.train).all? { |c| mills.include?(c) }
+          end
+
+          # Regular trains cannot cross to the opposite gauge.
+          return if wagon?(route.train)
+
+          track_type = route.train.track_type
+          wrong_track = opposite_gauge(track_type)
+          return if route.chains.none? { |c| c[:paths].any? { |p| p.track == wrong_track } }
+
+          raise GameError, "#{track_type.to_s.capitalize} gauge train cannot run on #{wrong_track} gauge track"
+        end
+
+        def route_trains(entity)
+          # Wagons are not runnable trains; they attach to trains rather than running independently.
+          super.reject { |t| wagon?(t) }
+        end
+
+        def crowded_corps
+          # TODO: FC logic - train limit
+          @crowded_corps ||= corporations.select { |c| train_limit_overflow(c).value?(true) }
+        end
+
+        # A corp owning only wagons is still trainless (wagons don't count as trains).
+        def trainless?(corporation)
+          num_corp_trains(corporation).zero?
+        end
+
+        def must_buy_train?(entity)
+          # Require a buy only when a gauge-matching non-wagon train exists in the depot — else nothing is legally buyable.
+          trainless?(entity) &&
+            depot.depot_trains.any? { |t| !wagon?(t) && t.track_type == gauge_for(entity) }
+        end
+
+        # Per rule VII.12: cross-company train purchases unlock once the first 3/3+ train is sold (phase 3+).
+        def can_buy_train_from_others?
+          @phase.status.include?('can_buy_trains')
+        end
+
         def setup
           super
           @tile_groups = init_tile_groups
           initialize_tile_opposites!
           @unused_tiles = []
-          @sugar_cubes = {}
+          sugar_setup
           @minor_graph = Graph.new(self, skip_track: :broad)
         end
 
@@ -240,27 +311,57 @@ module Engine
           super
         end
 
-        def sugar_production(corporation, total_revenue)
-          return if total_revenue.zero? || corporation.type != :minor
+        def revenue_for(route, stops)
+          revenue = super
+          revenue -= extended_harbor_revenue(route, stops)
+          revenue + wagon_cube_bonus(route)
+        end
 
-          sugar_cubes = case total_revenue
-                        when 0..29 then 0
-                        when 30..79 then 1
-                        when 80..150 then 2
-                        else 3
-                        end
+        def revenue_str(route)
+          bonus = wagon_cube_bonus(route)
+          return super if bonus.zero?
 
-          @sugar_cubes[corporation] = sugar_cubes
-          @log << "#{corporation.name} produces #{sugar_cubes} sugar cube(s) "\
-                  "from #{format_currency(total_revenue)} revenue."
+          # Append the wagon's sugar-cube delivery value, which is not part of the base route revenue.
+          "#{super} + #{format_currency(bonus)} (wagon)"
+        end
+
+        def check_distance(route, visits, train = nil)
+          # Record the live route per train so the Route step can offer cube loading (like 18Uruguay).
+          @round.current_routes[route.train.id] = route
+          # A wagon may extend a route by exactly one extra stop, only to a harbor (rule VII.10).
+          train ||= route.train
+          return super unless @round.wagon_for_train.key?(train.id)
+
+          total = visits.sum(&:visit_cost)
+          return super if total <= train.distance
+
+          raise RouteTooLong, 'Wagon harbor extension requires a harbor at the route end' unless visits.any? { |s| harbor?(s) }
+          raise RouteTooLong, 'Wagon may only extend a route by one harbor stop' if total > train.distance + 1
         end
 
         def or_round_finished
           # For the moment reset sugar cubes, handling for FC to be implemented later
+          reset_cubes_on_train
           return if @sugar_cubes.values.none?(&:positive?)
 
+          @sugar_cubes.each { |corp, cubes| update_sugar_cube_icons(corp, 0) if cubes.positive? }
           @sugar_cubes.clear
           @log << 'All remaining sugar cubes are removed at the end of the Operating Round.'
+        end
+
+        def check_route_combination(routes)
+          # Each delivering wagon train must deliver to a different harbor (rule VII.10).
+          # Filter on delivering, not merely attached: empty wagons don't compete for a harbor delivery.
+          # Legal as long as the delivering routes can be matched to distinct harbors;
+          # a route with harbors at both ends contributes both as candidates, not just the first.
+          super
+          delivering_routes = routes.select { |r| train_with_cubes?(r.train) }
+          return if delivering_routes.size <= 1
+
+          harbor_sets = delivering_routes.map do |r|
+            r.visited_stops.select { |s| harbor?(s) }.map(&:hex).uniq
+          end
+          raise GameError, 'Each wagon train must run to a different harbor' unless distinct_harbors?(harbor_sets)
         end
 
         def all_potential_upgrades(tile, tile_manifest: false, selected_company: nil)
@@ -276,10 +377,6 @@ module Engine
           return true if sugar_cane_tile?(from) && sugar_cane_open_for_majors? && to.city_towns.empty?
 
           super
-        end
-
-        def sugar_cane_hex?(hex)
-          SUGAR_CANE_HEXES.include?(hex.id)
         end
 
         def upgrade_cost(tile, hex, entity, spender)
@@ -301,8 +398,18 @@ module Engine
 
         private
 
-        def sugar_cane_tile?(tile)
-          tile.towns.any?(&:hidden?)
+        # True if each delivering route can be matched to a distinct harbor it visits (rule VII.10).
+        def distinct_harbors?(sets)
+          return true if sets.empty?
+
+          first, *rest = sets
+          first.any? { |harbor| distinct_harbors?(rest.map { |s| s - [harbor] }) }
+        end
+
+        def minor_operating_sort_key(corp)
+          # Order by share price, then market position, then name.
+          sp = corp.share_price
+          [sp&.price || 0, sp&.corporations&.index(corp) || 0, corp.name]
         end
 
         def tile_has_only_track_type?(tile, track_type)
