@@ -24,8 +24,6 @@ module Engine
 
         attr_accessor :sl
 
-        register_colors(black: '#000000')
-
         CURRENCY_FORMAT_STR = '%skr'
 
         BANK_CASH = 99_999
@@ -133,7 +131,7 @@ module Engine
             name: '10H',
             distance: 10,
             price: 700,
-            num: 32,
+            num: 'unlimited',
             events: [{ 'type' => 'sl_trigger' }],
           },
         ].freeze

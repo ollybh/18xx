@@ -7,7 +7,7 @@ GEM
     ast (2.4.2)
     byebug (11.1.3)
     coderay (1.1.3)
-    concurrent-ruby (1.3.4)
+    concurrent-ruby (1.3.7)
     diff-lcs (1.5.0)
     et-orbi (1.2.11)
       tzinfo
@@ -49,7 +49,7 @@ GEM
       pry (>= 0.13, < 0.15)
     raabro (1.4.0)
     racc (1.7.3)
-    rack (3.2.5)
+    rack (3.2.6)
     rainbow (3.1.1)
     raindrops (0.20.0)
     rake (13.0.6)
