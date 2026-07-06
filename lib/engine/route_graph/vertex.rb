@@ -4,7 +4,7 @@ module Engine
   module RouteGraph
     # Vertices occur in the {RouteGraph RouteGraph} at the ends of, and junctions between,
     # {Edge edges}. There are several different types of vertex representing different
-    # things, these are represented by subclasses of Vertex.
+    # things, these are represented by classes that include this module.
     #
     # {HexEdgeVertex}::
     #   The edge of a hex tile. These can be where a track Path ends at a hex
@@ -16,31 +16,17 @@ module Engine
     #
     # {JunctionVertex}::
     #   Junctions in the middle of Lawson-type plain track tiles.
-    class Vertex
+    module Vertex
       # @return [Array<Edge>] The edges directly connected to this vertex.
       attr_reader :edges
 
-      # @return [string] A unique identifier for this vertex.
-      attr_reader :id
-
-      # @return [Hex] The hex that this vertex is on.
-      attr_reader :hex
-
-      # @return [string] The location name, for named hexes.
-      attr_reader :location
-
-      # @return [string] A string describing the type of vertex.
-      attr_reader :type
-
-      # @return [string] A description of the type of hex and its location.
-      def description
-        desc = "#{@type} #{@hex.coordinates} #{@id}"
-        desc += " [#{@location}]" if @location
-        desc
-      end
-
       def initialize
         @edges = []
+      end
+
+      # @return [string] A description of the type of vertex.
+      def description
+        type
       end
 
       # Tests whether it is possible to optimise the route graph by removing
@@ -58,11 +44,25 @@ module Engine
     end
 
     # Represents a city, town or halt in the route graph.
-    class NodeVertex < Vertex
+    class NodeVertex
+      include Vertex
+
       # The {Part::City City}, {Part::Town Town} or {Part::Halt Halt} object
       # for the revenue center represented by this vertex in the route graph.
       # @return [Part::RevenueCenter]
       attr_reader :node
+
+      # @return [string] A unique identifier for this vertex.
+      attr_reader :id
+
+      # @return [Hex] The hex that this vertex is on.
+      attr_reader :hex
+
+      # @return [string] The location name, for named hexes.
+      attr_reader :location
+
+      # @return [string] A string describing the type of vertex.
+      attr_reader :type
 
       # @param [Part::RevenueCenter] node The node to create a graph vertex for.
       def initialize(node)
@@ -73,13 +73,26 @@ module Engine
         @type = node.class.name.split('::').last
         @location = hex.location_name
       end
+
+      # @return [string] A description of the type of vertex, its hex and
+      # location name.
+      def description
+        desc = "#{type} #{hex.coordinates} #{id}"
+        desc += " [#{@location}]" if @location
+        desc
+      end
     end
 
     # The edge of a hex tile. These can be where a track Path ends at a hex edge
     # or where two paths join from two adjacent hexes. In the latter case the
     # vertex might be removed and the edges joined if they both have the same
     # track gauge and the same lane.
-    class HexEdgeVertex < Vertex
+    class HexEdgeVertex
+      include Vertex
+
+      # @return [string] A unique identifier for this vertex.
+      attr_reader :id
+
       # @param [HexEdgeCrossing] crossing The point boundary between two hexes
       #   where the track path ends.
       def initialize(crossing)
@@ -115,9 +128,9 @@ module Engine
         @crossing.exits.first.hex
       end
 
-      # @return [string] A description of the type of hex and its location.
+      # @return [string] A description of the type of vertex.
       def description
-        "#{@type} #{@id}"
+        "#{type} #{id}"
       end
 
       # A hex edge vertex can be optimised out of the route graph by merging
@@ -143,13 +156,29 @@ module Engine
     end
 
     # Represents a junction in the middle of Lawson-type plain track tile.
-    class JunctionVertex < Vertex
+    class JunctionVertex
+      include Vertex
+
+      # @return [string] A unique identifier for this vertex.
+      attr_reader :id
+
+      # @return [Hex] The hex that this vertex is on.
+      attr_reader :hex
+
+      # @return [string] A string describing the type of vertex.
+      attr_reader :type
+
       # @param [Part::Junction] junction The track junction to be added to the graph.
       def initialize(junction)
         super
         @id = junction.id
         @hex = junction.tile.hex
         @type = 'Junction'
+      end
+
+      # @return [string] A description of the type of vertex and its hex.
+      def description
+        "#{type} #{hex.coordinates} #{id}"
       end
     end
   end
