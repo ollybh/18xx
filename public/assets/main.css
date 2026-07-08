@@ -430,13 +430,19 @@ div#game:focus {
 }
 
 /* Route graph visualation */
-div#route_graph div {
+div#route_graph div#graph_buttons {
   float: left;
   width: 8em;
 }
 
-div#route_graph div button {
+div#route_graph div#graph_buttons button {
   width: 8em;
+}
+
+div#route_graph div#graph_log {
+  float: right;
+  width: 16em;
+  color: gray;
 }
 
 svg#d3_graph {

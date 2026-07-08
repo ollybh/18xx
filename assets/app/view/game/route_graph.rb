@@ -7,11 +7,19 @@ module View
 
       def render
         add_graph = lambda do
-          Native(`showD3Graph`).call(@game.route_graph.to_d3)
+          graph = nil
+          benchmark('Graph built') {
+            graph = @game.route_graph
+          }
+          Native(`showD3Graph`).call(graph.to_d3)
         end
-
         props = { hook: { insert: ->(_vnode) { add_graph.call } } }
-        children = [render_buttons, h('svg#d3_graph')]
+
+        children = [
+          render_buttons,
+          h('svg#d3_graph'),
+          h('div#graph_log'),
+        ]
 
         h('div#route_graph', props, children)
       end
@@ -23,22 +31,22 @@ module View
           h(:button, props, corp.id)
         end
 
-        h(:div, buttons)
+        h('div#graph_buttons', buttons)
       end
 
       private
 
       def walk_graph(corp)
         walker = @game.route_graph.walker(corp)
-        benchmark { walker.walk }
-        puts walker.debug
+        benchmark("Graph walked for #{corp.id}") { walker.walk }
       end
 
-      def benchmark
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      def benchmark(label)
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
         yield
-        t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        puts "Real: #{t1 - t0}"
+        t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
+        timing = "#{label} in #{t1 - t0} ms."
+        Native(`d3.select('#graph_log')`).append('div').text(timing)
       end
     end
   end
