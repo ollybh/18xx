@@ -6,32 +6,33 @@ module View
       needs :game
 
       def render
-        h('div#route_graph', [render_buttons, h('svg#d3_graph')])
-      end
-
-      def render_buttons
         add_graph = lambda do
           Native(`showD3Graph`).call(@game.route_graph.to_d3)
         end
 
-        children = [h(:button, { on: { click: add_graph } }, 'Show graph')]
-        @game.corporations.sort_by(&:id).each do |corp|
-          next if corp.closed?
-          next unless corp.floated?
+        props = { hook: { insert: ->(_vnode) { add_graph.call } } }
+        children = [render_buttons, h('svg#d3_graph')]
 
-          walk_graph = lambda do
-            walker = @game.route_graph.walker(corp)
-            benchmark { walker.walk }
-            puts walker.debug
-          end
+        h('div#route_graph', props, children)
+      end
 
-          children << h(:button, { on: { click: walk_graph } }, corp.id)
+      def render_buttons
+        corps = @game.corporations.reject(&:closed?).select(&:floated?).sort_by(&:id)
+        buttons = corps.map do |corp|
+          props = { on: { click: -> { walk_graph(corp) } } }
+          h(:button, props, corp.id)
         end
 
-        h(:div, children)
+        h(:div, buttons)
       end
 
       private
+
+      def walk_graph(corp)
+        walker = @game.route_graph.walker(corp)
+        benchmark { walker.walk }
+        puts walker.debug
+      end
 
       def benchmark
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
