@@ -61,6 +61,24 @@ function addHexEdgeNodes(nodes) {
     .text(d => d.description);
 }
 
+function viewBoxSize(nodes) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  nodes.forEach(n => {
+    if (n.x < minX) minX = n.x;
+    if (n.y < minY) minY = n.y;
+    if (n.x > maxX) maxX = n.x;
+    if (n.y > maxY) maxY = n.y;
+  });
+
+  const padding = 60;
+  minX = d3.min(nodes, (d) => d.x) - padding;
+  minY = d3.min(nodes, (d) => d.y) - padding;
+  maxX = d3.max(nodes, (d) => d.x) + padding;
+  maxY = d3.max(nodes, (d) => d.y) + padding;
+
+  return `${minX} ${minY} ${maxX - minX} ${maxY - minY}`;
+}
+
 function showD3Graph(data) {
   const width = 1000;
   const height = 1000;
@@ -87,8 +105,9 @@ function showD3Graph(data) {
   const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links).id(d => d.id).iterations(10))
     .force("charge", d3.forceManyBody().strength(-150))
-    .force("x", d3.forceX())
-    .force("y", d3.forceY());
+    .force("collide", d3.forceCollide(10))
+    .force("x", d3.forceX().strength(0.08))
+    .force("y", d3.forceY().strength(0.08));
 
   const link = svg.append("svg:g")
       .attr("class", "links")
@@ -127,6 +146,11 @@ function showD3Graph(data) {
       });
     node
       .attr("transform", d => "translate(" + d.x + "," + d.y + ")");
+
+    // At the start of the simulation we don't know how big it is going to
+    // get. Adjust the viewport size so it's slightly bigger than the outer
+    // vertices.
+    svg.attr("viewBox", viewBoxSize(nodes));
   });
 
   document.getElementById("d3_graph").replaceWith(svg.node());
