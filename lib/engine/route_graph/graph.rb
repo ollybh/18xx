@@ -38,6 +38,8 @@ module Engine
         hexes = vertices.map(&:hex)
         min_x, max_x = hexes.map(&:x).minmax
         min_y, max_y = hexes.map(&:y).minmax
+        range_x = min_x == max_x ? 1 : max_x - min_x
+        range_y = min_y == max_y ? 1 : max_y - min_y
         {
           nodes: vertices.map.with_index do |v, i|
             {
@@ -46,8 +48,8 @@ module Engine
               description: v.description,
               name: v.hex.coordinates,
               connections: v.edges.size,
-              x: ((v.hex.x - min_x) / (max_x - min_x) * VIEW_WIDTH) - VIEW_MIN_X,
-              y: ((v.hex.y - min_y) / (max_y - min_y) * VIEW_HEIGHT) - VIEW_MIN_Y,
+              x: ((v.hex.x - min_x) / range_x * VIEW_WIDTH) - VIEW_MIN_X,
+              y: ((v.hex.y - min_y) / range_y * VIEW_HEIGHT) - VIEW_MIN_Y,
             }
           end,
           links: @edges.map.with_index do |e, i|

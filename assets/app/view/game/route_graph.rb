@@ -8,9 +8,7 @@ module View
       def render
         add_graph = lambda do
           graph = nil
-          benchmark('Graph built') {
-            graph = @game.route_graph
-          }
+          benchmark('Graph built') { graph = @game.route_graph }
           Native(`showD3Graph`).call(graph.to_d3)
         end
         props = { hook: { insert: ->(_vnode) { add_graph.call } } }

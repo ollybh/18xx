@@ -58,7 +58,7 @@ module Engine
           next unless edge.linked?(vertex)
 
           @walked_edges << edge
-          dfs(edge.ends.reject(vertex).first)
+          dfs(edge.ends.find { |v| v != vertex })
         end
       end
 

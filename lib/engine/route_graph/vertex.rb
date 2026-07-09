@@ -20,7 +20,7 @@ module Engine
       # @return [Array<Edge>] The edges directly connected to this vertex.
       attr_reader :edges
 
-      def initialize
+      def initialize(_place)
         @edges = []
       end
 

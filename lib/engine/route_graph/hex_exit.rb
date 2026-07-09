@@ -31,7 +31,7 @@ module Engine
       # @param [Part::Edge] edge A tile edge.
       # @param [integer] lanes The number of lanes on this edge.
       # @param [integer] lane  The lane position.
-      def initialize(edge, lanes, lane)
+      def initialize(edge = nil, lanes = nil, lane = nil)
         return unless edge
 
         @hex = edge.hex
