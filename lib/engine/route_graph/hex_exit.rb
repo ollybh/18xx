@@ -21,16 +21,16 @@ module Engine
       # are clockwise from the centre.
       # - If there is a single lane this will be at offset zero.
       # - If there are two lanes then lane +2.0+ will be at offset 1, and lane
-      #   +2-1+ at offset -1.
+      #   +2.1+ at offset -1.
       # - If there are three lanes, lane +3.0+ will be at offset 2, +3.1+ at 0,
       #   +3.2+ at -2.
       # @return [integer]
       attr_reader :lane_offset
 
       # Constructs a new HexExit object.
-      # @param [Hex] The hex the exit is on.
-      # @param [integer] The index of the edge on the hex (0 to 5).
-      # @param [integer] The offset of the lane from the centre of the edge.
+      # @param hex         [Hex]     The hex the exit is on.
+      # @param edge        [integer] The index of the edge on the hex (0 to 5).
+      # @param lane_offset [integer] The offset of the lane from the centre of the edge.
       def initialize(hex, edge, lane_offset)
         @hex = hex
         @edge = edge
@@ -38,9 +38,9 @@ module Engine
       end
 
       # Factory method: creates a HexEdgeCrossing object from a {Part::Edge}.
-      # @param [Part::Edge] edge A tile edge.
-      # @param [integer] lanes The number of lanes on this edge.
-      # @param [integer] lane  The lane position.
+      # @param edge  [Part::Edge] A tile edge.
+      # @param lanes [integer]    The number of lanes on this edge.
+      # @param lane  [integer]    The lane position.
       # @return [HexExit]
       def self.from_edge(edge, lanes, lane)
         new(edge.hex, edge.num, lanes - 1 - (lane * 2))
@@ -104,14 +104,14 @@ module Engine
         @exits.map(&:id).join('|')
       end
 
-      # Override the default hash calculation, to cause HexEdgeCrossing objects
+      # Overrides the default hash calculation, to cause HexEdgeCrossing objects
       # that represent the same location to return the same hash value.
       # @return [integer] The hash value.
       def hash
         [self.class, @exits.map { |e| [e.hex, e.edge, e.lane_offset] }].hash
       end
 
-      # Override the default method, to prevent duplication of HexEdgeCrossing
+      # Overrides the default method, to prevent duplication of HexEdgeCrossing
       # objects in a hash where different objects represent the same location.
       # @param [HexEdgeCrossing] other The HexEdgeCrossing object to compare.
       # @return [boolean] True if this and the other object represent the same

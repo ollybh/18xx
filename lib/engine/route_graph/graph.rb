@@ -6,16 +6,17 @@ require_relative 'graph_walker'
 require_relative 'hex_exit'
 
 module Engine
-  # The route graph is an abstracted representation of the state of the game
-  # map. The graph's edges represent sections of track. The vertices represent
-  # cities, towns, track junctions and edges of hexes where track paths end.
   module RouteGraph
+    # The route graph is an abstracted representation of the state of the game
+    # map. The graph's edges represent sections of track. The vertices represent
+    # cities, towns, track junctions and edges of hexes where track paths end.
     class Graph
       # The edges in the graph.
+      # @return [Array<Edge>]
       attr_reader :edges
 
       # The vertices in the graph.
-      # @return Array<Vertex>
+      # @return [Array<Vertex>]
       def vertices
         @vertices.values
       end
@@ -30,6 +31,8 @@ module Engine
       # Converts the graph state into a hash that can be consumed by the
       # Javascript {D3}[https://d3js.org] library to produce a visualisation
       # of the graph.
+      # @api private
+      # @note Intended for the route graph visualisation only.
       # @todo See if this can be method can be removed, and the visualisation
       #   produced directly from the RouteGraph object.
       # @return [Hash<nodes, links>] The graph state in a JSON-friendly format.

@@ -24,6 +24,8 @@ module Engine
         @edges = []
       end
 
+      # @api private
+      # @note Intended for debugging and route graph visualisation only.
       # @return [string] A description of the type of vertex.
       def description
         type
@@ -74,8 +76,10 @@ module Engine
         @location = hex.location_name
       end
 
+      # @api private
+      # @note Intended for debugging and route graph visualisation only.
       # @return [string] A description of the type of vertex, its hex and
-      # location name.
+      #   location name.
       def description
         desc = "#{type} #{hex.coordinates} #{id}"
         desc += " [#{@location}]" if @location
@@ -128,6 +132,8 @@ module Engine
         @crossing.exits.first.hex
       end
 
+      # @api private
+      # @note Intended for debugging and route graph visualisation only.
       # @return [string] A description of the type of vertex.
       def description
         "#{type} #{id}"
@@ -176,6 +182,8 @@ module Engine
         @type = 'Junction'
       end
 
+      # @api private
+      # @note Intended for debugging and route graph visualisation only.
       # @return [string] A description of the type of vertex and its hex.
       def description
         "#{type} #{hex.coordinates} #{id}"
