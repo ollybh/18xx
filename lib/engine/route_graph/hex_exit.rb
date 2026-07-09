@@ -104,6 +104,8 @@ module Engine
         @exits.map(&:id).join('|')
       end
 
+      protected
+
       # Overrides the default hash calculation, to cause HexEdgeCrossing objects
       # that represent the same location to return the same hash value.
       # @return [integer] The hash value.
