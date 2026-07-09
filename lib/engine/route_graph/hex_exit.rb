@@ -27,16 +27,23 @@ module Engine
       # @return [integer]
       attr_reader :lane_offset
 
-      # Creates a HexEdgeCrossing object from a {Part::Edge}.
+      # Constructs a new HexExit object.
+      # @param [Hex] The hex the exit is on.
+      # @param [integer] The index of the edge on the hex (0 to 5).
+      # @param [integer] The offset of the lane from the centre of the edge.
+      def initialize(hex, edge, lane_offset)
+        @hex = hex
+        @edge = edge
+        @lane_offset = lane_offset
+      end
+
+      # Factory method: creates a HexEdgeCrossing object from a {Part::Edge}.
       # @param [Part::Edge] edge A tile edge.
       # @param [integer] lanes The number of lanes on this edge.
       # @param [integer] lane  The lane position.
-      def initialize(edge = nil, lanes = nil, lane = nil)
-        return unless edge
-
-        @hex = edge.hex
-        @edge = edge.num
-        @lane_offset = lanes - 1 - (lane * 2)
+      # @return [HexExit]
+      def self.from_edge(edge, lanes, lane)
+        new(edge.hex, edge.num, lanes - 1 - (lane * 2))
       end
 
       # The hex next to this exit.
@@ -63,21 +70,13 @@ module Engine
       def adjacent_exit
         return unless (neighbor = adjacent_hex)
 
-        adjacent = HexExit.new
-        adjacent.hex = neighbor
-        adjacent.edge = (@edge + 3) % 6
-        adjacent.lane_offset = -1 * @lane_offset
-        adjacent
+        self.class.new(neighbor, (@edge + 3) % 6, -1 * @lane_offset)
       end
 
       # @return [string] A text description of the hex exit location.
       def id
         "#{@hex.coordinates}_#{@edge}_#{@lane_offset}"
       end
-
-      protected
-
-      attr_writer :hex, :edge, :lane_offset
     end
 
     # This class represents the point where track paths might meet on the
@@ -95,7 +94,7 @@ module Engine
       # @param [integer] lanes The number of lanes on this edge.
       # @param [integer] lane  The lane position.
       def initialize(edge, lanes, lane)
-        exit1 = HexExit.new(edge, lanes, lane)
+        exit1 = HexExit.from_edge(edge, lanes, lane)
         exit2 = exit1.adjacent_exit
         @exits = [exit1, exit2].compact.sort_by(&:hex)
       end
