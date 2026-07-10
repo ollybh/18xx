@@ -88,9 +88,14 @@ function viewBoxSize(nodes, svgWidth, svgHeight) {
   return `${minX} ${minY} ${viewboxWidth} ${viewboxHeight}`;
 }
 
+function forceStrengths(width, height) {
+  const aspectRatio = width / height;
+  return { x: 0.08 / aspectRatio, y: 0.08 * aspectRatio };
+}
+
 function showD3Graph(data) {
-  const width = data.get("width");
-  const height = data.get("height");
+  let width = data.get("width");
+  let height = data.get("height");
 
   const nodes = data.get("nodes").map(d => Object.fromEntries(d));
   const links = data.get("links").map(d => Object.fromEntries(d));
@@ -111,12 +116,33 @@ function showD3Graph(data) {
     .attr("height", height)
     .attr("viewBox", [-width / 2, -height / 2, width, height]);
 
+  let strengths = forceStrengths(width, height);
+
   const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links).id(d => d.id).iterations(10))
     .force("charge", d3.forceManyBody().strength(-150))
     .force("collide", d3.forceCollide(10))
-    .force("x", d3.forceX().strength(0.08))
-    .force("y", d3.forceY().strength(0.08));
+    .force("x", d3.forceX().strength(strengths.x))
+    .force("y", d3.forceY().strength(strengths.y));
+
+  // Adjust the X/Y forces if the screen resizes, to make the visualisation's
+  // shape approximate its container's aspect ratio.
+  const container = document.getElementById("route_graph");
+  if (container) {
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        const h = entry.contentRect.height;
+        width = w;
+        height = h;
+        strengths = forceStrengths(w, h);
+        simulation.force("x").strength(strengths.x);
+        simulation.force("y").strength(strengths.y);
+        simulation.alpha(0.3).restart();
+      }
+    });
+    observer.observe(container);
+  }
 
   const link = svg.append("svg:g")
       .attr("class", "links")
