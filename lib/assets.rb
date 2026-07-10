@@ -47,6 +47,7 @@ class Assets
   end
 
   def initialize(compress: false, gzip: false, cache: true, precompiled: false, source_maps: false)
+    @production = ENV['RACK_ENV'] == 'production'
     @build_path = 'build'
     @out_path = OUTPUT_BASE + '/assets'
     @root_path = '/assets'
@@ -134,6 +135,7 @@ class Assets
     else
       @_opal ||= compile_lib('opal', 'opal')
       @_deps ||= compile_lib('deps_only', 'deps', 'assets')
+      @_deps_dev ||= compile_lib('deps_dev', 'deps_dev', 'assets') unless @production
       @_engine ||= compile('engine', 'lib', 'engine')
       @_app ||= compile('app', 'assets/app', '')
 
@@ -143,7 +145,7 @@ class Assets
       {
         'deps' => {
           'path' => @deps_path,
-          'files' => [@_opal, @_deps],
+          'files' => [@_opal, @_deps, @_deps_dev].compact,
         },
         'main' => {
           'path' => @main_path,
@@ -151,7 +153,7 @@ class Assets
         },
         'server' => {
           'path' => @server_path,
-          'files' => [@_opal, @_deps, @_engine, @_app, *game_files],
+          'files' => [@_opal, @_deps, @_deps_dev, @_engine, @_app, *game_files].compact,
         },
         **g_builds,
       }

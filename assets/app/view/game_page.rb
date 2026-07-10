@@ -20,6 +20,7 @@ module View
     needs :connected, default: false, store: true
     needs :scroll_pos, default: nil, store: true
     needs :chat_input, default: '', store: true
+    needs :production, default: false
 
     APP_PADDING_BOTTOM = '2vmin'
 
@@ -139,7 +140,7 @@ module View
         when 'auto'
           h(Game::Auto, game: @game, game_data: @game_data, user: @user)
         when 'graph'
-          h(Game::RouteGraph, game: @game)
+          h(Game::RouteGraph, game: @game, production: @production) unless @production
         end
       LOGGER.debug do
         "Done rendering game view: #{Time.now - @_logger[:render]} seconds"
@@ -374,7 +375,7 @@ module View
 
       enabled = !@game.programmed_actions[@game.player_by_id(@user['id'])].empty? if @user
       menu_items << item("A|uto#{' ✅' if enabled}", '#auto') if @game_data[:mode] != :hotseat && !cursor
-      menu_items << item('Gr|aph', '#graph')
+      menu_items << item('Gr|aph', '#graph') unless @production
 
       h('nav#game_menu', nav_props, [
         h('ul.no_margin.no_padding', { style: { width: 'max-content' } }, menu_items),

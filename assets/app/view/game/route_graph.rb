@@ -4,8 +4,11 @@ module View
   module Game
     class RouteGraph < Snabberb::Component
       needs :game
+      needs :production, default: false
 
       def render
+        return h('div#route_graph') if @production
+
         add_graph = lambda do
           graph = nil
           benchmark('Graph built') { graph = @game.route_graph }

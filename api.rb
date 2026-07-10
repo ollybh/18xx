@@ -254,6 +254,8 @@ class Api < Roda
       **needs,
     )
 
+    js_tags += '<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>' unless PRODUCTION
+
     <<~HTML
       <!DOCTYPE html>
       <html>
@@ -279,7 +281,6 @@ class Api < Roda
         <body>
           <div id="app"></div>
           #{js_tags}
-          <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
           <script>Opal.App.$attach('app', #{HtmlSafe.escape_inline_script(args)})</script>
         </body>
       </html>

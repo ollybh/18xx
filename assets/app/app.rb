@@ -122,7 +122,7 @@ class App < Snabberb::Component
     return h('div.padded', "Error loading game: #{error}") if error
     return h('div.padded', 'Loading game...') unless @game_data&.dig('loaded')
 
-    h(View::GamePage, connection: @connection, user: @user)
+    h(View::GamePage, connection: @connection, user: @user, production: @production)
   end
 
   def js_handlers
