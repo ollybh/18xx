@@ -229,7 +229,23 @@ class Assets
     builder = Opal::Builder.new
     append_paths.each { |ap| builder.append_paths(ap) }
     path = "#{@out_path}/#{output_name}.js"
-    if !@cache || !File.exist?(path) || (@source_maps && !File.exist?("#{path}.map"))
+
+    needs_rebuild = !@cache || !File.exist?(path)
+
+    unless needs_rebuild
+      output_mtime = File.mtime(path)
+      append_paths.each do |ap|
+        Dir["#{ap}/**/*.{rb,js}"].each do |f|
+          if File.mtime(f) > output_mtime
+            needs_rebuild = true
+            break
+          end
+        end
+        break if needs_rebuild
+      end
+    end
+
+    if needs_rebuild || (@source_maps && !File.exist?("#{path}.map"))
       time = Time.now
       File.write(path, builder.build(name))
       File.write("#{path}.map", builder.source_map.map.to_json) if @source_maps
