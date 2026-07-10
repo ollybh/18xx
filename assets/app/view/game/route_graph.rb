@@ -9,14 +9,18 @@ module View
         add_graph = lambda do
           graph = nil
           benchmark('Graph built') { graph = @game.route_graph }
-          Native(`showD3Graph`).call(graph.to_d3)
+
+          parent = Native(`document.getElementById('route_graph')`)
+          width = parent.clientWidth
+          height = parent.clientHeight
+          Native(`showD3Graph`).call(graph.to_d3(width, height))
         end
         props = { hook: { insert: ->(_vnode) { add_graph.call } } }
 
         children = [
           render_buttons,
-          h('svg#d3_graph'),
           h('div#graph_log'),
+          h('svg#d3_graph'),
         ]
 
         h('div#route_graph', props, children)

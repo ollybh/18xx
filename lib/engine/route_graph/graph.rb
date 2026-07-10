@@ -35,8 +35,16 @@ module Engine
       # @note Intended for the route graph visualisation only.
       # @todo See if this can be method can be removed, and the visualisation
       #   produced directly from the RouteGraph object.
+      # @param width  [integer] The width of the SVG element the visualisation
+      #   will be rendered in. This is used to seed the initial positions of
+      #   the vertices, so there is a vaguely geographical layout on the final
+      #   visualisation.
+      # @param height [integer] The width of the SVG element the visualisation
+      #   will be rendered in. This is used to seed the initial positions of
+      #   the vertices, so there is a vaguely geographical layout on the final
+      #   visualisation.
       # @return [Hash<nodes, links>] The graph state in a JSON-friendly format.
-      def to_d3
+      def to_d3(width, height)
         vertices = @vertices.values
         hexes = vertices.map(&:hex)
         min_x, max_x = hexes.map(&:x).minmax
@@ -51,8 +59,8 @@ module Engine
               description: v.description,
               name: v.hex.coordinates,
               connections: v.edges.size,
-              x: ((v.hex.x - min_x) / range_x * VIEW_WIDTH) - VIEW_MIN_X,
-              y: ((v.hex.y - min_y) / range_y * VIEW_HEIGHT) - VIEW_MIN_Y,
+              x: ((v.hex.x - min_x) / range_x * width) - width / 2,
+              y: ((v.hex.y - min_y) / range_y * height) - height / 2,
             }
           end,
           links: @edges.map.with_index do |e, i|
@@ -64,6 +72,8 @@ module Engine
               hexes: e.paths.map { |p| p.hex.coordinates }.join('-'),
             }
           end,
+          width: width,
+          height: height,
         }
       end
 
@@ -76,12 +86,6 @@ module Engine
       end
 
       private
-
-      # The dimensions of the SVG canvas for the visualisation of the graph.
-      VIEW_WIDTH = 1_000
-      VIEW_HEIGHT = 1_000
-      VIEW_MIN_X = VIEW_WIDTH / 2
-      VIEW_MIN_Y = VIEW_HEIGHT / 2
 
       def add_edge(left, right, paths)
         e = Edge.new(left, right, paths)

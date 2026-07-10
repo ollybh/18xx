@@ -61,27 +61,36 @@ function addHexEdgeNodes(nodes) {
     .text(d => d.description);
 }
 
-function viewBoxSize(nodes) {
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  nodes.forEach(n => {
-    if (n.x < minX) minX = n.x;
-    if (n.y < minY) minY = n.y;
-    if (n.x > maxX) maxX = n.x;
-    if (n.y > maxY) maxY = n.y;
-  });
-
+function viewBoxSize(nodes, svgWidth, svgHeight) {
   const padding = 60;
-  minX = d3.min(nodes, (d) => d.x) - padding;
-  minY = d3.min(nodes, (d) => d.y) - padding;
-  maxX = d3.max(nodes, (d) => d.x) + padding;
-  maxY = d3.max(nodes, (d) => d.y) + padding;
+  let minX = d3.min(nodes, (d) => d.x) - padding;
+  let minY = d3.min(nodes, (d) => d.y) - padding;
+  let maxX = d3.max(nodes, (d) => d.x) + padding;
+  let maxY = d3.max(nodes, (d) => d.y) + padding;
+  let viewboxWidth  = maxX - minX;
+  let viewboxHeight = maxY - minY;
 
-  return `${minX} ${minY} ${maxX - minX} ${maxY - minY}`;
+  // Scale the viewbox to fit its container's aspect ratio.
+  const containerRatio = svgWidth / svgHeight;
+  const viewboxRatio   = viewboxWidth / viewboxHeight;
+  if (viewboxRatio < containerRatio) {
+    const targetWidth = viewboxHeight * containerRatio;
+    const deficit = targetWidth - viewboxWidth;
+    minX -= deficit / 2;
+    viewboxWidth = targetWidth;
+  } else {
+    const targetHeight = viewboxWidth / containerRatio;
+    const deficit = targetHeight - viewboxHeight;
+    minY -= deficit / 2;
+    viewboxHeight = targetHeight;
+  }
+
+  return `${minX} ${minY} ${viewboxWidth} ${viewboxHeight}`;
 }
 
 function showD3Graph(data) {
-  const width = 1000;
-  const height = 1000;
+  const width = data.get("width");
+  const height = data.get("height");
 
   const nodes = data.get("nodes").map(d => Object.fromEntries(d));
   const links = data.get("links").map(d => Object.fromEntries(d));
@@ -150,7 +159,7 @@ function showD3Graph(data) {
     // At the start of the simulation we don't know how big it is going to
     // get. Adjust the viewport size so it's slightly bigger than the outer
     // vertices.
-    svg.attr("viewBox", viewBoxSize(nodes));
+    svg.attr("viewBox", viewBoxSize(nodes, width, height));
   });
 
   document.getElementById("d3_graph").replaceWith(svg.node());
