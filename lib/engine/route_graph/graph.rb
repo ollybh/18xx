@@ -44,7 +44,7 @@ module Engine
       #   the vertices, so there is a vaguely geographical layout on the final
       #   visualisation.
       # @return [Hash<nodes, links>] The graph state in a JSON-friendly format.
-      def to_d3(width, height)
+      def to_d3(width = 1000, height = 1000)
         vertices = @vertices.values
         hexes = vertices.map(&:hex)
         min_x, max_x = hexes.map(&:x).minmax
