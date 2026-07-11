@@ -93,6 +93,7 @@ function forceStrengths(width, height) {
   return { x: 0.08 / aspectRatio, y: 0.08 * aspectRatio };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function showD3Graph(data) {
   let width = data.get("width");
   let height = data.get("height");
@@ -121,7 +122,7 @@ function showD3Graph(data) {
   const simulation = d3.forceSimulation(nodes)
     .force("link", d3.forceLink(links).id(d => d.id).iterations(10))
     .force("charge", d3.forceManyBody().strength(-150))
-    .force("collide", d3.forceCollide(10))
+    .force("collide", d3.forceCollide(20))
     .force("x", d3.forceX().strength(strengths.x))
     .force("y", d3.forceY().strength(strengths.y));
 
