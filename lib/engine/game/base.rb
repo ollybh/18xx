@@ -2567,8 +2567,18 @@ module Engine
         to_h.to_json(*args)
       end
 
+      # Creates a {RouteGraph::Graph} model of the game state.
+      # @return [RouteGraph::Graph]
       def route_graph
         Engine::RouteGraph::Graph.new(self)
+      end
+
+      # Creates a {RouteGraph::GraphWalker} for the specified entity.
+      # @param [Operator] entity The corporation/minor/system to compute the
+      #   possible graph connections for.
+      # @return [RouteGraph::GraphWalker]
+      def graph_walker(entity)
+        RouteGraph::GraphWalker.new(route_graph, entity)
       end
 
       private

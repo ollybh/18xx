@@ -77,14 +77,6 @@ module Engine
         }
       end
 
-      # Creates a {GraphWalker} for the specified entity.
-      # @param [Operator] entity The corporation/minor/system to compute the
-      #   possible graph connections for.
-      # @return [GraphWalker]
-      def walker(entity)
-        GraphWalker.new(self, entity)
-      end
-
       private
 
       def add_edge(left, right, paths)

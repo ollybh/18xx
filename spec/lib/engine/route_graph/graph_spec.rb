@@ -138,7 +138,7 @@ module Engine
           end
 
           it 'the walker finds both cities from the token' do
-            walker = graph.walker(alpha)
+            walker = game.graph_walker(alpha)
             walker.walk
             expect(walker.connected_nodes.map(&:id))
               .to contain_exactly('5-0-0', '6-0-0')
@@ -331,7 +331,7 @@ module Engine
             end
 
             it 'the walker finds both cities' do
-              walker = graph.walker(alpha)
+              walker = game.graph_walker(alpha)
               walker.walk
               city_ids = [hex('A2'), hex('A4')].map { |h| h.tile.cities.first.id }
               expect(walker.connected_nodes.map(&:id))
@@ -433,7 +433,7 @@ module Engine
         end
 
         it 'finds connected nodes when walking from a token' do
-          walker = graph.walker(alpha)
+          walker = game.graph_walker(alpha)
           walker.walk
           expect(walker.connected_nodes.map(&:id))
             .to contain_exactly('5-0-0', '6-0-0')
@@ -442,7 +442,7 @@ module Engine
         context 'when no token is placed' do
           it 'finds no connected nodes' do
             beta = game.corporations.find { |c| c.id == 'β' }
-            walker = graph.walker(beta)
+            walker = game.graph_walker(beta)
             walker.walk
             expect(walker.connected_nodes).to be_empty
           end

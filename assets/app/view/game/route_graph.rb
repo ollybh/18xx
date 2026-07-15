@@ -42,7 +42,7 @@ module View
       private
 
       def walk_graph(corp)
-        walker = @game.route_graph.walker(corp)
+        walker = @game.graph_walker(corp)
         benchmark("Graph walked for #{corp.id}") { walker.walk }
       end
 
