@@ -59,8 +59,8 @@ module Engine
               description: v.description,
               name: v.hex.coordinates,
               connections: v.edges.size,
-              x: ((v.hex.x - min_x) / range_x * width) - width / 2,
-              y: ((v.hex.y - min_y) / range_y * height) - height / 2,
+              x: ((v.hex.x - min_x) / range_x * width) - (width / 2),
+              y: ((v.hex.y - min_y) / range_y * height) - (height / 2),
             }
           end,
           links: @edges.map.with_index do |e, i|
