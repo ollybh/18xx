@@ -298,6 +298,133 @@ game.process_action(Action::LayTile.new(alpha, tile: tile9, hex: hex('A3'), rota
 
 ---
 
+## Testing the RouteGraph
+
+This section covers using the sandbox specifically to test
+`Engine::RouteGraph::Graph`.
+
+### Quick Start
+
+```ruby
+require 'spec_helper'
+
+module Engine
+  module RouteGraph
+    describe Graph do
+      let(:players) { %w[Alice Bob Charlie] }
+      let(:game)    { Game::Sandbox::Game.new(players) }
+
+      subject(:graph) { game.route_graph }
+
+      # ... tests ...
+    end
+  end
+end
+```
+
+### RouteGraph Concepts
+
+#### Vertices
+
+Three vertex types, all found in `lib/engine/route_graph/vertex.rb`:
+
+| Class           | Represents                              | Mergeable? |
+|-----------------|-----------------------------------------|------------|
+| `NodeVertex`    | City, town or halt                      | No         |
+| `HexEdgeVertex` | Point where track meets a hex edge      | Yes (when two paths meet at the same hex edge with matching gauge) |
+| `JunctionVertex`| Lawson-style track junction             | Yes        |
+
+#### Edges
+
+An `Edge` connects two vertices and carries one or more `Path` objects (from
+the tile system). After `join_edges!`, a single edge can span multiple tiles.
+
+#### GraphWalker
+
+Created via `graph.walker(entity)`:
+- Starts from all tokens the entity has placed
+- Performs DFS through the graph
+- Returns connected nodes/cities via `connected_nodes`
+
+After placing a token:
+
+```ruby
+walker = graph.walker(alpha)
+walker.walk
+puts walker.connected_nodes.map(&:id)  # e.g. ["5-0-0", "6-0-0"]
+```
+
+Tokens are **not** needed for the route graph to be built; the graph is
+computed from all track on the map regardless of tokens. The walker just uses
+tokens as starting points.
+
+---
+
+### Example: Two Cities Connected Through Track
+
+```
+A1: tile 5 (yellow city, edges 0 & 1)  rot 0 → edges 0, 1
+A3: tile 9 (straight track, edges 0 & 3) rot 0 → edges 0, 3
+
+Connection: A1(e0/south) ↔ A3(e3/north) ↔ A3(e0/south)—(dead end at A5's edge)
+```
+
+```ruby
+before :each do
+  lay_tile('A1', '5', 0)   # city
+  lay_tile('A3', '9', 0)   # straight north-south track
+end
+
+it 'has the right number of edges' do
+  expect(graph.edges.size).to eq(2)
+end
+```
+
+#### Two cities linked through a third hex
+
+```
+A1: tile 5  rot 0 → edges 0, 1   (city, south & south-west)
+A3: tile 9  rot 0 → edges 0, 3   (straight north-south track)
+A5: tile 6  rot 3 → edges 3, 5   (city, north & south-east)
+
+Connection: A1(e0/south) ↔ A3(e3/north) ↔ A3(e0/south) ↔ A5(e3/north)
+```
+
+After `join_edges!` the intermediate hex-edge vertices are merged, producing a
+direct edge between the two city nodes:
+
+```ruby
+it 'produces a single merged edge connecting both cities' do
+  city_edge = graph.edges.find do |e|
+    e.left.is_a?(NodeVertex) && e.right.is_a?(NodeVertex)
+  end
+  expect(city_edge).not_to be_nil
+  expect(city_edge.paths.size).to eq(3)  # A1 path + A3 path + A5 path
+end
+```
+
+---
+
+### Reference: Full Example Test File
+
+See `spec/lib/engine/route_graph/graph_spec.rb` for a complete set of example
+tests covering:
+- Single city tile
+- Two cities connected by track (merged edge)
+- Token placement and GraphWalker
+- Branching track (dead-end hex edge)
+- Town tiles
+- `to_d3` output format
+- Corporation with no token (empty walk)
+
+### RouteGraph Notes
+
+**`join_edges!`** runs automatically when the graph is
+constructed. Intermediate hex-edge vertices with exactly two edges of the
+same gauge are removed and their edges merged.
+
+---
+
 ## Writing Robust Tests
 
 1. **Prefer direct tile laying** (`Hex#lay`) over the round system. It is
