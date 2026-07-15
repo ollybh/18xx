@@ -4,3 +4,4 @@
 {lib,assets}/**/*.rb
 -
 LICENSE TILES.md DEVELOPMENT.md
+docs/*
