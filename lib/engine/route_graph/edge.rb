@@ -20,9 +20,15 @@ module Engine
       # @return [Label] The gauge of the track.
       attr_reader :gauge
 
-      # @param [Vertex] left  The first vertex joined by this edge.
-      # @param [Vertex] right The second vertex joined by this edge.
-      # @param [Array<Part::Path>] paths The track paths represented by this edge.
+      # @return [Boolean] True if this edge contains any terminal track paths.
+      # @!attribute [r] terminal?
+      def terminal?
+        @paths.any?(&:terminal)
+      end
+
+      # @param left [Vertex] The first vertex joined by this edge.
+      # @param right [Vertex] The second vertex joined by this edge.
+      # @param paths [Array<Part::Path>] The track paths represented by this edge.
       def initialize(left, right, paths)
         @left = left
         @right = right
@@ -42,26 +48,38 @@ module Engine
         ends.include?(vertex)
       end
 
-      # @param [Vertex] vertex The vertex at one end of this edge.
+      # @param vertex [Vertex] The vertex at one end of this edge.
+      # @return [Vertex] The vertex at the other end of this edge. This could be
+      #   the same vertex if this edge forms a loop around +vertex+.
+      # @raise [GameError] If this edge is not connected to +vertex+.
+      def other_end(vertex)
+        case vertex
+        when @left then @right
+        when @right then @left
+        else raise GameError, "Edge #{self} not linked to Vertex {vertex}"
+        end
+      end
+
+      # @param vertex [Vertex] The vertex at one end of this edge.
       # @return [Array<Part::Path>] The track paths for this edge, ordered
       #   starting at +vertex+.
       # @raise [GameError] If this edge is not connected to +vertex+.
       def paths_from(vertex)
         case vertex
-        when left then @paths
-        when right then @paths.reverse
+        when @left then @paths
+        when @right then @paths.reverse
         else raise GameError, "Edge #{self} not linked to Vertex {vertex}"
         end
       end
 
-      # @param [Vertex] vertex The vertex at one end of this edge.
+      # @param vertex [Vertex] The vertex at one end of this edge.
       # @return [Array<Part::Path>] The track paths for this edge, ordered
       #   ending at +vertex+.
       # @raise [GameError] If this edge is not connected to +vertex+.
       def paths_to(vertex)
         case vertex
-        when left then @paths.reverse
-        when right then @paths
+        when @left then @paths.reverse
+        when @right then @paths
         else raise GameError, "Edge #{self} not linked to Vertex {vertex}"
         end
       end

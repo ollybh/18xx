@@ -154,7 +154,7 @@ module Engine
       # @param edge [RouteGraph::Edge] The edge being walked.
       # @return [Boolean] True if the edge may be walked, false if not.
       def can_walk?(edge)
-        true
+        !edge.terminal?
       end
 
       # Tests whether the walker, entering `vertex` on edge `from_edge` is
@@ -167,8 +167,15 @@ module Engine
       # @param to_edge [RouteGraph::Edge] The edge to be tested.
       # @return [Boolean] True if the walker may leave this vertex along
       #   `to_edge`.
-      def can_traverse?(vertex, from_edge, to_edge)
-        true
+      def can_traverse?(vertex, from_edge, _to_edge)
+        return true unless from_edge
+
+        case vertex
+        when HexEdgeVertex, JunctionVertex
+          true
+        when NodeVertex
+          !vertex.node.blocks?(@entity)
+        end
       end
 
       # Tests whether the walker when walking an edge is allowed to reach the
@@ -187,7 +194,7 @@ module Engine
       # @param from_edge [RouteGraph::Edge] The edge being walked.
       # @return [Boolean] True if vertex can be explored, false if entry is
       #   blocked.
-      def can_enter?(vertex, from_edge)
+      def can_enter?(_vertex, _from_edge)
         true
       end
 
@@ -201,6 +208,7 @@ module Engine
       # the walker is stale.
       # @return [void]
       def walk!
+        @explored = Set[]
         @found_vertices = Set[]
         @walked_edges = Set[]
         start = time if @stats
@@ -216,16 +224,22 @@ module Engine
       # The core depth-first search algorithm for walking the graph.
       # This calls itself recursively for each new vertex it encounters.
       # @param vertex [RouteGraph::Vertex] The vertex to be explored.
+      # @param incoming [RouteGraph::Edge] The edge which was walked to reach
+      #   this vertex. nil if the walk is starting at this vertex.
       # @return [void]
-      def dfs(vertex)
-        return if @found_vertices.include?(vertex)
+      def dfs(vertex, incoming = nil)
+        return unless can_enter?(vertex, incoming)
+        return if @explored.include?([vertex, incoming])
 
+        @explored << [vertex, incoming]
         @found_vertices << vertex
-        @graph.edges.select do |edge|
-          next unless edge.linked?(vertex)
+        vertex.edges.each do |edge|
+          next unless can_traverse?(vertex, incoming, edge)
+          next unless can_walk?(edge)
 
           @walked_edges << edge
-          dfs(edge.ends.find { |v| v != vertex })
+          destination = edge.other_end(vertex)
+          dfs(destination, edge)
         end
       end
 
