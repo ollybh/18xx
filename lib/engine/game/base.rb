@@ -2570,15 +2570,15 @@ module Engine
       # Creates a {RouteGraph::Graph} model of the game state.
       # @return [RouteGraph::Graph]
       def route_graph
-        Engine::RouteGraph::Graph.new(self)
+        Engine::RouteGraph::Graph.new(self, statistics: LOGGER.debug?)
       end
 
       # Creates a {RouteGraph::GraphWalker} for the specified entity.
-      # @param [Operator] entity The corporation/minor/system to compute the
+      # @param entity [Operator] The corporation/minor/system to compute the
       #   possible graph connections for.
       # @return [RouteGraph::GraphWalker]
       def graph_walker(entity)
-        RouteGraph::GraphWalker.new(route_graph, entity)
+        RouteGraph::GraphWalker.new(route_graph, entity, statistics: LOGGER.debug?)
       end
 
       private

@@ -22,9 +22,13 @@ module Engine
       end
 
       # Builds a new route graph from the current game state.
-      def initialize(game)
+      # @param game [Engine::Game] The game to build the map for.
+      # @param statistics [Boolean] If true then graph instrumentation
+      #   statistics will be collected.
+      def initialize(game, statistics: false)
         @edges = []
         @vertices = Hash.new { |h, k| h[k] = new_vertex(k) }
+        @stats = {} if statistics
         load_map(game) if game
       end
 
@@ -43,7 +47,8 @@ module Engine
       #   will be rendered in. This is used to seed the initial positions of
       #   the vertices, so there is a vaguely geographical layout on the final
       #   visualisation.
-      # @return [Hash<nodes, links>] The graph state in a JSON-friendly format.
+      # @return [Hash<nodes => Array, links => Array>]
+      #   The graph state in a JSON-friendly format.
       def to_d3(width = 1000, height = 1000)
         vertices = @vertices.values
         hexes = vertices.map(&:hex)
@@ -77,6 +82,19 @@ module Engine
         }
       end
 
+      # Allows access to the instrumentation statistics collected when building
+      # the graph.
+      #
+      # @return [Hash]
+      #   - :time [integer] The time taken to build the graph, in microseconds.
+      def statistics
+        return {} unless @stats
+
+        {
+          time: @stats[:time],
+        }
+      end
+
       private
 
       def add_edge(left, right, paths)
@@ -101,6 +119,8 @@ module Engine
       end
 
       def load_map(game)
+        start = time if @stats
+
         game.hexes.map(&:tile).each do |tile|
           tile.nodes.each do |node|
             @vertices[node]
@@ -113,6 +133,8 @@ module Engine
           end
         end
         join_edges!
+
+        @stats[:time] = time - start if @stats
       end
 
       def node_or_exit(place, lanes, lane)
@@ -136,6 +158,12 @@ module Engine
           end
           @vertices.delete(place)
         end
+      end
+
+      # Reads the system clock.
+      # @return [integer]
+      def time
+        Process.clock_gettime(Process::CLOCK_MONOTONIC, :microsecond)
       end
     end
   end

@@ -40,10 +40,13 @@ module Engine
       # @param graph [RouteGraph::Graph] The route graph to be walked.
       # @param entity [Operator] The entity whose routes will be calculated by
       #   the GraphWalker.
+      # @param statistics [Boolean] If true then walk instrumentation statistics
+      #   will be collected.
       # @return [RouteGraph::GraphWalker] The new GraphWalker.
-      def initialize(graph, entity)
+      def initialize(graph, entity, statistics: false)
         @graph = graph
         @entity = entity
+        @stats = {} if statistics
       end
 
       # @!group Query Methods
@@ -114,6 +117,17 @@ module Engine
       end
 
       # @!endgroup
+
+      # Allows access to the instrumentation statistics collected when walking
+      # the graph.
+      #
+      # @return [Hash]
+      #   - :time [integer] The time taken to walk the graph, in microseconds.
+      def statistics
+        {
+          time: @stats[:time],
+        }
+      end
 
       protected
 
@@ -189,11 +203,14 @@ module Engine
       def walk!
         @found_vertices = Set[]
         @walked_edges = Set[]
+        start = time if @stats
 
         home_nodes.each do |node|
           vertex = @graph.vertices.find { |v| v.id == node.id }
           dfs(vertex)
         end
+
+        @stats[:time] = time - start if @stats
       end
 
       # The core depth-first search algorithm for walking the graph.
@@ -223,6 +240,12 @@ module Engine
         # any of the connected/reachable methods is called. This will ensure
         # that the results are correct, but at the cost of re-walking the graph.
         true
+      end
+
+      # Reads the system clock.
+      # @return [integer]
+      def time
+        Process.clock_gettime(Process::CLOCK_MONOTONIC, :microsecond)
       end
     end
   end

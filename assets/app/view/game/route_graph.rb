@@ -10,8 +10,8 @@ module View
         return h('div#route_graph') if @production
 
         add_graph = lambda do
-          graph = nil
-          benchmark('Graph built') { graph = @game.route_graph }
+          graph = @game.route_graph
+          log("Graph built in #{comma_number(graph.statistics[:time])} µs.")
 
           parent = Native(`document.getElementById('route_graph')`)
           width = parent.clientWidth
@@ -43,15 +43,17 @@ module View
 
       def walk_graph(corp)
         walker = @game.graph_walker(corp)
-        benchmark("Graph walked for #{corp.id}") { walker.walk }
+        _ = walker.reachable_hexes
+        log("Graph walked for #{corp.id} in #{comma_number(walker.statistics[:time])} µs")
       end
 
-      def benchmark(label)
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
-        yield
-        t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC, :millisecond)
-        timing = "#{label} in #{t1 - t0} ms."
-        Native(`d3.select('#graph_log')`).append('div').text(timing)
+      def log(text)
+        Native(`d3.select('#graph_log')`).append('div').text(text)
+      end
+
+      # Adds thousand separators to an integer.
+      def comma_number(n)
+        n.to_s.gsub(/(\d)(?=(?:\d{3})+$)/, '\1,')
       end
     end
   end
