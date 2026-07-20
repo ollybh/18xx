@@ -169,14 +169,17 @@ module Engine
       # @param to_edge [RouteGraph::Edge] The edge to be tested.
       # @return [Boolean] True if the walker may leave this vertex along
       #   `to_edge`.
-      def can_traverse?(vertex, from_edge, _to_edge)
-        return true unless from_edge
+      def can_traverse?(vertex, from_edge, to_edge)
+        return true unless from_edge # Starting walk here.
+        return false if from_edge == to_edge # Can't reverse.
 
         case vertex
-        when HexEdgeVertex, JunctionVertex
+        when JunctionVertex
           true
         when NodeVertex
           !vertex.node.blocks?(@entity)
+        when HexEdgeVertex
+          !vertex.edges_converge?(from_edge, to_edge)
         end
       end
 
