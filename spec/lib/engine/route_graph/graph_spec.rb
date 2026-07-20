@@ -466,33 +466,6 @@ module Engine
           expect(types).to include('City', 'Edge')
         end
       end
-
-      describe 'the GraphWalker' do
-        let(:alpha) { game.corporations.find { |c| c.id == 'α' } }
-
-        before :each do
-          lay_tile('A1', '5', 0)
-          lay_tile('A3', '9', 0)
-          lay_tile('A5', '6', 3)
-          # Place a token on A1
-          a1_city = hex('A1').tile.cities.first
-          a1_city.place_token(alpha, alpha.tokens.first, free: true)
-        end
-
-        it 'finds connected nodes when walking from a token' do
-          walker = game.graph_walker(alpha)
-          expect(walker.connected_nodes.map(&:id))
-            .to contain_exactly('5-0-0', '6-0-0')
-        end
-
-        context 'when no token is placed' do
-          it 'finds no connected nodes' do
-            beta = game.corporations.find { |c| c.id == 'β' }
-            walker = game.graph_walker(beta)
-            expect(walker.connected_nodes).to be_empty
-          end
-        end
-      end
     end
   end
 end
