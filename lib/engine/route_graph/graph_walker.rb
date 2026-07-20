@@ -124,6 +124,8 @@ module Engine
       # @return [Hash]
       #   - :time [integer] The time taken to walk the graph, in microseconds.
       def statistics
+        return {} unless @stats
+
         {
           time: @stats[:time],
         }
