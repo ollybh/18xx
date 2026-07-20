@@ -27,8 +27,21 @@ module Engine
       # @api private
       # @note Intended for debugging and route graph visualisation only.
       # @return [string] A description of the type of vertex.
+      # @!attribute [r] description
       def description
         type
+      end
+
+      # Links this vertex to another edge.
+      # @param edge [Edge] The new edge to link.
+      def add_edge!(edge)
+        @edges << edge
+      end
+
+      # Removes an edge that had been linked to this vertex.
+      # @param edge [Edge] The edge to unlink.
+      def delete_edge!(edge)
+        @edges.delete(edge)
       end
 
       # Tests whether it is possible to optimise the route graph by removing

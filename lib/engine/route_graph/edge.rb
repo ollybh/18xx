@@ -26,6 +26,12 @@ module Engine
         @paths.any?(&:terminal)
       end
 
+      # @return [Array<Vertex>] Both vertices joined by the edge.
+      # @!attribute[r] ends
+      def ends
+        [@left, @right]
+      end
+
       # @param left [Vertex] The first vertex joined by this edge.
       # @param right [Vertex] The second vertex joined by this edge.
       # @param paths [Array<Part::Path>] The track paths represented by this edge.
@@ -34,11 +40,6 @@ module Engine
         @right = right
         @paths = paths
         @gauge = paths.first.track
-      end
-
-      # @return [Array<Vertex>] Both vertices joined by the edge.
-      def ends
-        [@left, @right]
       end
 
       # Tests if a vertex as at either end of the edge.

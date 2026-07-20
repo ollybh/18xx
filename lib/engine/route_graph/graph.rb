@@ -99,8 +99,8 @@ module Engine
 
       def add_edge(left, right, paths)
         e = Edge.new(left, right, paths)
-        left.edges << e
-        right.edges << e
+        left.add_edge!(e)
+        right.add_edge!(e)
         @edges << e
         e
       end
@@ -152,8 +152,9 @@ module Engine
                   vertex.edges.last.paths_from(vertex)
           add_edge(left, right, paths)
           vertex.edges.each do |edge|
-            left.edges.delete(edge)
-            right.edges.delete(edge)
+            left.delete_edge!(edge)
+            vertex.delete_edge!(edge)
+            right.delete_edge!(edge)
             @edges.delete(edge)
           end
           @vertices.delete(place)
