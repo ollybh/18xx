@@ -386,6 +386,55 @@ module Engine
         end
       end
 
+      context 'with a triangle of track forming a self-loop on a city' do
+        # Three hexes A1, A3, B2 form a triangle:
+        #   A1 edge 0 (south) ↔ A3 edge 3 (north)
+        #   A1 edge 5 (south-east) ↔ B2 edge 2 (north-west)
+        #   A3 edge 4 (north-east) ↔ B2 edge 1 (south-west)
+        #
+        # Tiles and rotations:
+        #   A1: tile 5 rot 5 → city at edges 5 (→B2) and 0 (→A3)
+        #   A3: tile 7 rot 3 → curve edges 3↔4 (A1↔B2)
+        #   B2: tile 7 rot 1 → curve edges 1↔2 (A3↔A1)
+        #
+        # After join_edges!, the three HexEdgeVertex objects merge away
+        # and the three edges combine into a single self-loop on the city.
+        let(:game) do
+          hexes = { white: { %w[A1 A3 B2] => '' } }
+          tiles = { '5' => 1, '7' => 2 }
+          Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
+        end
+
+        before :each do
+          lay_tile('A1', '5', 5, 0)
+          lay_tile('A3', '7', 3, 0)
+          lay_tile('B2', '7', 1, 1)
+        end
+
+        it 'reduces to 1 vertex (the city)' do
+          expect(graph.vertices.size).to eq(1)
+          expect(graph.vertices.first).to be_a(NodeVertex)
+        end
+
+        it 'reduces to 1 edge (a self-loop)' do
+          expect(graph.edges.size).to eq(1)
+        end
+
+        it 'the self-loop edge connects the city to itself' do
+          edge = graph.edges.first
+          city = graph.vertices.first
+          expect(edge.left).to eq(city)
+          expect(edge.right).to eq(city)
+        end
+
+        it 'the self-loop edge contains paths from the three tiles (with A1 repeated once)' do
+          edge = graph.edges.first
+          # The A1 city path appears in both merged segments, giving 4 total:
+          #   A3 path, A1 path (from city→edge_0), B2 path, A1 path (from city→edge_5)
+          expect(edge.paths.size).to eq(4)
+        end
+      end
+
       describe 'the to_d3 visualisation format' do
         before :each do
           # Use hexes from different columns so that min_x != max_x.
