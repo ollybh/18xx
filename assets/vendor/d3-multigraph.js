@@ -175,9 +175,14 @@ function showD3Graph(data) {
         const x0 = d.source.x,
               y0 = d.source.y,
               x1 = d.target.x,
-              y1 = d.target.y,
-              dr = 50 / d.linkIndex,
-              d_line = d.linkIndex ? `A${dr},${dr} 0 0,1 ` : 'L';
+              y1 = d.target.y;
+        if (d.source === d.target) {
+          // This is an edge that loops around a vertex.
+          const r = 50;
+          return `M${x0},${y0} C${x0 + r},${y0 - r}, ${x0 - r},${y0 - r}, ${x0},${y0}`;
+        }
+        const dr = 50 / d.linkIndex;
+        const d_line = d.linkIndex ? `A${dr},${dr} 0 0,1 ` : 'L';
         return `M${x0},${y0}${d_line}${x1},${y1}`;
       });
     node
