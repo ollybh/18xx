@@ -142,6 +142,22 @@ lay_tile('A2', '9', 0)            # standard tile 9
 lay_tile('A4', 'ML_STRAIGHT', 0, 0)  # custom
 ```
 
+## Running Graph Tests
+
+All graph-related specs (graph construction, walker, edge, hex exit) use the `:graph` metadata
+tag so they can be run in isolation:
+
+```bash
+# Run only graph/walker tests through docker
+docker compose exec rack rspec spec --tag graph
+
+# Run all specs
+bundle exec rspec
+```
+
+Add `:graph` to every `describe` block (or individual example) that exercises graph code so the
+filter stays reliable.
+
 ## Key Reminders
 
 - Use `Hex#lay` directly, bypass the round system.
