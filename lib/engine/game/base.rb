@@ -1735,11 +1735,13 @@ module Engine
 
       def clear_graph
         @graph.clear
+        @route_graph&.rebuild!
       end
 
       def clear_graph_for_entity(entity)
         graph_for_entity(entity).clear
         token_graph_for_entity(entity).clear
+        @route_graph&.rebuild!
       end
 
       def graph_skip_paths(_entity)
@@ -2570,7 +2572,7 @@ module Engine
       # Creates a {RouteGraph::Graph} model of the game state.
       # @return [RouteGraph::Graph]
       def route_graph
-        Engine::RouteGraph::Graph.new(self, statistics: LOGGER.debug?)
+        @route_graph ||= Engine::RouteGraph::Graph.new(self, statistics: LOGGER.debug?)
       end
 
       # Creates a {RouteGraph::GraphWalker} for the specified entity.
@@ -2578,7 +2580,9 @@ module Engine
       #   possible graph connections for.
       # @return [RouteGraph::GraphWalker]
       def graph_walker(entity)
-        RouteGraph::GraphWalker.new(route_graph, entity, statistics: LOGGER.debug?)
+        @graph_walkers ||= {}
+        @graph_walkers[entity] ||= RouteGraph::GraphWalker.new(route_graph, entity,
+                                                               statistics: LOGGER.debug?)
       end
 
       private

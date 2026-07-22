@@ -46,6 +46,7 @@ module Engine
       def initialize(graph, entity, statistics: false)
         @graph = graph
         @entity = entity
+        @graph_version = nil
         @stats = {} if statistics
       end
 
@@ -223,6 +224,7 @@ module Engine
           dfs(vertex)
         end
 
+        @graph_version = @graph.version
         @stats[:time] = time - start if @stats
       end
 
@@ -255,10 +257,7 @@ module Engine
       #   graph updates. False if the graph has not yet been walked, or if graph
       #   has been updated since the last walk.
       def stale?
-        # TODO: implement this. At the moment the graph will be worked each time
-        # any of the connected/reachable methods is called. This will ensure
-        # that the results are correct, but at the cost of re-walking the graph.
-        true
+        @graph_version != @graph.version
       end
 
       # Reads the system clock.

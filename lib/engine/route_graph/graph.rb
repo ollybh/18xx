@@ -21,15 +21,43 @@ module Engine
         @vertices.values
       end
 
+      # The current version number. Incremented on every {#invalidate!} or
+      # {#rebuild!} call. {GraphWalker} uses this for staleness detection.
+      # @return [integer]
+      attr_reader :version
+
       # Builds a new route graph from the current game state.
       # @param game [Engine::Game] The game to build the map for.
       # @param statistics [Boolean] If true then graph instrumentation
       #   statistics will be collected.
       def initialize(game, statistics: false)
+        @version = 0
+        @game = game
         @edges = []
         @vertices = Hash.new { |h, k| h[k] = new_vertex(k) }
         @stats = {} if statistics
         load_map(game) if game
+      end
+
+      # Invalidates all cached graph walks. Call this when the game state
+      # changes in a way that affects route computation but the track network
+      # is unchanged — for example, a token placement that blocks a city.
+      # The graph structure (vertices and edges) is left intact so that
+      # walkers can re-walk without a full graph rebuild.
+      # @return [void]
+      def invalidate!
+        @version += 1
+      end
+
+      # Rebuilds the graph from game state. Invalidates all cached walks and
+      # reconstructs the vertex/edge topology from scratch. Call this when
+      # the track network changes — for example, a tile lay or upgrade.
+      # @return [void]
+      def rebuild!
+        @version += 1
+        @edges.clear
+        @vertices.clear
+        load_map(@game)
       end
 
       # Converts the graph state into a hash that can be consumed by the
