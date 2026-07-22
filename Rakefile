@@ -29,6 +29,11 @@ unless ENV['RACK_ENV'] == 'production'
 
   task default: %i[compile spec_parallel rubocop]
 
+  desc 'Check YARD documentation coverage and warnings'
+  task :yard_check do
+    sh 'yard stats --no-cache --fail-on-warning --protected --no-private {lib,assets}/**/*.rb'
+  end
+
   namespace :route_graph do
     # Require the comparator once, inside the namespace so it's only
     # loaded on demand.

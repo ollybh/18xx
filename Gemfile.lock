@@ -115,6 +115,7 @@ GEM
     unicorn-worker-killer (0.4.5)
       get_process_mem (~> 0)
       unicorn (>= 4, < 7)
+    yard (0.9.45)
 
 PLATFORMS
   ruby
@@ -147,6 +148,7 @@ DEPENDENCIES
   tilt
   unicorn
   unicorn-worker-killer
+  yard
 
 BUNDLED WITH
    2.5.13

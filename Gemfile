@@ -28,6 +28,7 @@ group :development do
   gem 'sequel-annotate'
   gem 'stackprof'
   gem 'tilt'
+  gem 'yard', require: false
 end
 
 group :test do
