@@ -140,6 +140,100 @@ module Engine
           end
         end
       end
+
+      describe '#connected_paths with converging plain-track exits', :comparison do
+        # Tile 23: path=a:0,b:3;path=a:0,b:4 — two paths that converge at
+        # edge 0.  The walk order in the old Engine::Graph reaches Path 2
+        # (a:0,b:4) from B2's side only after Path 1 (a:0,b:3) has already
+        # crossed edge A3-0 (to A5).  Because Path 2 shares edge A3-0, the
+        # old walker's edge-counter check
+        #
+        #   return if edges.sum { |edge| counter[edge.id] }.positive?
+        #
+        # fires — counter["A3-0"] is already 1 from the Path 1 traversal
+        # — and Path 2 is never yielded.  The new RouteGraph merges both
+        # paths into a single edge that spans A3↔B2 via the shared hex-edge
+        # vertex at A3/A5, so the walker traverses the full segment and
+        # Path 2 appears in connected_paths.
+        #
+        # Hex layout (flat):
+        #
+        #   A1 (0,0)  — tile 115 rot 0, city path to edge 0 (S → A3)
+        #     |
+        #   A3 (0,2)  — tile 23 rot 0, paths: e3↔e0 (N↔S, to A1↔A5) and
+        #     |  \                      e0↔e4 (S↔NW, to A5↔B2)
+        #   A5 (0,4)  — tile 5 rot 3, city paths to e3 (N → A3) and
+        #     |  \                      e4 (NW → B4)
+        #   B2 (1,1)  — tile 7 rot 0, curve e1 (SE → A3) ↔ e0 (S → B4)
+        #   B4 (1,3)  — tile 6 rot 1, city paths to e1 (SE → A5) and
+        #                           e3 (N → B2)
+        #
+        # Alpha has a token on A1's city.  From there the walker can reach:
+        #   - A5's city (via A3's north-south path)
+        #   - B4's city (via A3's converging curve → B2)
+
+        let(:converging_hexes) do
+          { white: { %w[A1 A3 A5 B2 B4] => '' } }
+        end
+
+        let(:converging_tiles) do
+          { '5' => 1, '6' => 1, '7' => 1, '23' => 1, '115' => 1 }
+        end
+
+        let(:game) { Game::Sandbox::Game.new(players, hexes: converging_hexes, tiles: converging_tiles) }
+
+        before :each do
+          lay_tile('A1', '115', 0)
+          lay_tile('A3', '23', 0)
+          lay_tile('A5', '5', 3)
+          lay_tile('B2', '7', 0)
+          lay_tile('B4', '6', 1)
+          game.hex_by_id('A1').tile.cities[0]
+            .place_token(alpha, alpha.tokens.first, free: true)
+        end
+
+        let(:alpha) { game.corporations[0] }
+
+        it 'discovers both paths on A3 via the converging junction' do
+          # The new RouteGraph connects both paths at the converging point
+          # via a JunctionVertex.  Both the north-south path (e3↔e0) and the
+          # converging curve (e0↔e4) should be reachable.
+          walker = Engine::RouteGraph::GraphWalker.new(graph, alpha)
+          a3_paths = walker.connected_paths.select { |p| p.hex.id == 'A3' }
+          expect(a3_paths.size).to eq(2)
+        end
+
+        it 'reaches both cities (A5 and B4) from the token on A1' do
+          # The new RouteGraph follows both paths through the converging
+          # junction, reaching A5's city (via the north-south path) and
+          # B4's city (via the converging curve → B2).
+          walker = Engine::RouteGraph::GraphWalker.new(graph, alpha)
+          node_hexes = walker.connected_nodes.map(&:hex).map(&:id).sort
+          expect(node_hexes).to contain_exactly('A1', 'A5', 'B4')
+        end
+
+        it 'the old Engine::Graph cannot traverse the converging curve on A3' do
+          # The old graph reaches B2 via A5 → B4, then tries to enter A3
+          # from B2 at edge 4.  Path 2 on tile 23 (a:0,b:4) shares edge A3-0
+          # with Path 1, which was already crossed during A3 → A5.  The
+          # old walker's edge-counter check sees counter["A3-0"] > 0 and
+          # bails before yielding Path 2.
+          #
+          # All hexes are reachable via the north-south path and onward
+          # connections (the long way around), but only the north-south
+          # path on A3 appears in connected_paths.
+          old_graph = Engine::Graph.new(game)
+          old_graph.compute(alpha)
+
+          a3_paths = old_graph.connected_paths(alpha).keys.select { |p| p.hex.id == 'A3' }
+          expect(a3_paths.size).to eq(1)
+
+          # All hexes are reachable via the north-south path and onward
+          # connections, just not via the direct converging curve.
+          hex_ids = old_graph.connected_hexes(alpha).keys.map(&:id).sort
+          expect(hex_ids).to contain_exactly('A1', 'A3', 'A5', 'B2', 'B4')
+        end
+      end
     end
   end
 end
