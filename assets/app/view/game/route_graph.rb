@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'engine/route_graph/comparator'
+
 module View
   module Game
     class RouteGraph < Snabberb::Component
@@ -45,6 +47,9 @@ module View
         walker = @game.graph_walker(corp)
         _ = walker.reachable_hexes
         log("Graph walked for #{corp.id} in #{comma_number(walker.statistics[:time])} µs")
+
+        c = Engine::RouteGraph::Comparator.compare(@game, corp)
+        c.each { |k, v| log("#{k}: #{v}") }
       end
 
       def log(text)

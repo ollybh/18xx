@@ -28,9 +28,197 @@ unless ENV['RACK_ENV'] == 'production'
   end
 
   task default: %i[compile spec_parallel rubocop]
-end
 
-# Migrate
+  namespace :route_graph do
+    # Require the comparator once, inside the namespace so it's only
+    # loaded on demand.
+    def self.require_comparator
+      require_relative 'lib/engine'
+      require_relative 'lib/engine/route_graph/comparator'
+    end
+
+    def self.require_db
+      require 'require_all'
+      require_relative 'db'
+      require_relative 'models'
+      require_rel './models'
+    end
+
+    def self.print_entity_line(r, label: nil)
+      status = r[:match] ? '✓' : '✗'
+      t = r[:timing]
+      id = label || r[:entity]
+      line = "#{status} #{id}"
+      line << "  old: #{t[:old]}μs"
+      line << "  build: #{t[:new_build]}μs"
+      line << "  walk: #{t[:new_walk]}μs"
+      line << " ERROR: #{r[:error]}" if r[:error]
+      puts line
+    end
+
+    def self.print_diffs(r)
+      %i[connected_nodes connected_paths reachable_hexes].each do |key|
+        d = r[key]
+        next if d[:extra].empty? && d[:missing].empty?
+
+        puts "  #{key}: +#{d[:extra].size} / -#{d[:missing].size}"
+      end
+    end
+
+    def self.print_detail_diffs(r, indent: '')
+      %i[connected_nodes connected_paths reachable_hexes].each do |key|
+        d = r[key]
+        next if d[:extra].empty? && d[:missing].empty?
+
+        puts "#{indent}#{key}:"
+        d[:extra].each { |v| puts "#{indent}  + #{v}" }
+        d[:missing].each { |v| puts "#{indent}  - #{v}" }
+      end
+    end
+
+    def self.print_compare_results(results)
+      if results.empty?
+        puts 'No active entities to compare.'
+        return
+      end
+      results.each_value do |r|
+        print_entity_line(r)
+        print_diffs(r) unless r[:match]
+      end
+      mismatches = results.count { |_, r| !r[:match] }
+      puts "--- #{results.size} entities, #{mismatches} mismatches ---"
+    end
+
+    def self.print_replay_results(results)
+      total_actions = results.keys.max
+      mismatches = total_old_t = total_build_t = total_walk_t = 0
+      entity_checks = 0
+      results.sort_by { |action, _| action }.each do |action, entities|
+        next if entities.empty?
+
+        action_mismatches = entities.count { |_, r| !r[:match] }
+        mismatches += action_mismatches
+        prefix = action_mismatches.zero? ? '✓' : '✗'
+        puts "#{prefix} Action #{action}/#{total_actions} " \
+             "(#{entities.size} entities, " \
+             "#{action_mismatches} mismatches)"
+
+        entities.each do |eid, r|
+          entity_checks += 1
+          t = r[:timing]
+          total_old_t += t[:old]
+          total_build_t += t[:new_build]
+          total_walk_t += t[:new_walk]
+          next if r[:match]
+
+          puts "     #{eid}  old: #{t[:old]}μs  " \
+               "build: #{t[:new_build]}μs  " \
+               "walk: #{t[:new_walk]}μs"
+          print_detail_diffs(r, indent: '       ')
+        end
+      end
+      check_count = results.size
+      return puts '=== No results ===' if check_count.zero?
+
+      avg_old = total_old_t / check_count
+      avg_build = total_build_t / check_count
+      avg_walk = total_walk_t / check_count
+      puts "=== Total: #{mismatches} mismatches across #{check_count} checkpoints ==="
+      puts "    #{entity_checks} entity-checks"
+      puts "    old: #{total_old_t}μs  build: #{total_build_t}μs  walk: #{total_walk_t}μs"
+      puts "    avg: #{avg_old}μs / #{avg_build}μs / #{avg_walk}μs"
+    end
+
+    desc 'Compare graphs for a game at its final state (usage: rake route_graph:compare[id])'
+    task :compare, [:id] do |_t, args|
+      require_comparator
+      require_db
+      game = Engine::Game.load(args[:id].to_i)
+      results = Engine::RouteGraph::Comparator.compare_all(game)
+      puts "=== Game #{args[:id]} (#{game.class.title}) ==="
+      print_compare_results(results)
+    end
+
+    desc 'Replay a game from a fixture JSON file (usage: rake route_graph:replay_file[path,interval])'
+    task :replay_file, %i[path interval] do |_t, args|
+      require_comparator
+      interval = (args[:interval] || 10).to_i
+      puts "=== Replaying #{File.basename(args[:path])} (interval: #{interval}) ==="
+      results = Engine::RouteGraph::Comparator.compare_replay(
+        args[:path], interval: interval
+      )
+      print_replay_results(results)
+    end
+
+    desc 'Replay a game and compare graphs at intervals (usage: rake route_graph:replay[id,interval])'
+    task :replay, %i[id interval] do |_t, args|
+      require_comparator
+      require_db
+      id = args[:id].to_i
+      interval = (args[:interval] || 10).to_i
+      puts "=== Replaying game #{id} (interval: #{interval}) ==="
+      results = Engine::RouteGraph::Comparator.compare_replay(
+        id, interval: interval
+      )
+      print_replay_results(results)
+    end
+
+    desc 'Compare graphs from a fixture JSON file (usage: rake route_graph:compare_file[path])'
+    task :compare_file, [:path] do |_t, args|
+      require_comparator
+      game = Engine::Game.load(args[:path])
+      results = Engine::RouteGraph::Comparator.compare_all(game)
+      puts "=== #{File.basename(args[:path])} (#{game.class.title}) ==="
+      if results.empty?
+        puts 'All match — no mismatches.'
+      else
+        results.each_value do |r|
+          print_entity_line(r)
+          print_diffs(r) unless r[:match]
+        end
+        mismatches = results.count { |_, r| !r[:match] }
+        puts "--- #{results.size} entities, #{mismatches} mismatches ---"
+      end
+    end
+
+    desc 'Compare graphs for all fixtures of a title (usage: rake route_graph:fixtures[1846])'
+    task :fixtures, [:title] do |_t, args|
+      require_comparator
+      title = args[:title]
+      dir = "public/fixtures/#{title}"
+      files = Dir.glob("#{dir}/*.json")
+      raise "No fixtures found in #{dir}/" if files.empty?
+
+      total_mismatches = total_old_t = total_build_t = total_walk_t = 0
+      entity_checks = 0
+      files.sort.each do |file|
+        game = Engine::Game.load(file)
+        results = Engine::RouteGraph::Comparator.compare_all(game)
+        mismatches = results.count { |_, r| !r[:match] }
+        total_mismatches += mismatches
+        results.each_value do |r|
+          entity_checks += 1
+          t = r[:timing]
+          total_old_t += t[:old]
+          total_build_t += t[:new_build]
+          total_walk_t += t[:new_walk]
+        end
+        prefix = mismatches.zero? ? '✓' : '✗'
+        puts "#{prefix} #{File.basename(file)} (#{results.size} entities, #{mismatches} mismatches)"
+      rescue StandardError => e
+        puts "✗ #{File.basename(file)} ERROR: #{e.message}"
+      end
+      avg_old = total_old_t / entity_checks
+      avg_build = total_build_t / entity_checks
+      avg_walk = total_walk_t / entity_checks
+      puts "=== #{files.size} fixtures, #{total_mismatches} total mismatches ==="
+      puts "    #{entity_checks} entity-checks"
+      puts "    old: #{total_old_t}μs  build: #{total_build_t}μs  walk: #{total_walk_t}μs"
+      puts "    avg: #{avg_old}μs / #{avg_build}μs / #{avg_walk}μs"
+    end
+  end
+
+end
 migrate = lambda do |env, version, truncate = false|
   ENV['RACK_ENV'] = env
   require_relative 'db'
