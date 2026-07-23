@@ -200,6 +200,62 @@ module Engine
           expect(node_hexes).to contain_exactly('A1', 'A5', 'B4')
         end
       end
+
+      describe 'converging junctions and multi-token walks' do
+        # This is a seven-tile map, arranged in a hexagon, with cities at the
+        # top (B1) and bottom (B3). The cities are connected in two ways:
+        #  - A straight N-S path running B1-B3-B5.
+        #  - A swooping path that goes B1-A2-A4-B3(SE-NW)-C3-C4-B5.
+        # The tile in B3 is #47, with two straight paths N-S and SE-NW, and two
+        # gently curved paths N-SW and S-NE.
+        # It is not possible to trace a route from B1 to the S-NE path, or from
+        # B5 to the N-SW path.
+        let(:hexes) { { white: { %w[A2 A4 B1 B3 B5 C2 C4] => '' } } }
+        let(:tiles) { { '5' => 2, '7' => 2, '8' => 2, '47' => 1 } }
+        let(:game) { Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles) }
+        let(:alpha) { game.corporations[0] }
+        let(:b1) { game.hex_by_id('B1') }
+        let(:b5) { game.hex_by_id('B5') }
+        let(:walker) { Engine::RouteGraph::GraphWalker.new(graph, alpha) }
+
+        before :each do
+          lay_tile('B1', '5', 0, 0)
+          lay_tile('B3', '47', 0, 0)
+          lay_tile('B5', '5', 3, 1)
+          lay_tile('A2', '8', 4, 0)
+          lay_tile('A4', '7', 3, 0)
+          lay_tile('C2', '7', 0, 1)
+          lay_tile('C4', '8', 1, 1)
+        end
+
+        it 'cannot reach the S→SW path on B3 from a token in B1' do
+          b1.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+          paths = walker.connected_paths.select { |p| p.hex.id == 'B3' }
+          expect(paths.map { |p| p.edges.map(&:num).sort }).to match_array([[0, 3], [1, 3], [1, 4]])
+        end
+
+        it 'cannot reach the N→NE path on B3 from a token in B5' do
+          b5.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+          paths = walker.connected_paths.select { |p| p.hex.id == 'B3' }
+          expect(paths.map { |p| p.edges.map(&:num).sort }).to match_array([[0, 3], [0, 4], [1, 4]])
+        end
+
+        it 'can reach all paths on B3 from a tokens in B1 and B5' do
+          b1.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+          b5.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+          paths = walker.connected_paths.select { |p| p.hex.id == 'B3' }
+          pending('walk from multiple tokens being combined')
+          expect(paths.map { |p| p.edges.map(&:num).sort }).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
+        end
+
+        it 'can reach all paths on B3 from a tokens in B5 and B1' do
+          b5.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+          b1.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+          paths = walker.connected_paths.select { |p| p.hex.id == 'B3' }
+          pending('walk from multiple tokens being combined')
+          expect(paths.map { |p| p.edges.map(&:num).sort }).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
+        end
+      end
     end
   end
 end
