@@ -172,21 +172,26 @@ module Engine
       end
 
       def join_edges!
-        @vertices.dup.each do |place, vertex|
-          next unless vertex.edges_mergeable?
+        loop do
+          mergeable = @vertices.select { |_place, vertex| vertex.edges_mergeable? }
+          break if mergeable.empty?
 
-          left, right = vertex.edges.flat_map(&:ends).reject { |v| v == vertex }
-          paths = vertex.edges.first.paths_to(vertex) +
-                  vertex.edges.last.paths_from(vertex)
-          add_edge(left, right, paths)
-          vertex.edges.each do |edge|
-            left.delete_edge!(edge)
-            vertex.delete_edge!(edge)
-            right.delete_edge!(edge)
-            @edges.delete(edge)
-          end
-          @vertices.delete(place)
+          mergeable.each { |place, vertex| merge_vertex(place, vertex) }
         end
+      end
+
+      def merge_vertex(place, vertex)
+        left, right = vertex.edges.map { |e| e.other_end(vertex) }
+        paths = vertex.edges.first.paths_to(vertex) +
+                vertex.edges.last.paths_from(vertex)
+        add_edge(left, right, paths)
+        vertex.edges.each do |edge|
+          left.delete_edge!(edge)
+          vertex.delete_edge!(edge)
+          right.delete_edge!(edge)
+          @edges.delete(edge)
+        end
+        @vertices.delete(place)
       end
 
       # Reads the system clock.

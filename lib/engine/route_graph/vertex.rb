@@ -122,11 +122,11 @@ module Engine
         @id = crossing.id
 
         # Instead of maintaining a single collection of edges, split it by the
-        # hex they reach the vertex from. This lets us determine if there are
-        # any converging junctions: if two or more edges/paths reach the hex
-        # edge point from the same hex then this is a converging junction. If
-        # just a single edge is on the hex then this is not a converging
-        # junction.
+        # HexExit they reach the vertex from. This lets us determine if there
+        # are any converging junctions: if two or more edges/paths reach the
+        # hex edge point via the same HexExit then this is a converging
+        # junction.  If just a single edge uses the HexExit then this is not
+        # a converging junction.
         @edges = Hash.new { |h, k| h[k] = [] }
       end
 
@@ -134,7 +134,21 @@ module Engine
       # @param edge [Edge] The new edge to link.
       def add_edge!(edge)
         hex = edge.paths_from(self).first.hex
-        @edges[hex] << edge
+        hex_exit = @crossing.exits.find { |e| e.hex == hex }
+        @edges[hex_exit] << edge
+      end
+
+      # Finds the HexExit associated with a given edge at this vertex.
+      # @param edge [Edge]
+      # @return [HexExit, nil]
+      def exit_for_edge(edge)
+        @edges.each_key.find { |hex_exit| @edges[hex_exit].include?(edge) }
+      end
+
+      # The HexExits at this crossing.
+      # @return [Array<HexExit>]
+      def crossing_exits
+        @crossing.exits
       end
 
       # Removes an edge that had been linked to this vertex.
@@ -159,7 +173,7 @@ module Engine
       # @return [Boolean] True if edge1 and edge2 are part of a converging
       #   junction.
       def edges_converge?(edge1, edge2)
-        @edges.any? { |_hex, edges| ([edge1, edge2] - edges).empty? }
+        @edges.any? { |_exit, edges| ([edge1, edge2] - edges).empty? }
       end
 
       # There are usually two hexes associated with a hex edge (the exception
@@ -192,13 +206,33 @@ module Engine
       # different hexes, and they both have the same track gauge.
       # @return [boolean] True if this vertex's edges can be merged.
       def edges_mergeable?
-        edges.size == 2 && paths_cross_edge? && edges.map(&:gauge).uniq.one?
+        return false if edges.any? { |e| edge_converges?(e) || far_end_converges?(e) }
+        return false unless paths_cross_edge?
+
+        edges.map(&:gauge).uniq.one?
+      end
+
+      protected
+
+      # Tests whether an edge is part of a converging junction at this vertex.
+      # @param edge [Edge]
+      # @return [Boolean]
+      def edge_converges?(edge)
+        @edges.any? { |_exit, edges| edges.size > 1 && edges.include?(edge) }
       end
 
       private
 
+      # Tests whether the far end of an edge is at a converging junction.
+      # @param edge [Edge]
+      # @return [Boolean]
+      def far_end_converges?(edge)
+        other = edge.other_end(self)
+        other.is_a?(HexEdgeVertex) && other.edge_converges?(edge)
+      end
+
       def path_hexes
-        edges.map { |e| e.paths_from(self).first.hex }.uniq
+        @edges.keys.map(&:hex).uniq
       end
 
       # Tests if the hex edge crossing point represented by this vertex has

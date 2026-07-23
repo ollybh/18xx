@@ -74,7 +74,7 @@ module Engine
         end
 
         it 'has a node vertex for the city' do
-          cities = graph.vertices.select { |v| v.is_a?(NodeVertex) }
+          cities = graph.vertices.grep(NodeVertex)
           expect(cities.size).to eq(1)
           expect(cities.first.id).to eq('5-0-0')
         end
@@ -115,7 +115,7 @@ module Engine
         end
 
         it 'has two city node vertices' do
-          cities = graph.vertices.select { |v| v.is_a?(NodeVertex) }
+          cities = graph.vertices.grep(NodeVertex)
           expect(cities.size).to eq(2)
         end
 
@@ -177,7 +177,7 @@ module Engine
         end
 
         it 'creates a node vertex for the town' do
-          towns = graph.vertices.select { |v| v.is_a?(NodeVertex) }
+          towns = graph.vertices.grep(NodeVertex)
           expect(towns.size).to eq(1)
         end
       end

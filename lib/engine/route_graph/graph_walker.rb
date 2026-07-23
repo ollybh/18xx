@@ -150,14 +150,23 @@ module Engine
       end
 
       # Tests whether the walker is allowed to walk along an edge to reach the
-      # vertex at the other end. This is usually going to return true, but might
-      # be false if the edge is marked as a terminal path, or the track gauge is
-      # incompatible.
+      # vertex at the other end.
+      #
+      # Reasons why walking along the edge is blocked are:
+      #  - The edge goes to a converging junction where one of the other paths
+      #    has been walked.
+      #  - The track path is terminal.
+      #  - The track gauge is incompatible.
       #
       # @param edge [RouteGraph::Edge] The edge being walked.
+      # @param from_vertex [RouteGraph::Vertex] The end that the walk is
+      #   starting from.
       # @return [Boolean] True if the edge may be walked, false if not.
-      def can_walk?(edge)
-        !edge.terminal?
+      def can_walk?(edge, from_vertex = nil)
+        return false if edge.terminal?
+        return false if crossing_blocked?(edge, from_vertex)
+
+        true
       end
 
       # Tests whether the walker, entering `vertex` on edge `from_edge` is
@@ -217,6 +226,7 @@ module Engine
         @explored = Set[]
         @found_vertices = Set[]
         @walked_edges = Set[]
+        @crossed_exits = Hash.new(0)
         start = time if @stats
 
         home_nodes.each do |node|
@@ -231,8 +241,8 @@ module Engine
       # The core depth-first search algorithm for walking the graph.
       # This calls itself recursively for each new vertex it encounters.
       # @param vertex [RouteGraph::Vertex] The vertex to be explored.
-      # @param incoming [RouteGraph::Edge] The edge which was walked to reach
-      #   this vertex. nil if the walk is starting at this vertex.
+      # @param incoming [RouteGraph::Edge, nil] The edge which was walked to
+      #   reach this vertex. nil if the walk is starting at this vertex.
       # @return [void]
       def dfs(vertex, incoming = nil)
         return unless can_enter?(vertex, incoming)
@@ -242,12 +252,39 @@ module Engine
         @found_vertices << vertex
         vertex.edges.each do |edge|
           next unless can_traverse?(vertex, incoming, edge)
-          next unless can_walk?(edge)
+          next unless can_walk?(edge, vertex)
 
+          mark_crossed_exits(vertex)
           @walked_edges << edge
-          destination = edge.other_end(vertex)
-          dfs(destination, edge)
+          dfs(edge.other_end(vertex), edge)
+          unmark_crossed_exits(vertex)
         end
+      end
+
+      # Checks whether walking an edge would involve crossing a HexExit that
+      # is in on the crossed exits call stack. Crossing one of these exits
+      # would involve revisiting a converging junction where one of the other
+      # edges has already been walked in the current route being explored.
+      # @param edge [RouteGraph::Edge]
+      # @param from_vertex [RouteGraph::Vertex]
+      # @return [Boolean] True if traversal is blocked by an active exit.
+      def crossing_blocked?(edge, from_vertex)
+        [from_vertex, edge.other_end(from_vertex)].any? do |vertex|
+          next false unless vertex.is_a?(HexEdgeVertex)
+
+          hex_exit = vertex.exit_for_edge(edge)
+          hex_exit && @crossed_exits[hex_exit].positive?
+        end
+      end
+
+      # Marks all HexExits at a vertex as active on the call stack.
+      def mark_crossed_exits(vertex)
+        vertex.crossing_exits.each { |e| @crossed_exits[e] += 1 } if vertex.is_a?(HexEdgeVertex)
+      end
+
+      # Unmarks all HexExits at a vertex after their subtree returns.
+      def unmark_crossed_exits(vertex)
+        vertex.crossing_exits.each { |e| @crossed_exits[e] -= 1 } if vertex.is_a?(HexEdgeVertex)
       end
 
       # Checks whether the GraphWalker is synchronised with the current graph
