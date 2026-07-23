@@ -6,8 +6,10 @@ module Engine
   module RouteGraph
     describe HexExit, :graph do
       # Use the sandbox game with a tile laid on A1 so we have real exits.
+      let(:hexes) { { white: { %w[A1 A3] => '' } } }
+      let(:tiles) { { '9' => 1 } }
       let(:sandbox) do
-        g = Game::Sandbox::Game.new(%w[Alice])
+        g = Game::Sandbox::Game.new(%w[Alice], hexes: hexes, tiles: tiles)
         tile = g.tile_by_id('9-0')
         tile.rotate!(0)
         g.hex_by_id('A1').lay(tile)
@@ -120,8 +122,10 @@ module Engine
     describe HexEdgeCrossing, :graph do
       # Tile 5 (city at edges 0,1) laid on A1 gives an interior edge at 0
       # (toward A3) and a map-edge at 1 (south-west, off the map).
+      let(:hexes) { { white: { %w[A1 A3] => '' } } }
+      let(:tiles) { { '5' => 1 } }
       let(:sandbox) do
-        g = Game::Sandbox::Game.new(%w[Alice])
+        g = Game::Sandbox::Game.new(%w[Alice], hexes: hexes, tiles: tiles)
         tile = g.tile_by_id('5-0')
         tile.rotate!(0)
         g.hex_by_id('A1').lay(tile)
