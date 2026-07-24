@@ -63,6 +63,49 @@ module Engine
         end
       end
 
+      describe 'converging junction backtracking' do
+        # This is a four-tile map, designed to check that routes do not directly
+        # backtrack at converging junctions.
+        # - A2 and C2 have cities.
+        # - B1 has track that connects to both of these cities, but not
+        #   directly: it is tile #624 with two tight curves that connect the
+        #   southern edge of the tile to A2 and C2.
+        # The second part of the test adds a tight curve on B3 and checks that a
+        # route is now found to C2: A2→B3→B1→C2.
+        let(:game) do
+          players = %w[Alice]
+          hexes = { white: { %w[A2 B1 B3 C2] => '' } }
+          tiles = { '5' => 1, '7' => 1, '115' => 1, '624' => 1 }
+          Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
+        end
+        let(:alpha) { game.corporation_by_id('α') }
+        let(:a2_city) { hex('A2').tile.cities.first }
+        let(:c2_city) { hex('C2').tile.cities.first }
+        let(:walker) { Engine::RouteGraph::GraphWalker.new(graph, alpha) }
+        let(:hexes) { walker.reachable_hexes.map(&:coordinates) }
+        let(:nodes) { walker.connected_nodes.map(&:node) }
+
+        before :each do
+          lay_tile('A2', '5', 4)
+          lay_tile('B1', '624', 5)
+          lay_tile('C2', '115', 2)
+          a2_city.place_token(alpha, alpha.next_token, free: true)
+        end
+
+        it 'cannot reach C2 from a token in B1' do
+          expect(hexes).to match_array(%w[A2 B1])
+          expect(nodes).to include(a2_city)
+          expect(nodes).not_to include(c2_city)
+        end
+
+        it 'can reach C2 after linked through B3' do
+          lay_tile('B3', '7', 2)
+          expect(hexes).to match_array(%w[A2 B1 B3 C2])
+          expect(nodes).to include(a2_city)
+          expect(nodes).to include(c2_city)
+        end
+      end
+
       describe '#connected_nodes with converging junction reversal guard' do
         # Tile 29 at B2 creates a converging junction: its two paths both
         # meet at the southern edge (edge 0), which connects to B4. After
