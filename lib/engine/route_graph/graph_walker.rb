@@ -198,12 +198,10 @@ module Engine
         return false if from_edge == to_edge # Can't reverse.
 
         case vertex
-        when JunctionVertex
+        when JunctionVertex, HexEdgeVertex
           true
         when NodeVertex
           !vertex.node.blocks?(@entity)
-        when HexEdgeVertex
-          !vertex.edges_converge?(from_edge, to_edge)
         end
       end
 
@@ -271,6 +269,7 @@ module Engine
 
         @explored << [vertex, incoming]
         @found_vertices << vertex
+        mark_crossed_exit(vertex, incoming)
         vertex.edges.each do |edge|
           unless can_traverse?(vertex, incoming, edge)
             @stats[:edges_skipped][:transit] += 1 if @stats
@@ -281,12 +280,11 @@ module Engine
             next
           end
 
-          mark_crossed_exits(vertex)
           @walked_edges << edge
           @stats[:edges_traversed] += 1 if @stats
           dfs(edge.other_end(vertex), edge)
-          unmark_crossed_exits(vertex)
         end
+        unmark_crossed_exit(vertex, incoming)
       end
 
       # Checks whether walking an edge would involve crossing a HexExit that
@@ -305,14 +303,18 @@ module Engine
         end
       end
 
-      # Marks all HexExits at a vertex as active on the call stack.
-      def mark_crossed_exits(vertex)
-        vertex.crossing_exits.each { |e| @crossed_exits[e] += 1 } if vertex.is_a?(HexEdgeVertex)
+      # Marks a HexExit at a vertex as active on the call stack.
+      # @param vertex [Vertex] The vertex being crossed.
+      # @param edge [Edge] The edge that the walk has come from.
+      def mark_crossed_exit(vertex, edge)
+        @crossed_exits[vertex.exit_for_edge(edge)] += 1 if vertex.is_a?(HexEdgeVertex)
       end
 
-      # Unmarks all HexExits at a vertex after their subtree returns.
-      def unmark_crossed_exits(vertex)
-        vertex.crossing_exits.each { |e| @crossed_exits[e] -= 1 } if vertex.is_a?(HexEdgeVertex)
+      # Unmarks a HexExit at a vertex after their subtree returns.
+      # @param vertex [Vertex]
+      # @param edge [Edge]
+      def unmark_crossed_exit(vertex, edge)
+        @crossed_exits[vertex.exit_for_edge(edge)] -= 1 if vertex.is_a?(HexEdgeVertex)
       end
 
       # Checks whether the GraphWalker is synchronised with the current graph
