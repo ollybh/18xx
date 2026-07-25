@@ -5,20 +5,12 @@ require 'spec_helper'
 module Engine
   module RouteGraph
     describe GraphWalker, :graph do
-      test_hexes = {
-        white: {
-          %w[A1 A3 A5 B2 B6] => '',
-        },
-      }
-
-      test_tiles = {
-        '5' => 1,
-        '9' => 1,
-        '6' => 1,
-      }
-
-      let(:players) { %w[Alice Bob Charlie] }
-      let(:game) { Game::Sandbox::Game.new(players, hexes: test_hexes, tiles: test_tiles) }
+      let(:players)    { %w[Alice] }
+      # `hexes` and `tiles` need to be defined at the group or test level.
+      let(:game)       { Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles) }
+      let(:alpha)      { game.corporation_by_id('α') }
+      let(:graph)      { Engine::RouteGraph::Graph.new(game) }
+      subject(:walker) { Engine::RouteGraph::GraphWalker.new(graph, alpha) }
 
       def hex(id)
         game.hex_by_id(id)
@@ -35,10 +27,9 @@ module Engine
         h.lay(t)
       end
 
-      subject(:graph) { game.route_graph }
-
       describe '#can_traverse?' do
-        let(:alpha) { game.corporations.find { |c| c.id == 'α' } }
+        let(:hexes) { { white: { %w[A1 A3 A5 B2 B6] => '' } } }
+        let(:tiles) { { '5' => 1, '9' => 1, '6' => 1 } }
 
         before :each do
           lay_tile('A1', '5', 0)
@@ -47,14 +38,12 @@ module Engine
         end
 
         it 'blocks immediate reversal through the same edge' do
-          walker = game.graph_walker(alpha)
           edge = graph.edges.first
           vertex = edge.left
           expect(walker.send(:can_traverse?, vertex, edge, edge)).to be false
         end
 
         it 'allows traversal to a different edge from a city' do
-          walker = game.graph_walker(alpha)
           # The city has 2 edges; pick one as incoming and the other as outgoing.
           city_vertex = graph.vertices.find { |v| v.is_a?(NodeVertex) }
           edges = city_vertex.edges.to_a
@@ -63,7 +52,7 @@ module Engine
         end
       end
 
-      describe 'converging junction backtracking' do
+      describe 'direct backtracking' do
         # This is a four-tile map, designed to check that routes do not directly
         # backtrack at converging junctions.
         # - A2 and C2 have cities.
@@ -72,18 +61,12 @@ module Engine
         #   southern edge of the tile to A2 and C2.
         # The second part of the test adds a tight curve on B3 and checks that a
         # route is now found to C2: A2→B3→B1→C2.
-        let(:game) do
-          players = %w[Alice]
-          hexes = { white: { %w[A2 B1 B3 C2] => '' } }
-          tiles = { '5' => 1, '7' => 1, '115' => 1, '624' => 1 }
-          Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
-        end
-        let(:alpha) { game.corporation_by_id('α') }
+        let(:hexes) { { white: { %w[A2 B1 B3 C2] => '' } } }
+        let(:tiles) { { '5' => 1, '7' => 1, '115' => 1, '624' => 1 } }
         let(:a2_city) { hex('A2').tile.cities.first }
         let(:c2_city) { hex('C2').tile.cities.first }
-        let(:walker) { Engine::RouteGraph::GraphWalker.new(graph, alpha) }
-        let(:hexes) { walker.reachable_hexes.map(&:coordinates) }
-        let(:nodes) { walker.connected_nodes.map(&:node) }
+        let(:found_hexes) { walker.reachable_hexes.map(&:coordinates) }
+        let(:found_nodes) { walker.connected_nodes.map(&:node) }
 
         before :each do
           lay_tile('A2', '5', 4)
@@ -92,130 +75,113 @@ module Engine
           a2_city.place_token(alpha, alpha.next_token, free: true)
         end
 
-        it 'cannot reach C2 from a token in B1' do
-          expect(hexes).to match_array(%w[A2 B1])
-          expect(nodes).to include(a2_city)
-          expect(nodes).not_to include(c2_city)
+        it 'cannot reach C2 from a token in A2' do
+          expect(found_hexes).to match_array(%w[A2 B1])
+          expect(found_nodes).to include(a2_city)
+          expect(found_nodes).not_to include(c2_city)
         end
 
         it 'can reach C2 after linked through B3' do
           lay_tile('B3', '7', 2)
-          expect(hexes).to match_array(%w[A2 B1 B3 C2])
-          expect(nodes).to include(a2_city)
-          expect(nodes).to include(c2_city)
+          expect(found_hexes).to match_array(%w[A2 B1 B3 C2])
+          expect(found_nodes).to include(a2_city)
+          expect(found_nodes).to include(c2_city)
         end
       end
 
-      describe '#connected_nodes with converging junction reversal guard' do
-        # Tile 29 at B2 creates a converging junction: its two paths both
-        # meet at the southern edge (edge 0), which connects to B4. After
-        # join_edges!, the HexEdgeVertex at B2_0_0|B4_3_0 has 3 incident
-        # edges (to A1, A3, and B4) and cannot be merged.
-        #
-        # Without the from_edge == to_edge guard in can_traverse?, a walk
-        # from A1 could reach B4, then reverse direction back through the
-        # same edge (E2) to the junction, and from there take the other
-        # path to A3 — giving the illusion that A3 is reachable.
-        #
-        # Layout:
-        #
-        #   A1 (115 rot 5, city e5→B2)
-        #          \
-        #    A3──── B2 (29 rot 0, e2→A1 + e1→A3 + e0→B4)
-        #              \
-        #               B4 (115 rot 3, city e3→B2)
-        #
-        # With the guard, the walk terminates at B4 and never finds A3.
-
-        let(:game) do
-          hexes = { white: { %w[A1 A3 B2 B4] => '' } }
-          tiles = { '115' => 3, '29' => 1 }
-          Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
-        end
-
-        let(:alpha) { game.corporations.find { |c| c.id == 'α' } }
+      describe 'direct backtracking and reversing' do
+        # This is a four-hex layout with three cities.
+        # - A1 has a single path heading to the south-east (hex B2).
+        # - A3 has a single path heading to the north-east (hex B2).
+        # - B4 has a single path heading to the north (hex B2).
+        # - B2 has two track paths that connect all of these cities.
+        #   - One runs north-west to south, connecting to A1 and B4.
+        #   - One runs south-west to south, connecting to A3 and B4.
+        #   - The southern edge (next to B4) is a converging junction.
+        # A token in A1 has a route to the city in B4, but cannot reach the city
+        # in A3 without backtracking.
+        # As well as checking the route cannot backtrack immediately at the
+        # converging junction, this tests that the route cannot go through the
+        # junction to the B4 city and reverse back through the junction.
+        let(:hexes) { { white: { %w[A1 A3 B2 B4] => '' } } }
+        let(:tiles) { { '115' => 3, '29' => 1 } }
+        let(:a1_city) { hex('A1').tile.cities.first }
+        let(:a3_city) { hex('A3').tile.cities.first }
+        let(:b4_city) { hex('B4').tile.cities.first }
 
         before :each do
           lay_tile('A1', '115', 5, 0)
           lay_tile('B2', '29', 0, 0)
           lay_tile('B4', '115', 3, 1)
           lay_tile('A3', '115', 4, 2)
-
-          a1_city = hex('A1').tile.cities.first
           a1_city.place_token(alpha, alpha.tokens.first, free: true)
         end
 
         it 'does not reach A3 from A1 via the converging junction and B4' do
-          walker = game.graph_walker(alpha)
-          a3_city_id = hex('A3').tile.cities.first.id
-          expect(walker.connected_nodes.map(&:id)).not_to include(a3_city_id)
+          expect(walker.connected_nodes.map(&:node)).not_to include(a3_city)
         end
 
         it 'reaches B4 (the dead-end city)' do
-          walker = game.graph_walker(alpha)
-          b4_city_id = hex('B4').tile.cities.first.id
-          expect(walker.connected_nodes.map(&:id)).to include(b4_city_id)
+          expect(walker.connected_nodes.map(&:node)).to include(b4_city)
         end
       end
 
       describe '#connected_nodes' do
-        let(:alpha) { game.corporations.find { |c| c.id == 'α' } }
+        let(:hexes) { { white: { %w[A1 A3 A5] => '' } } }
+        let(:tiles) { { '5' => 1, '6' => 1, '9' => 1 } }
+        let(:a1_city) { hex('A1').tile.cities.first }
+        let(:a5_city) { hex('A5').tile.cities.first }
 
         before :each do
           lay_tile('A1', '5', 0)
           lay_tile('A3', '9', 0)
           lay_tile('A5', '6', 3)
-          a1_city = hex('A1').tile.cities.first
           a1_city.place_token(alpha, alpha.tokens.first, free: true)
         end
 
         it 'finds connected nodes when walking from a token' do
-          walker = game.graph_walker(alpha)
-          expect(walker.connected_nodes.map(&:id))
-            .to contain_exactly('5-0-0', '6-0-0')
+          expect(walker.connected_nodes.map(&:node)).to match_array([a1_city, a5_city])
         end
 
-        context 'when no token is placed' do
-          it 'finds no connected nodes' do
-            beta = game.corporations.find { |c| c.id == 'β' }
-            walker = game.graph_walker(beta)
-            expect(walker.connected_nodes).to be_empty
-          end
+        it 'finds no connected nodes when no token is placed' do
+          beta = game.corporation_by_id('β')
+          walker = Engine::RouteGraph::GraphWalker.new(graph, beta)
+          expect(walker.connected_nodes).to be_empty
         end
       end
 
-      describe '#connected_paths with converging plain-track exits' do
-        # Tile 23: path=a:0,b:3;path=a:0,b:4 — two paths that converge at
-        # edge 0.  The GraphWalker's @crossed_exits guard blocks entry to
-        # the shared A3-0 hex exit from the B2 side, so only the north-south
-        # path (e3↔e0) is reachable.  Both A5 and B4 are still reachable via
-        # A3's north-south path and onward connections.
+      describe 'blocked path to converging junction' do
+        # This tests that a path ending at a converging junction is not added to
+        # `connected_paths` if the only route to that path has already passed
+        # through that converging junction.
         #
-        # Hex layout (flat):
+        # This is a five hex layout. A1, A3 and A5 are in one column, B2 and B4
+        # to their east. The tiles are:
+        # - A1: city with a single path to the south (hex A3).
+        # - A3: plain track with two paths:
+        #   - A straight running north to south (A1-A5).
+        #   - A gentle curve running south to north-west (A5-B2).
+        #   - There is a converging junction on the southern edge (next to A5).
+        # - A5: city with two paths, to the north (A3) and north-east (B4).
+        # - B2: a plain track tight curve running south to south-west (A3-B4).
+        # - B4: city with two paths, to the south-west (A3) and north (B2).
         #
-        #   A1 (0,0)  — tile 115 rot 0, city path to edge 0 (S → A3)
-        #     |
-        #   A3 (0,2)  — tile 23 rot 0, paths: e3↔e0 (N↔S, to A1↔A5) and
-        #     |  \                      e0↔e4 (S↔NW, to A5↔B2)
-        #   A5 (0,4)  — tile 5 rot 3, city paths to e3 (N → A3) and
-        #     |  \                      e4 (NW → B4)
-        #   B2 (1,1)  — tile 7 rot 0, curve e1 (SE → A3) ↔ e0 (S → B4)
-        #   B4 (1,3)  — tile 6 rot 1, city paths to e1 (SE → A5) and
-        #                           e3 (N → B2)
+        # The routes out of the city in A1 can be walked in this order:
+        # 1. South into hex A3 to the converging junction.
+        # 2. South from the converging junction in A3 to the city in A5.
+        # 3. North-east from the A5 city to the B4 city.
+        # 4. North from the B4 city through B2 heading towards the converging
+        #    junction in A3.
         #
-        # Alpha has a token on A1's city.  From there the walker can reach:
-        #   - A5's city (via A3's north-south path)
-        #   - B4's city (via A3's north-south path → A5 → B4)
-
-        let(:converging_hexes) do
-          { white: { %w[A1 A3 A5 B2 B4] => '' } }
-        end
-
-        let(:converging_tiles) do
-          { '5' => 1, '6' => 1, '7' => 1, '23' => 1, '115' => 1 }
-        end
-
-        let(:game) { Game::Sandbox::Game.new(players, hexes: converging_hexes, tiles: converging_tiles) }
+        # The path heading out of B4 to the north can be followed across tile
+        # B2, but is then blocked when it joins to A3. Following it any further
+        # than this would take us back to the converging junction. The purpose
+        # of this test is to make sure this last path does not get added to
+        # `connected_paths`.
+        let(:hexes) { { white: { %w[A1 A3 A5 B2 B4] => '' } } }
+        let(:tiles) { { '5' => 1, '6' => 1, '7' => 1, '23' => 1, '115' => 1 } }
+        let(:all_paths) { game.hexes.map(&:tile).flat_map(&:paths) }
+        let(:connected_paths) { walker.connected_paths }
 
         before :each do
           lay_tile('A1', '115', 0)
@@ -223,24 +189,28 @@ module Engine
           lay_tile('A5', '5', 3)
           lay_tile('B2', '7', 0)
           lay_tile('B4', '6', 1)
-          game.hex_by_id('A1').tile.cities[0]
-            .place_token(alpha, alpha.tokens.first, free: true)
+          hex('A1').tile.cities.first.place_token(alpha, alpha.tokens.first, free: true)
         end
 
-        let(:alpha) { game.corporations[0] }
-
         it 'discovers only the north-south path on A3' do
-          walker = Engine::RouteGraph::GraphWalker.new(graph, alpha)
-          a3_paths = walker.connected_paths.select { |p| p.hex.id == 'A3' }
-          expect(a3_paths.size).to eq(1)
+          missing = all_paths - connected_paths.to_a
+          expect(missing.size).to eq(1)
+          expect(missing.first.hex.coordinates).to eq('A3')
+          expect(missing.first.ends.map(&:num)).to match_array([0, 4])
+        end
+
+        it 'can reach all paths from A5' do
+          hex('A5').tile.cities.first.place_token(alpha, alpha.tokens.first, free: true)
+          expect(connected_paths).to match_array(all_paths)
         end
 
         it 'reaches both cities (A5 and B4) from the token on A1' do
-          # A5 reached via A3's north-south path, B4 via onward
-          # connections through A5 and B2.
-          walker = Engine::RouteGraph::GraphWalker.new(graph, alpha)
           node_hexes = walker.connected_nodes.map { |n| n.hex.id }.sort
           expect(node_hexes).to contain_exactly('A1', 'A5', 'B4')
+        end
+
+        it 'reaches all hexes' do
+          expect(walker.reachable_hexes.map(&:coordinates)).to match_array(%w[A1 A3 A5 B2 B4])
         end
       end
 
@@ -248,18 +218,22 @@ module Engine
         # This is a seven-tile map, arranged in a hexagon, with cities at the
         # top (B1) and bottom (B3). The cities are connected in two ways:
         #  - A straight N-S path running B1-B3-B5.
-        #  - A swooping path that goes B1-A2-A4-B3(SE-NW)-C3-C4-B5.
+        #  - A swooping path that goes B1-A2-A4-B3(SE-NW)-C2-C4-B5.
         # The tile in B3 is #47, with two straight paths N-S and SE-NW, and two
         # gently curved paths N-SW and S-NE.
         # It is not possible to trace a route from B1 to the S-NE path, or from
         # B5 to the N-SW path.
         let(:hexes) { { white: { %w[A2 A4 B1 B3 B5 C2 C4] => '' } } }
         let(:tiles) { { '5' => 2, '7' => 2, '8' => 2, '47' => 1 } }
-        let(:game) { Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles) }
-        let(:alpha) { game.corporations[0] }
-        let(:b1) { game.hex_by_id('B1') }
-        let(:b5) { game.hex_by_id('B5') }
-        let(:walker) { Engine::RouteGraph::GraphWalker.new(graph, alpha) }
+        let(:b1_city) { hex('B1').tile.cities.first }
+        let(:b5_city) { hex('B5').tile.cities.first }
+        let(:b3_paths_edges) do
+          walker
+            .connected_paths
+            .select { |path| path.hex.coordinates == 'B3' }
+            .map { |path| path.edges.map(&:num) }
+            .sort
+        end
 
         before :each do
           lay_tile('B1', '5', 0, 0)
@@ -272,31 +246,29 @@ module Engine
         end
 
         it 'cannot reach the S→SW path on B3 from a token in B1' do
-          b1.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
-          paths = walker.connected_paths.select { |p| p.hex.id == 'B3' }
-          expect(paths.map { |p| p.edges.map(&:num).sort }).to match_array([[0, 3], [1, 3], [1, 4]])
+          b1_city.place_token(alpha, alpha.next_token, free: true)
+          expect(b3_paths_edges).to match_array([[0, 3], [1, 3], [1, 4]])
         end
 
         it 'cannot reach the N→NE path on B3 from a token in B5' do
-          b5.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
-          paths = walker.connected_paths.select { |p| p.hex.id == 'B3' }
-          expect(paths.map { |p| p.edges.map(&:num).sort }).to match_array([[0, 3], [0, 4], [1, 4]])
+          b5_city.place_token(alpha, alpha.next_token, free: true)
+          expect(b3_paths_edges).to match_array([[0, 3], [0, 4], [1, 4]])
         end
 
         it 'can reach all paths on B3 from a tokens in B1 and B5' do
-          b1.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
-          b5.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
-          paths = walker.connected_paths.select { |p| p.hex.id == 'B3' }
+          # Routes from B1 are walked first, routes from B5 second.
+          b1_city.place_token(alpha, alpha.next_token, free: true)
+          b5_city.place_token(alpha, alpha.next_token, free: true)
           pending('walk from multiple tokens being combined')
-          expect(paths.map { |p| p.edges.map(&:num).sort }).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
+          expect(b3_paths_edges).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
         end
 
         it 'can reach all paths on B3 from a tokens in B5 and B1' do
-          b5.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
-          b1.tile.cities.first.place_token(alpha, alpha.next_token, free: true)
-          paths = walker.connected_paths.select { |p| p.hex.id == 'B3' }
+          # Routes from B5 are walked first, routes from B1 second.
+          b5_city.place_token(alpha, alpha.next_token, free: true)
+          b1_city.place_token(alpha, alpha.next_token, free: true)
           pending('walk from multiple tokens being combined')
-          expect(paths.map { |p| p.edges.map(&:num).sort }).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
+          expect(b3_paths_edges).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
         end
       end
     end
