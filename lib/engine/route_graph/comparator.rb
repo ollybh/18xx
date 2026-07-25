@@ -25,10 +25,12 @@ module Engine
         #   - :connected_paths [Hash] :extra and :missing as ID arrays
         #   - :reachable_hexes [Hash] :extra and :missing as ID arrays
         #   - :timing [Hash] :old, :new_build, :new_walk in microseconds
+        #   - :walk_calls [Hash] :old, :new counts of method calls
         #   - :error [String, nil] error message if old-graph compute failed
         def compare(game, entity)
           comparison = { entity: entity.id, match: false }
           timing_stats = {}
+          call_stats = {}
 
           # Old graph
           old_nodes = {}
@@ -44,6 +46,7 @@ module Engine
             comparison[:error] = e.message
           end
           timing_stats[:old] = clock - old_start
+          call_stats[:old] = old_graph.walk_calls(entity)
 
           # New graph
           build_start = clock
@@ -56,8 +59,10 @@ module Engine
           new_paths = walker.connected_paths
           new_hexes = walker.reachable_hexes
           timing_stats[:new_walk] = clock - walk_start
+          call_stats[:new] = walker.statistics
 
           comparison[:timing] = timing_stats
+          comparison[:walk_calls] = call_stats
 
           # Compare by ID sets
           node_ids_old = old_nodes.keys.to_set(&:id)

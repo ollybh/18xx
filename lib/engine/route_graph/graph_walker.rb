@@ -47,7 +47,14 @@ module Engine
         @graph = graph
         @entity = entity
         @graph_version = nil
-        @stats = {} if statistics
+        @stats = if statistics
+                   {
+                     dfs_calls: 0,
+                     skipped: Hash.new(0),
+                     edges_traversed: 0,
+                     edges_skipped: Hash.new(0),
+                   }
+                 end
       end
 
       # @!group Query Methods
@@ -124,12 +131,19 @@ module Engine
       #
       # @return [Hash]
       #   - :time [integer] The time taken to walk the graph, in microseconds.
+      #   - :dfs_calls [integer] The number of times the {#dfs} method was
+      #     called whilst walking the graph.
+      #   - :skipped [Hash<label => integer] The number of times the {#dfs}
+      #     method was skipped without further processing, grouped by the reason
+      #     the walk chain was ended.
+      #   - :edges_traversed [integer] The number of {Edge edges} walked.
+      #   - :edges_skipped [Hash<label => integer] The number of times the edges
+      #     were examined but not walked, grouped by the reason they were
+      #     skipped.
+      #   Returns an empty hash if instrumentation statistics were not requested
+      #   when the Graph object was constructed.
       def statistics
-        return {} unless @stats
-
-        {
-          time: @stats[:time],
-        }
+        @stats
       end
 
       protected
@@ -245,17 +259,31 @@ module Engine
       #   reach this vertex. nil if the walk is starting at this vertex.
       # @return [void]
       def dfs(vertex, incoming = nil)
-        return unless can_enter?(vertex, incoming)
-        return if @explored.include?([vertex, incoming])
+        @stats[:dfs_calls] += 1 if @stats
+        unless can_enter?(vertex, incoming)
+          @stats[:skipped][:blocked] += 1 if @stats
+          return
+        end
+        if @explored.include?([vertex, incoming])
+          @stats[:skipped][:explored] += 1 if @stats
+          return
+        end
 
         @explored << [vertex, incoming]
         @found_vertices << vertex
         vertex.edges.each do |edge|
-          next unless can_traverse?(vertex, incoming, edge)
-          next unless can_walk?(edge, vertex)
+          unless can_traverse?(vertex, incoming, edge)
+            @stats[:edges_skipped][:transit] += 1 if @stats
+            next
+          end
+          unless can_walk?(edge, vertex)
+            @stats[:edges_skipped][:walk] += 1 if @stats
+            next
+          end
 
           mark_crossed_exits(vertex)
           @walked_edges << edge
+          @stats[:edges_traversed] += 1 if @stats
           dfs(edge.other_end(vertex), edge)
           unmark_crossed_exits(vertex)
         end
