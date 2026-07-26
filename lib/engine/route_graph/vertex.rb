@@ -145,12 +145,6 @@ module Engine
         @edges.each_key.find { |hex_exit| @edges[hex_exit].include?(edge) }
       end
 
-      # The HexExits at this crossing.
-      # @return [Array<HexExit>]
-      def crossing_exits
-        @crossing.exits
-      end
-
       # Removes an edge that had been linked to this vertex.
       # @param edge [Edge] The edge to unlink.
       def delete_edge!(edge)
@@ -164,16 +158,6 @@ module Engine
         when 2 then paths_cross_edge? ? 'Junction' : 'Edge'
         else 'Junction'
         end
-      end
-
-      # Tests whether edges are part of a converging junction. This method is
-      # used to prevent backtracking at converging junctions.
-      # @param edge1 [Edge]
-      # @param edge2 [Edge]
-      # @return [Boolean] True if edge1 and edge2 are part of a converging
-      #   junction.
-      def edges_converge?(edge1, edge2)
-        @edges.any? { |_exit, edges| ([edge1, edge2] - edges).empty? }
       end
 
       # There are usually two hexes associated with a hex edge (the exception
