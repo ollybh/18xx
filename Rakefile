@@ -134,6 +134,22 @@ unless ENV['RACK_ENV'] == 'production'
       puts "    avg: #{avg_old}μs / #{avg_build}μs / #{avg_walk}μs"
     end
 
+    # Runs a block of code repeatedly and outputs timing statistics.
+    def self.benchmark(timed_loops: 20, warmup_loops: 3, label: '', &block)
+      timings = []
+      warmup_loops.times { yield block }
+      timed_loops.times do
+        start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :microsecond)
+        yield block
+        finish = Process.clock_gettime(Process::CLOCK_MONOTONIC, :microsecond)
+        timings << (finish - start)
+      end
+      mean = timings.sum / timings.size
+      median = timings.sort[timings.size / 2]
+      min, max = timings.minmax
+      puts "#{label}mean #{mean}μs, median #{median}μs, min #{min}μs, max #{max}μs"
+    end
+
     desc 'Compare graphs for a game at its final state (usage: rake route_graph:compare[id])'
     task :compare, [:id] do |_t, args|
       require_comparator
@@ -220,6 +236,32 @@ unless ENV['RACK_ENV'] == 'production'
       puts "    #{entity_checks} entity-checks"
       puts "    old: #{total_old_t}μs  build: #{total_build_t}μs  walk: #{total_walk_t}μs"
       puts "    avg: #{avg_old}μs / #{avg_build}μs / #{avg_walk}μs"
+    end
+
+    desc 'Benchmark graph calculation times on a game'
+    task :benchmark, [:id, :entity] do |_t, args|
+      require_comparator
+      require_db
+
+      game = Engine::Game.load(args[:id].to_i)
+      entity = game.corporation_by_id(args[:entity])
+      graph = Engine::RouteGraph::Graph.new(game, statistics: false)
+      walker = Engine::RouteGraph::GraphWalker.new(graph, entity, statistics: false)
+
+      benchmark(label: 'build: ') { graph.rebuild! }
+      benchmark(label: 'walk:  ') do
+        graph.invalidate!
+        walker.reachable_hexes
+      end
+
+      # carry out one run with statisics to show the walk call counts
+      walker = Engine::RouteGraph::GraphWalker.new(graph, entity, statistics: true)
+      walker.reachable_hexes
+      stats = walker.statistics
+      skip_pct = 100 * stats[:skipped].values.sum / stats[:dfs_calls]
+      puts "dfs calls: #{stats[:dfs_calls]} (skipped #{skip_pct}%), " \
+           "edges walked: #{stats[:edges_traversed]} " \
+           "(skipped #{stats[:edges_skipped].values.sum})"
     end
   end
 
