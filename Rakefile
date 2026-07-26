@@ -67,7 +67,10 @@ unless ENV['RACK_ENV'] == 'production'
         d = r[key]
         next if d[:extra].empty? && d[:missing].empty?
 
-        puts "  #{key}: +#{d[:extra].size} / -#{d[:missing].size}"
+        msg = "  #{key}: +#{d[:extra].size} / -#{d[:missing].size}"
+        msg += "  -[#{d[:missing].join(', ')}]" unless d[:missing].empty?
+        msg += "  +[#{d[:extra].join(', ')}]" unless d[:extra].empty?
+        puts msg
       end
     end
 
@@ -93,6 +96,33 @@ unless ENV['RACK_ENV'] == 'production'
       end
       mismatches = results.count { |_, r| !r[:match] }
       puts "--- #{results.size} entities, #{mismatches} mismatches ---"
+
+      paths = {
+        old_time: %i[timing old],
+        new_time_build: %i[timing new_build],
+        new_time_walk: %i[timing new_walk],
+        old_calls: %i[walk_calls old all],
+        old_skipped: %i[walk_calls old skipped],
+        new_calls: %i[walk_calls new dfs_calls],
+        new_skipped: %i[walk_calls new skipped],
+        new_edges_walked: %i[walk_calls new edges_traversed],
+        new_edges_skipped: %i[walk_calls new edges_skipped],
+      }
+      totals = paths.transform_values do |path|
+        results.values.sum do |res|
+          val = res.dig(*path)
+          val.is_a?(Hash) ? val.values.sum : val
+        end
+      end
+      old_skip_pct = totals[:old_calls].zero? ? 0 : 100 * totals[:old_skipped] / totals[:old_calls]
+      new_skip_pct = totals[:new_calls].zero? ? 0 : 100 * totals[:new_skipped] / totals[:new_calls]
+      puts "Total timings: old #{totals[:old_time]}μs, " \
+           "build #{totals[:new_time_build]}μs, " \
+           "walk #{totals[:new_time_walk]}μs"
+      puts 'Total calls: ' \
+           "old #{totals[:old_calls]} (skipped #{old_skip_pct}%), " \
+           "new #{totals[:new_calls]} (skipped #{new_skip_pct}%), " \
+           "edges #{totals[:new_edges_walked]} (skipped #{totals[:new_edges_skipped]})"
     end
 
     def self.print_replay_results(results)
@@ -223,16 +253,7 @@ unless ENV['RACK_ENV'] == 'production'
       game = Engine::Game.load(args[:path])
       results = Engine::RouteGraph::Comparator.compare_all(game)
       puts "=== #{File.basename(args[:path])} (#{game.class.title}) ==="
-      if results.empty?
-        puts 'All match — no mismatches.'
-      else
-        results.each_value do |r|
-          print_entity_line(r)
-          print_diffs(r) unless r[:match]
-        end
-        mismatches = results.count { |_, r| !r[:match] }
-        puts "--- #{results.size} entities, #{mismatches} mismatches ---"
-      end
+      print_compare_results(results)
     end
 
     desc 'Compare graphs for all fixtures of a title (usage: rake route_graph:fixtures[1846])'
@@ -244,6 +265,8 @@ unless ENV['RACK_ENV'] == 'production'
       raise "No fixtures found in #{dir}/" if files.empty?
 
       total_mismatches = total_old_t = total_build_t = total_walk_t = 0
+      total_old_calls = total_old_skipped = total_new_calls = total_new_skipped = 0
+      total_new_edges = total_new_edges_skipped = 0
       entity_checks = 0
       files.sort.each do |file|
         game = Engine::Game.load(file)
@@ -252,10 +275,15 @@ unless ENV['RACK_ENV'] == 'production'
         total_mismatches += mismatches
         results.each_value do |r|
           entity_checks += 1
-          t = r[:timing]
-          total_old_t += t[:old]
-          total_build_t += t[:new_build]
-          total_walk_t += t[:new_walk]
+          total_old_t += r[:timing][:old]
+          total_build_t += r[:timing][:new_build]
+          total_walk_t += r[:timing][:new_walk]
+          total_old_calls += r[:walk_calls][:old][:all]
+          total_old_skipped += r[:walk_calls][:old][:skipped]
+          total_new_calls += r[:walk_calls][:new][:dfs_calls]
+          total_new_skipped += r[:walk_calls][:new][:skipped].values.sum
+          total_new_edges += r[:walk_calls][:new][:edges_traversed]
+          total_new_edges_skipped += r[:walk_calls][:new][:edges_skipped].values.sum
         end
         prefix = mismatches.zero? ? '✓' : '✗'
         puts "#{prefix} #{File.basename(file)} (#{results.size} entities, #{mismatches} mismatches)"
@@ -265,10 +293,17 @@ unless ENV['RACK_ENV'] == 'production'
       avg_old = total_old_t / entity_checks
       avg_build = total_build_t / entity_checks
       avg_walk = total_walk_t / entity_checks
-      puts "=== #{files.size} fixtures, #{total_mismatches} total mismatches ==="
-      puts "    #{entity_checks} entity-checks"
-      puts "    old: #{total_old_t}μs  build: #{total_build_t}μs  walk: #{total_walk_t}μs"
-      puts "    avg: #{avg_old}μs / #{avg_build}μs / #{avg_walk}μs"
+      old_skip_pct = total_old_calls.zero? ? 0 : 100 * total_old_skipped / total_old_calls
+      new_skip_pct = total_new_calls.zero? ? 0 : 100 * total_new_skipped / total_new_calls
+      puts '========================================'
+      puts "#{files.size} fixtures, #{total_mismatches} total mismatches ==="
+      puts "#{entity_checks} entity-checks"
+      puts "Total timings:   old #{total_old_t}μs, build #{total_build_t}μs, walk #{total_walk_t}μs"
+      puts "Average timings: old #{avg_old}μs, build #{avg_build}μs, walk #{avg_walk}μs"
+      puts 'Total calls: ' \
+           "old: #{total_old_calls} (skipped #{old_skip_pct}%), " \
+           "new: #{total_new_calls} (skipped #{new_skip_pct}%), " \
+           "edges walked: #{total_new_edges} (skipped #{total_new_edges_skipped})"
     end
 
     desc 'Benchmark graph calculation times on a game'
