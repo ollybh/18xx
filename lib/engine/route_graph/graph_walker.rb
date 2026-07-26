@@ -239,6 +239,10 @@ module Engine
         @found_vertices = Set[]
         @walked_edges = Set[]
         @crossed_exits = Hash.new(0)
+        @connected_hexes = nil
+        @connected_nodes = nil
+        @connected_paths = nil
+        @reachable_hexes = nil
         start = time if @stats
 
         home_nodes.each do |node|
