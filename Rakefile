@@ -57,6 +57,7 @@ unless ENV['RACK_ENV'] == 'production'
       line << "  old: #{t[:old]}μs"
       line << "  build: #{t[:new_build]}μs"
       line << "  walk: #{t[:new_walk]}μs"
+      line << "  #{call_stats(r)}"
       line << " ERROR: #{r[:error]}" if r[:error]
       puts line
     end
@@ -97,6 +98,8 @@ unless ENV['RACK_ENV'] == 'production'
     def self.print_replay_results(results)
       total_actions = results.keys.max
       mismatches = total_old_t = total_build_t = total_walk_t = 0
+      total_old_calls = total_old_skipped = 0
+      total_new_calls = total_new_skipped = total_new_edges = total_new_edges_skipped = 0
       entity_checks = 0
       results.sort_by { |action, _| action }.each do |action, entities|
         next if entities.empty?
@@ -114,6 +117,12 @@ unless ENV['RACK_ENV'] == 'production'
           total_old_t += t[:old]
           total_build_t += t[:new_build]
           total_walk_t += t[:new_walk]
+          total_old_calls += r[:walk_calls][:old][:all]
+          total_old_skipped += r[:walk_calls][:old][:skipped]
+          total_new_calls += r[:walk_calls][:new][:dfs_calls]
+          total_new_skipped += r[:walk_calls][:new][:skipped].values.sum
+          total_new_edges += r[:walk_calls][:new][:edges_traversed]
+          total_new_edges_skipped += r[:walk_calls][:new][:edges_skipped].values.sum
           next if r[:match]
 
           puts "     #{eid}  old: #{t[:old]}μs  " \
@@ -128,10 +137,34 @@ unless ENV['RACK_ENV'] == 'production'
       avg_old = total_old_t / check_count
       avg_build = total_build_t / check_count
       avg_walk = total_walk_t / check_count
+      old_skip_pct = total_old_calls.zero? ? 0 : (100 * total_old_skipped / total_old_calls)
+      new_skip_pct = total_new_calls.zero? ? 0 : (100 * total_new_skipped / total_new_calls)
       puts "=== Total: #{mismatches} mismatches across #{check_count} checkpoints ==="
       puts "    #{entity_checks} entity-checks"
       puts "    old: #{total_old_t}μs  build: #{total_build_t}μs  walk: #{total_walk_t}μs"
       puts "    avg: #{avg_old}μs / #{avg_build}μs / #{avg_walk}μs"
+      puts '    total calls: ' \
+           "old: #{total_old_calls} (skipped #{old_skip_pct}%), " \
+           "new: #{total_new_calls} (skipped #{new_skip_pct}%), " \
+           "edges walked: #{total_new_edges} (skipped #{total_new_edges_skipped})"
+    end
+
+    # Builds a single-line stats summary showing the method call comparison of
+    # the old and new graphs.
+    def self.call_stats(comparison)
+      # Old shape: { all:, skipped:, not_skipped: }
+      # New shape: { time:, dfs_calls:, skipped: {reason=>n},
+      #              edges_traversed:, edges_skipped: {reason=>n} }
+      old, new = comparison[:walk_calls].fetch_values(:old, :new)
+      return '' if !old || !new
+
+      old_skip_pct = old[:all].zero? ? 0 : (100 * old[:skipped] / old[:all])
+      new_skip_pct = new[:dfs_calls].zero? ? 0 : (100 * new[:skipped].values.sum / new[:dfs_calls])
+
+      'calls: ' \
+        "old: #{old[:all]} (skipped #{old_skip_pct}%), " \
+        "new: #{new[:dfs_calls]} (skipped #{new_skip_pct}%), " \
+        "edges walked: #{new[:edges_traversed]} (skipped #{new[:edges_skipped].values.sum})"
     end
 
     # Runs a block of code repeatedly and outputs timing statistics.

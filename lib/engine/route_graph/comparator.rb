@@ -42,11 +42,11 @@ module Engine
             old_nodes = old_graph.connected_nodes(entity)
             old_paths = old_graph.connected_paths(entity)
             old_hexes = old_graph.reachable_hexes(entity)
+            call_stats[:old] = old_graph.walk_calls(entity)
           rescue StandardError => e
             comparison[:error] = e.message
           end
           timing_stats[:old] = clock - old_start
-          call_stats[:old] = old_graph.walk_calls(entity)
 
           # New graph
           build_start = clock
