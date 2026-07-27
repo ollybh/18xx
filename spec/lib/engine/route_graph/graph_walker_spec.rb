@@ -231,18 +231,17 @@ module Engine
           walker
             .connected_paths
             .select { |path| path.hex.coordinates == 'B3' }
-            .map { |path| path.edges.map(&:num) }
-            .sort
+            .map { |path| path.edges.map(&:num).sort }
         end
 
         before :each do
-          lay_tile('B1', '5', 0, 0)
+          lay_tile('B1', '5',  0, 0)
           lay_tile('B3', '47', 0, 0)
-          lay_tile('B5', '5', 3, 1)
-          lay_tile('A2', '8', 4, 0)
-          lay_tile('A4', '7', 3, 0)
-          lay_tile('C2', '7', 0, 1)
-          lay_tile('C4', '8', 1, 1)
+          lay_tile('B5', '5',  3, 1)
+          lay_tile('A2', '8',  4, 0)
+          lay_tile('A4', '7',  3, 0)
+          lay_tile('C2', '7',  0, 1)
+          lay_tile('C4', '8',  1, 1)
         end
 
         it 'cannot reach the S→SW path on B3 from a token in B1' do
@@ -267,6 +266,118 @@ module Engine
           b5_city.place_token(alpha, alpha.next_token, free: true)
           b1_city.place_token(alpha, alpha.next_token, free: true)
           expect(b3_paths_edges).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
+        end
+      end
+
+      describe 'converging junctions looped cities' do
+        # This is a twelve-tile map designed to test if loops through cities are
+        # poisoning the DFS explored location set. It is a layout that is
+        # mirrorred horizontally, so that any errors are triggered regardless of
+        # which path from the token is walked first.
+        # The layout is:
+        # - A5 has city with a token in it, connected by paths to B4 and B6.
+        # - B4 and B6 have converging junctions at their junctions with C3/C5.
+        # - A3 and A7 have cities. These connect to the other paths on B4/B6.
+        # - C3 and C7 have cities with four track paths each.
+        #   - One leads back to the converging junction (B4/B6).
+        #   - One connects these two cities together, through a straight in C5.
+        #   - Two form loops with two other cities, in B1/C1 and B8/C9.
+        # It is possible to trace a route from A5 to A3 by going through B6 to
+        # the city in C7, then through C5 to the city in C3, and finally through
+        # B4 to A3. This route goes through both converging junctions, but only
+        # using one leg of each.
+        # The bug this is trying to detect is if there is a different route
+        # explored first: from A5 through B3 (using one leg of the converging
+        # junction) to the city in C3 and around the looped cities in C1 and B2
+        # back to C3 and back to B4. At this point the route doesn't continue to
+        # A3 as that would be going through the second path of the converging
+        # junction, but does mark the entry to the converging junction from C3
+        # as being explored, blocking the correct route.
+        let(:hexes) { { white: { %w[A3 A5 A7 B2 B4 B6 B8 C1 C3 C5 C7 C9] => '' } } }
+        let(:tiles) { { '5' => 5, '9' => 1, '15' => 2, '23' => 1, '24' => 1, '115' => 2 } }
+
+        before :each do
+          lay_tile('A3', '115', 5, 0)
+          lay_tile('A5', '5',   4, 0)
+          lay_tile('A7', '115', 4, 1)
+          lay_tile('B2', '5',   4, 1)
+          lay_tile('B4', '23',  4, 0)
+          lay_tile('B6', '24',  5, 0)
+          lay_tile('B8', '5',   4, 2)
+          lay_tile('C1', '5',   0, 3)
+          lay_tile('C3', '15',  0, 0)
+          lay_tile('C5', '9',   0, 0)
+          lay_tile('C7', '15',  0, 1)
+          lay_tile('C9', '5',   2, 4)
+          hex('A5').tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+        end
+
+        it 'can reach all hexes' do
+          pending 'loop detection'
+          all_hexes = hexes.map { |_color, hexdefs| hexdefs.keys }.flatten
+          expect(walker.reachable_hexes.map(&:coordinates)).to match_array(all_hexes)
+        end
+
+        it 'can reach both paths on B4' do
+          pending 'loop detection'
+          b4_path_edges = walker.connected_paths
+                                .select { |path| path.hex.coordinates == 'B4' }
+                                .map { |path| path.edges.map(&:num).sort }
+          expect(b4_path_edges).to match_array([[1, 4], [2, 4]])
+        end
+
+        it 'can reach both paths on B6' do
+          b6_path_edges = walker.connected_paths
+                                .select { |path| path.hex.coordinates == 'B6' }
+                                .map { |path| path.edges.map(&:num).sort }
+          expect(b6_path_edges).to match_array([[1, 5], [2, 5]])
+        end
+      end
+
+      describe 'converging junctions looped junctions' do
+        # This is the same layout as the previous example ('converging layout
+        # looped cities') but testing Lawson-type junctions as the centre of the
+        # loops instead of cities. Looping back through these is allowed, so
+        # this is making sure that track can't be used after going around a
+        # loop.
+        let(:hexes) { { white: { %w[A3 A5 A7 B2 B4 B6 B8 C1 C3 C5 C7 C9] => '' } } }
+        let(:tiles) { { '5' => 1, '7' => 4, '9' => 1, '23' => 1, '24' => 1, '115' => 2, '545' => 2 } }
+
+        before :each do
+          lay_tile('A3', '115',  5, 0)
+          lay_tile('A5', '5',    4, 0)
+          lay_tile('A7', '115',  4, 1)
+          lay_tile('B2', '7',    4, 0)
+          lay_tile('B4', '23',   4, 0)
+          lay_tile('B6', '24',   5, 0)
+          lay_tile('B8', '7',    4, 1)
+          lay_tile('C1', '7',    0, 2)
+          lay_tile('C3', '545',  0, 0)
+          lay_tile('C5', '9',    0, 0)
+          lay_tile('C7', '545',  0, 1)
+          lay_tile('C9', '7',    2, 3)
+          hex('A5').tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+        end
+
+        it 'can reach all hexes' do
+          pending 'loop detection'
+          all_hexes = hexes.map { |_color, hexdefs| hexdefs.keys }.flatten
+          expect(walker.reachable_hexes.map(&:coordinates)).to match_array(all_hexes)
+        end
+
+        it 'can reach both paths on B4' do
+          pending 'loop detection'
+          b4_path_edges = walker.connected_paths
+                                .select { |path| path.hex.coordinates == 'B4' }
+                                .map { |path| path.edges.map(&:num).sort }
+          expect(b4_path_edges).to match_array([[1, 4], [2, 4]])
+        end
+
+        it 'can reach both paths on B6' do
+          b6_path_edges = walker.connected_paths
+                                .select { |path| path.hex.coordinates == 'B6' }
+                                .map { |path| path.edges.map(&:num).sort }
+          expect(b6_path_edges).to match_array([[1, 5], [2, 5]])
         end
       end
     end
