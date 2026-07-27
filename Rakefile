@@ -95,42 +95,14 @@ unless ENV['RACK_ENV'] == 'production'
         print_diffs(r) unless r[:match]
       end
       mismatches = results.count { |_, r| !r[:match] }
-      puts "--- #{results.size} entities, #{mismatches} mismatches ---"
-
-      paths = {
-        old_time: %i[timing old],
-        new_time_build: %i[timing new_build],
-        new_time_walk: %i[timing new_walk],
-        old_calls: %i[walk_calls old all],
-        old_skipped: %i[walk_calls old skipped],
-        new_calls: %i[walk_calls new dfs_calls],
-        new_skipped: %i[walk_calls new skipped],
-        new_edges_walked: %i[walk_calls new edges_traversed],
-        new_edges_skipped: %i[walk_calls new edges_skipped],
-      }
-      totals = paths.transform_values do |path|
-        results.values.sum do |res|
-          val = res.dig(*path)
-          val.is_a?(Hash) ? val.values.sum : val
-        end
-      end
-      old_skip_pct = totals[:old_calls].zero? ? 0 : 100 * totals[:old_skipped] / totals[:old_calls]
-      new_skip_pct = totals[:new_calls].zero? ? 0 : 100 * totals[:new_skipped] / totals[:new_calls]
-      puts "Total timings: old #{totals[:old_time]}μs, " \
-           "build #{totals[:new_time_build]}μs, " \
-           "walk #{totals[:new_time_walk]}μs"
-      puts 'Total calls: ' \
-           "old #{totals[:old_calls]} (skipped #{old_skip_pct}%), " \
-           "new #{totals[:new_calls]} (skipped #{new_skip_pct}%), " \
-           "edges #{totals[:new_edges_walked]} (skipped #{totals[:new_edges_skipped]})"
+      puts '========================================'
+      puts "Total #{mismatches} mismatch#{'es' unless mismatches == 1}"
+      puts Engine::RouteGraph::Comparator.stats_summary(results)
     end
 
     def self.print_replay_results(results)
       total_actions = results.keys.max
-      mismatches = total_old_t = total_build_t = total_walk_t = 0
-      total_old_calls = total_old_skipped = 0
-      total_new_calls = total_new_skipped = total_new_edges = total_new_edges_skipped = 0
-      entity_checks = 0
+      mismatches = 0
       results.sort_by { |action, _| action }.each do |action, entities|
         next if entities.empty?
 
@@ -141,42 +113,23 @@ unless ENV['RACK_ENV'] == 'production'
              "(#{entities.size} entities, " \
              "#{action_mismatches} mismatches)"
 
-        entities.each do |eid, r|
-          entity_checks += 1
-          t = r[:timing]
-          total_old_t += t[:old]
-          total_build_t += t[:new_build]
-          total_walk_t += t[:new_walk]
-          total_old_calls += r[:walk_calls][:old][:all]
-          total_old_skipped += r[:walk_calls][:old][:skipped]
-          total_new_calls += r[:walk_calls][:new][:dfs_calls]
-          total_new_skipped += r[:walk_calls][:new][:skipped].values.sum
-          total_new_edges += r[:walk_calls][:new][:edges_traversed]
-          total_new_edges_skipped += r[:walk_calls][:new][:edges_skipped].values.sum
+        entities.each_value do |r|
           next if r[:match]
 
-          puts "     #{eid}  old: #{t[:old]}μs  " \
+          t = r[:timing]
+          puts "     #{r[:entity]}  old: #{t[:old]}μs  " \
                "build: #{t[:new_build]}μs  " \
                "walk: #{t[:new_walk]}μs"
           print_detail_diffs(r, indent: '       ')
         end
       end
       check_count = results.size
-      return puts '=== No results ===' if check_count.zero?
+      puts '========================================'
+      return puts 'No results' if check_count.zero?
 
-      avg_old = total_old_t / check_count
-      avg_build = total_build_t / check_count
-      avg_walk = total_walk_t / check_count
-      old_skip_pct = total_old_calls.zero? ? 0 : (100 * total_old_skipped / total_old_calls)
-      new_skip_pct = total_new_calls.zero? ? 0 : (100 * total_new_skipped / total_new_calls)
-      puts "=== Total: #{mismatches} mismatches across #{check_count} checkpoints ==="
-      puts "    #{entity_checks} entity-checks"
-      puts "    old: #{total_old_t}μs  build: #{total_build_t}μs  walk: #{total_walk_t}μs"
-      puts "    avg: #{avg_old}μs / #{avg_build}μs / #{avg_walk}μs"
-      puts '    total calls: ' \
-           "old: #{total_old_calls} (skipped #{old_skip_pct}%), " \
-           "new: #{total_new_calls} (skipped #{new_skip_pct}%), " \
-           "edges walked: #{total_new_edges} (skipped #{total_new_edges_skipped})"
+      puts "Total #{mismatches} mismatch#{'es' unless mismatches == 1} " \
+           "across #{check_count} checkpoint#{'s' unless check_count == 1}"
+      puts Engine::RouteGraph::Comparator.stats_summary(results)
     end
 
     # Builds a single-line stats summary showing the method call comparison of
@@ -200,10 +153,10 @@ unless ENV['RACK_ENV'] == 'production'
     # Runs a block of code repeatedly and outputs timing statistics.
     def self.benchmark(timed_loops: 20, warmup_loops: 3, label: '', &block)
       timings = []
-      warmup_loops.times { yield block }
+      warmup_loops.times(&block)
       timed_loops.times do
         start = Process.clock_gettime(Process::CLOCK_MONOTONIC, :microsecond)
-        yield block
+        yield
         finish = Process.clock_gettime(Process::CLOCK_MONOTONIC, :microsecond)
         timings << (finish - start)
       end
@@ -264,46 +217,28 @@ unless ENV['RACK_ENV'] == 'production'
       files = Dir.glob("#{dir}/*.json")
       raise "No fixtures found in #{dir}/" if files.empty?
 
-      total_mismatches = total_old_t = total_build_t = total_walk_t = 0
-      total_old_calls = total_old_skipped = total_new_calls = total_new_skipped = 0
-      total_new_edges = total_new_edges_skipped = 0
-      entity_checks = 0
+      all_results = {}
+      total_mismatches = 0
+      errored = 0
       files.sort.each do |file|
         game = Engine::Game.load(file)
         results = Engine::RouteGraph::Comparator.compare_all(game)
         mismatches = results.count { |_, r| !r[:match] }
         total_mismatches += mismatches
-        results.each_value do |r|
-          entity_checks += 1
-          total_old_t += r[:timing][:old]
-          total_build_t += r[:timing][:new_build]
-          total_walk_t += r[:timing][:new_walk]
-          total_old_calls += r[:walk_calls][:old][:all]
-          total_old_skipped += r[:walk_calls][:old][:skipped]
-          total_new_calls += r[:walk_calls][:new][:dfs_calls]
-          total_new_skipped += r[:walk_calls][:new][:skipped].values.sum
-          total_new_edges += r[:walk_calls][:new][:edges_traversed]
-          total_new_edges_skipped += r[:walk_calls][:new][:edges_skipped].values.sum
-        end
+        all_results[file] = results
         prefix = mismatches.zero? ? '✓' : '✗'
-        puts "#{prefix} #{File.basename(file)} (#{results.size} entities, #{mismatches} mismatches)"
+        puts "#{prefix} #{File.basename(file)} " \
+             "(#{results.size} #{results.one? ? 'entity' : 'entities'}, " \
+             "#{mismatches} mismatch#{'es' unless mismatches == 1})"
       rescue StandardError => e
+        errored += 1
         puts "✗ #{File.basename(file)} ERROR: #{e.message}"
       end
-      avg_old = total_old_t / entity_checks
-      avg_build = total_build_t / entity_checks
-      avg_walk = total_walk_t / entity_checks
-      old_skip_pct = total_old_calls.zero? ? 0 : 100 * total_old_skipped / total_old_calls
-      new_skip_pct = total_new_calls.zero? ? 0 : 100 * total_new_skipped / total_new_calls
       puts '========================================'
-      puts "#{files.size} fixtures, #{total_mismatches} total mismatches ==="
-      puts "#{entity_checks} entity-checks"
-      puts "Total timings:   old #{total_old_t}μs, build #{total_build_t}μs, walk #{total_walk_t}μs"
-      puts "Average timings: old #{avg_old}μs, build #{avg_build}μs, walk #{avg_walk}μs"
-      puts 'Total calls: ' \
-           "old: #{total_old_calls} (skipped #{old_skip_pct}%), " \
-           "new: #{total_new_calls} (skipped #{new_skip_pct}%), " \
-           "edges walked: #{total_new_edges} (skipped #{total_new_edges_skipped})"
+      puts "#{files.size} fixture#{'s' unless files.one?}, " \
+           "#{errored} errored, " \
+           "#{total_mismatches} total mismatch#{'es' unless total_mismatches == 1}"
+      puts Engine::RouteGraph::Comparator.stats_summary(all_results)
     end
 
     desc 'Benchmark graph calculation times on a game'
@@ -313,6 +248,8 @@ unless ENV['RACK_ENV'] == 'production'
 
       game = Engine::Game.load(args[:id].to_i)
       entity = game.corporation_by_id(args[:entity])
+      raise "No corporation #{args[:entity]} in game #{args[:id]}" unless entity
+
       graph = Engine::RouteGraph::Graph.new(game, statistics: false)
       walker = Engine::RouteGraph::GraphWalker.new(graph, entity, statistics: false)
 
@@ -326,7 +263,7 @@ unless ENV['RACK_ENV'] == 'production'
       walker = Engine::RouteGraph::GraphWalker.new(graph, entity, statistics: true)
       walker.reachable_hexes
       stats = walker.statistics
-      skip_pct = 100 * stats[:skipped].values.sum / stats[:dfs_calls]
+      skip_pct = stats[:dfs_calls].zero? ? 0 : 100 * stats[:skipped].values.sum / stats[:dfs_calls]
       puts "dfs calls: #{stats[:dfs_calls]} (skipped #{skip_pct}%), " \
            "edges walked: #{stats[:edges_traversed]} " \
            "(skipped #{stats[:edges_skipped].values.sum})"

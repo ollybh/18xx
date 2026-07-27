@@ -55,6 +55,10 @@ module Engine
                      edges_skipped: Hash.new(0),
                    }
                  end
+        @found_vertices = Set[]
+        @walked_edges = Set[]
+        @explored = Set[]
+        @crossed_exits = Hash.new(0)
       end
 
       # @!group Query Methods
@@ -235,10 +239,8 @@ module Engine
       # the walker is stale.
       # @return [void]
       def walk!
-        @explored = Set[]
-        @found_vertices = Set[]
-        @walked_edges = Set[]
-        @crossed_exits = Hash.new(0)
+        @found_vertices.clear
+        @walked_edges.clear
         @connected_hexes = nil
         @connected_nodes = nil
         @connected_paths = nil
@@ -246,6 +248,14 @@ module Engine
         start = time if @stats
 
         home_nodes.each do |node|
+          @crossed_exits.clear
+          # TODO: Resetting @explored here ensures that the graph is fully
+          # walked from each home node, not stopping when previously walked
+          # vertices/edges are encountered. Some games will not need this and
+          # could get better performance by keeping the @explored state. This
+          # would only apply if there are no concerns like backtracking or track
+          # gauges.
+          @explored.clear
           vertex = @graph.vertices.find { |v| v.id == node.id }
           dfs(vertex)
         end

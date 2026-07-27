@@ -259,7 +259,6 @@ module Engine
           # Routes from B1 are walked first, routes from B5 second.
           b1_city.place_token(alpha, alpha.next_token, free: true)
           b5_city.place_token(alpha, alpha.next_token, free: true)
-          pending('walk from multiple tokens being combined')
           expect(b3_paths_edges).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
         end
 
@@ -267,7 +266,6 @@ module Engine
           # Routes from B5 are walked first, routes from B1 second.
           b5_city.place_token(alpha, alpha.next_token, free: true)
           b1_city.place_token(alpha, alpha.next_token, free: true)
-          pending('walk from multiple tokens being combined')
           expect(b3_paths_edges).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
         end
       end

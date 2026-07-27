@@ -45,6 +45,7 @@ module Engine
             call_stats[:old] = old_graph.walk_calls(entity)
           rescue StandardError => e
             comparison[:error] = e.message
+            call_stats[:old] = { all: 0, skipped: 0, not_skipped: 0 }
           end
           timing_stats[:old] = clock - old_start
 
@@ -128,7 +129,82 @@ module Engine
           results
         end
 
+        # Format a one-block summary of aggregated timings and walk-call counts
+        # for a tree of comparison results.
+        #
+        # @param results [Hash] Either a single comparison result (with a
+        #   +:timing+ key) or a nested {entity => result} / {action => {...}}
+        #   tree; both shapes are summed by {collate_stats}.
+        # @return [String] multi-line summary.
+        def stats_summary(results)
+          stats = collate_stats(results)
+          skip_pct = lambda do |skipped, total|
+            total.zero? ? 0 : 100 * skipped / total
+          end
+          old_skip_pct = skip_pct.call(stats[:old_skipped], stats[:old_calls])
+          new_skip_pct = skip_pct.call(stats[:new_skipped], stats[:new_calls])
+
+          count_line = "#{stats[:count]} comparison#{'s' unless stats[:count] == 1}"
+          time_line = 'Timings: ' \
+                      "old #{stats[:old_time]}μs, " \
+                      "build #{stats[:new_time_build]}μs, " \
+                      "walk #{stats[:new_time_walk]}μs"
+          calls_line = 'Method calls: ' \
+                       "old #{stats[:old_calls]} (skipped #{old_skip_pct}%), " \
+                       "new #{stats[:new_calls]} (skipped #{new_skip_pct}%), " \
+                       "edges #{stats[:new_edges_walked]} (skipped #{stats[:new_edges_skipped]})"
+          "#{count_line}\n#{time_line}\n#{calls_line}"
+        end
+
         private
+
+        # Reduce a tree of comparison results to a flat hash of integer totals.
+        # Recurses through arbitrary nesting (entity hashes, per-action hashes,
+        # per-file hashes) summing leaf statistics.
+        #
+        # @param results [Hash] single comparison, or nested results tree.
+        # @return [Hash{Symbol=>Integer}]
+        def collate_stats(results)
+          return collate_one(results) if results.key?(:timing)
+
+          results.map { |_, result| collate_stats(result) }
+                 .reduce(zero_stats) { |acc, one| acc.merge(one) { |_, a, b| a + b } }
+        end
+
+        # Extracts timing and method calls from a comparison result hash,
+        # converting this to a flat hash of integer totals.
+        #
+        # @param result [Hash] Results from a single comparison.
+        # @return [Hash{Symbol=>Integer}]
+        def collate_one(result)
+          {
+            count: 1,
+            old_time: result[:timing][:old],
+            new_time_build: result[:timing][:new_build],
+            new_time_walk: result[:timing][:new_walk],
+            old_calls: result[:walk_calls][:old][:all],
+            old_skipped: result[:walk_calls][:old][:skipped],
+            new_calls: result[:walk_calls][:new][:dfs_calls],
+            new_skipped: result[:walk_calls][:new][:skipped].values.sum,
+            new_edges_walked: result[:walk_calls][:new][:edges_traversed],
+            new_edges_skipped: result[:walk_calls][:new][:edges_skipped].values.sum,
+          }
+        end
+
+        def zero_stats
+          {
+            count: 0,
+            old_time: 0,
+            new_time_build: 0,
+            new_time_walk: 0,
+            old_calls: 0,
+            old_skipped: 0,
+            new_calls: 0,
+            new_skipped: 0,
+            new_edges_walked: 0,
+            new_edges_skipped: 0,
+          }
+        end
 
         # Build the diff hashes for a single set pair.
         def diff_sets(old_ids, new_ids)
