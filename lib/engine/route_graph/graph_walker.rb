@@ -72,15 +72,22 @@ module Engine
         # route from a home node. These are used for rules enforcement, to check
         # that the current route being built is legal.
         #
-        # These stacks have a push/mark on entry and pop/unmark on exit
-        # lifecycle. They describe the route from the home node to the current
-        # exploration tip. As the DFS algorithm backtracks the removal of items
-        # from these stacks means that alternate routes being explored from the
-        # same home node are revisit the same vertices/edges that were explored
-        # earlier.
-        @stack_exits = Hash.new(0)
-        @stack_edges = Set[]
-        @stack_nodes = Set[]
+        # These stacks have a push on entry/pop on exit lifecycle. They describe
+        # the route from the home node to the current exploration tip. As the
+        # DFS algorithm backtracks the removal of items from these stacks means
+        # that alternate routes being explored from the same home node can
+        # revisit the same vertices/edges that were explored earlier.
+        #
+        # Note: These stacks are maintained as sets. This works because they are
+        # all being used to prevent an edge/node/hex exit from being revisited,
+        # so there is never an attempt to add an item that is already in the set
+        # -- this is prevented by the guard that checks the stack. If there is a
+        # change that removes or relaxes the guard then the stack should be
+        # changed to be a counter (`Hash.new(0)`) so that it can track multiple
+        # visits to the same item.
+        @stack_exits = Set[] # Hex exits crossed.
+        @stack_edges = Set[] # Edges walked.
+        @stack_nodes = Set[] # Node vertices visited.
       end
 
       # @!group Query Methods
@@ -342,6 +349,13 @@ module Engine
       # is in on the crossed exits call stack. Crossing one of these exits
       # would involve revisiting a converging junction where one of the other
       # edges has already been walked in the current route being explored.
+      #
+      # A subclass that overrides this method to allow backtracking at
+      # converging junctions will also need to override {#mark_crossed_exit} and
+      # {#unmark_crossed_exit}. If this method allows revisiting HexExits then
+      # the base implementation of {#mark_crossed_exit} will attempt to add a
+      # duplicate to a set, leading to later corruption of the stack.
+      #
       # @param edge [RouteGraph::Edge]
       # @param from_vertex [RouteGraph::Vertex]
       # @return [Boolean] True if traversal is blocked by an active exit.
@@ -350,7 +364,7 @@ module Engine
           next false unless vertex.is_a?(HexEdgeVertex)
 
           hex_exit = vertex.exit_for_edge(edge)
-          hex_exit && @stack_exits[hex_exit].positive?
+          hex_exit && @stack_exits.include?(hex_exit)
         end
       end
 
@@ -358,14 +372,21 @@ module Engine
       # @param vertex [Vertex] The vertex being crossed.
       # @param edge [Edge] The edge that the walk has come from.
       def mark_crossed_exit(vertex, edge)
-        @stack_exits[vertex.exit_for_edge(edge)] += 1 if vertex.is_a?(HexEdgeVertex)
+        return unless vertex.is_a?(HexEdgeVertex)
+
+        hex_exit = vertex.exit_for_edge(edge)
+        return unless hex_exit
+
+        @stack_exits << hex_exit
       end
 
       # Unmarks a HexExit at a vertex after their subtree returns.
       # @param vertex [Vertex]
       # @param edge [Edge]
       def unmark_crossed_exit(vertex, edge)
-        @stack_exits[vertex.exit_for_edge(edge)] -= 1 if vertex.is_a?(HexEdgeVertex)
+        return unless vertex.is_a?(HexEdgeVertex)
+
+        @stack_exits.delete(vertex.exit_for_edge(edge))
       end
 
       # Checks whether the GraphWalker is synchronised with the current graph
