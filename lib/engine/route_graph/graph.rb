@@ -150,7 +150,11 @@ module Engine
         start = time if @stats
 
         game.hexes.map(&:tile).each do |tile|
-          tile.nodes.each do |node|
+          # Cities on the base map on :white tiles are not added to their tile's
+          # node arrays. These need to be picked up for unconnected home cities
+          # and teleport destinations.
+          nodes = tile.nodes | tile.cities
+          nodes.each do |node|
             @vertices[node]
           end
 
