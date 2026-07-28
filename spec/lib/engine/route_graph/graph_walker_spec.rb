@@ -313,13 +313,11 @@ module Engine
         end
 
         it 'can reach all hexes' do
-          pending 'loop detection'
           all_hexes = hexes.map { |_color, hexdefs| hexdefs.keys }.flatten
           expect(walker.reachable_hexes.map(&:coordinates)).to match_array(all_hexes)
         end
 
         it 'can reach both paths on B4' do
-          pending 'loop detection'
           b4_path_edges = walker.connected_paths
                                 .select { |path| path.hex.coordinates == 'B4' }
                                 .map { |path| path.edges.map(&:num).sort }
@@ -360,13 +358,11 @@ module Engine
         end
 
         it 'can reach all hexes' do
-          pending 'loop detection'
           all_hexes = hexes.map { |_color, hexdefs| hexdefs.keys }.flatten
           expect(walker.reachable_hexes.map(&:coordinates)).to match_array(all_hexes)
         end
 
         it 'can reach both paths on B4' do
-          pending 'loop detection'
           b4_path_edges = walker.connected_paths
                                 .select { |path| path.hex.coordinates == 'B4' }
                                 .map { |path| path.edges.map(&:num).sort }

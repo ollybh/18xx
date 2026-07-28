@@ -29,12 +29,14 @@ module Engine
     # - {#home_nodes} determines the starting locations for walking the graph.
     # - Then, once the walk is underway:
     #   - {#can_walk?} controls whether the walker may proceed along an edge.
-    #     This checks for terminal paths and incompatible gauges.
+    #     This blocks edges that are terminal, of an incompatible gauge, or
+    #     already on the current route (track reuse via a non-immediate loop).
     #   - {#can_enter?} controls whether a walker may explore a new vertex that
-    #     is found. This checks for node re-entry.
+    #     is found. This blocks re-entry to a city/town already on the current
+    #     route, and is also the hook for hex-entry restrictions.
     #   - {#can_traverse?} controls whether switching from an incoming edge to
-    #     an outgoing edge is allowed at a vertex. This checks for track reuse
-    #     at converging junctions.
+    #     an outgoing edge is allowed at a vertex. This prevents immediate
+    #     reversal and checks for blocked cities.
     class GraphWalker
       # Creates a new GraphWalker object.
       # @param graph [RouteGraph::Graph] The route graph to be walked.
@@ -55,10 +57,30 @@ module Engine
                      edges_skipped: Hash.new(0),
                    }
                  end
+
+        # These two variables accumulate the final results of the graph walk:
+        # the vertices and edges that are reachable by @entity.
         @found_vertices = Set[]
         @walked_edges = Set[]
+
+        # This accumulates the `[vertex, edge]` tuples that have been explored
+        # from a home node when {#walk!} is called. This prevents the walker
+        # getting stuck in infinite loops.
         @explored = Set[]
-        @crossed_exits = Hash.new(0)
+
+        # These variables are stacks of items encountered whilst building a
+        # route from a home node. These are used for rules enforcement, to check
+        # that the current route being built is legal.
+        #
+        # These stacks have a push/mark on entry and pop/unmark on exit
+        # lifecycle. They describe the route from the home node to the current
+        # exploration tip. As the DFS algorithm backtracks the removal of items
+        # from these stacks means that alternate routes being explored from the
+        # same home node are revisit the same vertices/edges that were explored
+        # earlier.
+        @stack_exits = Hash.new(0)
+        @stack_edges = Set[]
+        @stack_nodes = Set[]
       end
 
       # @!group Query Methods
@@ -171,6 +193,7 @@ module Engine
       # vertex at the other end.
       #
       # Reasons why walking along the edge is blocked are:
+      #  - The edge has already been walked on the current route.
       #  - The edge goes to a converging junction where one of the other paths
       #    has been walked.
       #  - The track path is terminal.
@@ -182,6 +205,7 @@ module Engine
       # @return [Boolean] True if the edge may be walked, false if not.
       def can_walk?(edge, from_vertex = nil)
         return false if edge.terminal?
+        return false if @stack_edges.include?(edge)
         return false if crossing_blocked?(edge, from_vertex)
 
         true
@@ -210,10 +234,10 @@ module Engine
       end
 
       # Tests whether the walker when walking an edge is allowed to reach the
-      # vertex at the other end of the edge. This will usually return true. This
-      # could return false if entry to a hex is blocked (eg 1861/1867/1807
-      # blocking reentry to a hex where a route has already passed through a
-      # city on the same hex).
+      # vertex at the other end of the edge.
+      #
+      # This will return false if the vertex is a town or city that has already
+      # been visited on the current route.
       #
       # This is not the same test as {#can_traverse?}: that method is
       # called once the vertex has been reached and we are checking which edges
@@ -225,8 +249,10 @@ module Engine
       # @param from_edge [RouteGraph::Edge] The edge being walked.
       # @return [Boolean] True if vertex can be explored, false if entry is
       #   blocked.
-      def can_enter?(_vertex, _from_edge)
-        true
+      def can_enter?(vertex, _from_edge)
+        return true unless vertex.is_a?(NodeVertex)
+
+        !@stack_nodes.include?(vertex)
       end
 
       # @!endgroup
@@ -248,7 +274,6 @@ module Engine
         start = time if @stats
 
         home_nodes.each do |node|
-          @crossed_exits.clear
           # TODO: Resetting @explored here ensures that the graph is fully
           # walked from each home node, not stopping when previously walked
           # vertices/edges are encountered. Some games will not need this and
@@ -256,7 +281,15 @@ module Engine
           # would only apply if there are no concerns like backtracking or track
           # gauges.
           @explored.clear
+          # Reset all the stacks. They *should* all be empty after the previous
+          # walk finished, but there's almost no cost in doing this.
+          @stack_exits.clear
+          @stack_edges.clear
+          @stack_nodes.clear
+
           vertex = @graph.vertices.find { |v| v.id == node.id }
+          raise GameError, "Unable to find vertex for home node #{node.id}" unless vertex
+
           dfs(vertex)
         end
 
@@ -284,6 +317,7 @@ module Engine
         @explored << [vertex, incoming]
         @found_vertices << vertex
         mark_crossed_exit(vertex, incoming)
+        @stack_nodes << vertex if vertex.is_a?(NodeVertex)
         vertex.edges.each do |edge|
           unless can_traverse?(vertex, incoming, edge)
             @stats[:edges_skipped][:transit] += 1 if @stats
@@ -295,9 +329,12 @@ module Engine
           end
 
           @walked_edges << edge
+          @stack_edges << edge
           @stats[:edges_traversed] += 1 if @stats
           dfs(edge.other_end(vertex), edge)
+          @stack_edges.delete(edge)
         end
+        @stack_nodes.delete(vertex) if vertex.is_a?(NodeVertex)
         unmark_crossed_exit(vertex, incoming)
       end
 
@@ -313,7 +350,7 @@ module Engine
           next false unless vertex.is_a?(HexEdgeVertex)
 
           hex_exit = vertex.exit_for_edge(edge)
-          hex_exit && @crossed_exits[hex_exit].positive?
+          hex_exit && @stack_exits[hex_exit].positive?
         end
       end
 
@@ -321,14 +358,14 @@ module Engine
       # @param vertex [Vertex] The vertex being crossed.
       # @param edge [Edge] The edge that the walk has come from.
       def mark_crossed_exit(vertex, edge)
-        @crossed_exits[vertex.exit_for_edge(edge)] += 1 if vertex.is_a?(HexEdgeVertex)
+        @stack_exits[vertex.exit_for_edge(edge)] += 1 if vertex.is_a?(HexEdgeVertex)
       end
 
       # Unmarks a HexExit at a vertex after their subtree returns.
       # @param vertex [Vertex]
       # @param edge [Edge]
       def unmark_crossed_exit(vertex, edge)
-        @crossed_exits[vertex.exit_for_edge(edge)] -= 1 if vertex.is_a?(HexEdgeVertex)
+        @stack_exits[vertex.exit_for_edge(edge)] -= 1 if vertex.is_a?(HexEdgeVertex)
       end
 
       # Checks whether the GraphWalker is synchronised with the current graph
