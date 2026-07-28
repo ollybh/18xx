@@ -60,13 +60,13 @@ module Engine
 
         # These two variables accumulate the final results of the graph walk:
         # the vertices and edges that are reachable by @entity.
-        @found_vertices = Set[]
-        @walked_edges = Set[]
+        @connected_vertices = Set[]
+        @connected_edges = Set[]
 
         # This accumulates the `[vertex, edge]` tuples that have been explored
         # from a home node when {#walk!} is called. This prevents the walker
         # getting stuck in infinite loops.
-        @explored = Set[]
+        @walk_explored = Set[]
 
         # These variables are stacks of items encountered whilst building a
         # route from a home node. These are used for rules enforcement, to check
@@ -102,7 +102,7 @@ module Engine
         walk! if stale?
 
         # TODO: implement this.
-        @connected_hexes ||= {}
+        @cache_hexes_edges ||= {}
       end
 
       # Nodes (cities, towns, offboards) that can be reached. Used to determine
@@ -114,7 +114,7 @@ module Engine
       def connected_nodes
         walk! if stale?
 
-        @connected_nodes ||= @found_vertices.grep(NodeVertex).to_set.freeze
+        @cache_nodes ||= @connected_vertices.grep(NodeVertex).to_set.freeze
       end
 
       # Connected track paths for track-laying validation.
@@ -127,7 +127,7 @@ module Engine
       def connected_paths
         walk! if stale?
 
-        @connected_paths ||= @walked_edges.flat_map(&:paths).to_set.freeze
+        @cache_paths ||= @connected_edges.flat_map(&:paths).to_set.freeze
       end
 
       # Hexes which can be reached using existing track. These are the hexes
@@ -147,7 +147,7 @@ module Engine
       def reachable_hexes
         walk! if stale?
 
-        @reachable_hexes ||= @walked_edges.flat_map(&:paths).to_set(&:hex).freeze
+        @cache_hexes ||= @connected_edges.flat_map(&:paths).to_set(&:hex).freeze
       end
 
       # @!endgroup
@@ -265,22 +265,22 @@ module Engine
       # the walker is stale.
       # @return [void]
       def walk!
-        @found_vertices.clear
-        @walked_edges.clear
-        @connected_hexes = nil
-        @connected_nodes = nil
-        @connected_paths = nil
-        @reachable_hexes = nil
+        @connected_vertices.clear
+        @connected_edges.clear
+        @cache_paths = nil
+        @cache_nodes = nil
+        @cache_hexes = nil
+        @cache_hexes_edges = nil
         start = time if @stats
 
         home_nodes.each do |node|
-          # TODO: Resetting @explored here ensures that the graph is fully
+          # TODO: Resetting @walk_explored here ensures that the graph is fully
           # walked from each home node, not stopping when previously walked
           # vertices/edges are encountered. Some games will not need this and
-          # could get better performance by keeping the @explored state. This
-          # would only apply if there are no concerns like backtracking or track
-          # gauges.
-          @explored.clear
+          # could get better performance by keeping the @walk_explored state.
+          # This would only apply if there are no concerns like backtracking or
+          # track gauges.
+          @walk_explored.clear
           # Reset all the stacks. They *should* all be empty after the previous
           # walk finished, but there's almost no cost in doing this.
           @stack_exits.clear
@@ -309,13 +309,13 @@ module Engine
           @stats[:skipped][:blocked] += 1 if @stats
           return
         end
-        if @explored.include?([vertex, incoming])
+        if @walk_explored.include?([vertex, incoming])
           @stats[:skipped][:explored] += 1 if @stats
           return
         end
 
-        @explored << [vertex, incoming]
-        @found_vertices << vertex
+        @walk_explored << [vertex, incoming]
+        @connected_vertices << vertex
         mark_crossed_exit(vertex, incoming)
         @stack_nodes << vertex if vertex.is_a?(NodeVertex)
         vertex.edges.each do |edge|
@@ -328,7 +328,7 @@ module Engine
             next
           end
 
-          @walked_edges << edge
+          @connected_edges << edge
           @stack_edges << edge
           @stats[:edges_traversed] += 1 if @stats
           dfs(edge.other_end(vertex), edge)
