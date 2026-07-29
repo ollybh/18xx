@@ -100,16 +100,30 @@ module Engine
       #  - Teleport destination hexes.
       #  - Hexes which could be reached by extending incomplete tracks.
       #
-      # @return [Hash{Engine::Hex => Array<integer>}]
+      # @return [Hash{Engine::Hex => Set<integer>}]
       #   Returns a hash mapping each {Engine::Hex} that is reachable from the
-      #   corporation's tokens to an array of integer edge numbers (0 to 5)
+      #   corporation's tokens to set of integer edge numbers (0 to 5)
       #   indicating which sides of the hex are connected.
-      #   Returns an empty hash if there are no reachable hexes.
       def connected_hexes
         walk! if stale?
+        return @cache_hexes_edges if @cache_hexes_edges
 
-        # TODO: implement this.
-        @cache_hexes_edges ||= {}
+        hexes_edges = Hash.new { |h, k| h[k] = Set[] }
+
+        @connected_edges.flat_map(&:paths).each do |path|
+          hex = path.hex
+          path.exits.each do |edge|
+            hexes_edges[hex] << edge
+            next unless (neighbor = hex.neighbors[edge])
+
+            hexes_edges[neighbor] << hex.invert(edge)
+          end
+        end
+
+        extra_hexes = home_nodes.map(&:hex) # TODO: add teleport destinations
+        extra_hexes.each { |hex| hexes_edges[hex] |= hex.neighbors.keys }
+
+        @cache_hexes_edges = hexes_edges.freeze
       end
 
       # Nodes (cities, towns, offboards) that can be reached. Used to determine
@@ -194,6 +208,12 @@ module Engine
         # TODO: This is just returning cities where @entity has a token. This
         # will be need to be enhanced as this isn't always going to be right.
         @entity.placed_tokens.map(&:city)
+
+        # Code from Engine::Graph.compute to be included:
+        # if @home_as_token && corporation.coordinates
+        #   hexes.merge!(home_hexes(corporation))
+        #   nodes.merge!(home_hex_nodes(corporation))
+        # end
       end
 
       # Tests whether the walker is allowed to walk along an edge to reach the
@@ -297,6 +317,8 @@ module Engine
 
           dfs(vertex)
         end
+
+        # TODO: add extra nodes to @connected_vertices for :token and :teleport abilities.
 
         @graph_version = @graph.version
         @stats[:time] = time - start if @stats
