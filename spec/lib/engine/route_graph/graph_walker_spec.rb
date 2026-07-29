@@ -32,7 +32,7 @@ module Engine
         h.lay(t)
       end
 
-      describe '#can_traverse?' do
+      describe '#departure_blocked?' do
         let(:hexes) { { white: { %w[A1 A3 A5 B2 B6] => '' } } }
         let(:tiles) { { '5' => 1, '9' => 1, '6' => 1 } }
 
@@ -45,15 +45,15 @@ module Engine
         it 'blocks immediate reversal through the same edge' do
           edge = graph.edges.first
           vertex = edge.left
-          expect(walker.send(:can_traverse?, vertex, edge, edge)).to be false
+          expect(walker.send(:departure_blocked?, vertex, edge, edge)).to be true
         end
 
-        it 'allows traversal to a different edge from a city' do
+        it 'allows departure to a different edge from a city' do
           # The city has 2 edges; pick one as incoming and the other as outgoing.
           city_vertex = graph.vertices.find { |v| v.is_a?(NodeVertex) }
           edges = city_vertex.edges.to_a
           expect(edges.size).to be >= 2
-          expect(walker.send(:can_traverse?, city_vertex, edges[0], edges[1])).to be true
+          expect(walker.send(:departure_blocked?, city_vertex, edges[0], edges[1])).to be false
         end
       end
 

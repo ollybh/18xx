@@ -28,13 +28,13 @@ module Engine
     # few key methods to produce the desired behaviour:
     # - {#home_nodes} determines the starting locations for walking the graph.
     # - Then, once the walk is underway:
-    #   - {#can_walk?} controls whether the walker may proceed along an edge.
+    #   - {#edge_blocked?} controls whether the walker may proceed along an edge.
     #     This blocks edges that are terminal, of an incompatible gauge, or
     #     already on the current route (track reuse via a non-immediate loop).
-    #   - {#can_enter?} controls whether a walker may explore a new vertex that
+    #   - {#arrival_blocked?} controls whether a walker may explore a new vertex that
     #     is found. This blocks re-entry to a city/town already on the current
     #     route, and is also the hook for hex-entry restrictions.
-    #   - {#can_traverse?} controls whether switching from an incoming edge to
+    #   - {#departure_blocked?} controls whether switching from an incoming edge to
     #     an outgoing edge is allowed at a vertex. This prevents immediate
     #     reversal and checks for blocked cities.
     class GraphWalker
@@ -209,13 +209,13 @@ module Engine
       # @param edge [RouteGraph::Edge] The edge being walked.
       # @param from_vertex [RouteGraph::Vertex] The end that the walk is
       #   starting from.
-      # @return [Boolean] True if the edge may be walked, false if not.
-      def can_walk?(edge, from_vertex = nil)
-        return false if edge.terminal?
-        return false if @stack_edges.include?(edge)
-        return false if crossing_blocked?(edge, from_vertex)
+      # @return [Boolean] True if the edge is blocked, false if it may be walked.
+      def edge_blocked?(edge, from_vertex = nil)
+        return true if edge.terminal?
+        return true if @stack_edges.include?(edge)
+        return true if backtracking_blocked?(edge, from_vertex)
 
-        true
+        false
       end
 
       # Tests whether the walker, entering `vertex` on edge `from_edge` is
@@ -226,40 +226,38 @@ module Engine
       # @param from_edge [RouteGraph::Edge, nil] The last edge to have been
       #   walked. nil if the walk is starting at this vertex.
       # @param to_edge [RouteGraph::Edge] The edge to be tested.
-      # @return [Boolean] True if the walker may leave this vertex along
-      #   `to_edge`.
-      def can_traverse?(vertex, from_edge, to_edge)
-        return true unless from_edge # Starting walk here.
-        return false if from_edge == to_edge # Can't reverse.
+      # @return [Boolean] True if departure along `to_edge` is blocked.
+      def departure_blocked?(vertex, from_edge, to_edge)
+        return false unless from_edge # Starting walk here.
+        return true if from_edge == to_edge # Can't reverse.
 
         case vertex
         when JunctionVertex, HexEdgeVertex
-          true
+          false
         when NodeVertex
-          !vertex.node.blocks?(@entity)
+          vertex.node.blocks?(@entity)
         end
       end
 
       # Tests whether the walker when walking an edge is allowed to reach the
       # vertex at the other end of the edge.
       #
-      # This will return false if the vertex is a town or city that has already
+      # This will return true if the vertex is a town or city that has already
       # been visited on the current route.
       #
-      # This is not the same test as {#can_traverse?}: that method is
+      # This is not the same test as {#departure_blocked?}: that method is
       # called once the vertex has been reached and we are checking which edges
       # the walk can continue along. This method is called before vertex is
-      # added to the set of explored vertices, if it returns false the vertex
+      # added to the set of explored vertices, if it returns true the vertex
       # will not be added.
       #
       # @param vertex [RouteGraph::Vertex] The vertex the walk is about to reach.
       # @param from_edge [RouteGraph::Edge] The edge being walked.
-      # @return [Boolean] True if vertex can be explored, false if entry is
-      #   blocked.
-      def can_enter?(vertex, _from_edge)
-        return true unless vertex.is_a?(NodeVertex)
+      # @return [Boolean] True if entry is blocked, false if it may be explored.
+      def arrival_blocked?(vertex, _from_edge)
+        return false unless vertex.is_a?(NodeVertex)
 
-        !@stack_nodes.include?(vertex)
+        @stack_nodes.include?(vertex)
       end
 
       # @!endgroup
@@ -312,8 +310,8 @@ module Engine
       # @return [void]
       def dfs(vertex, incoming = nil)
         @stats[:dfs_calls] += 1 if @stats
-        unless can_enter?(vertex, incoming)
-          @stats[:skipped][:blocked] += 1 if @stats
+        if arrival_blocked?(vertex, incoming)
+          @stats[:skipped][:arrival] += 1 if @stats
           return
         end
         if @walk_explored.include?([vertex, incoming])
@@ -326,12 +324,12 @@ module Engine
         mark_crossed_exit(vertex, incoming)
         @stack_nodes << vertex if vertex.is_a?(NodeVertex)
         vertex.edges.each do |edge|
-          unless can_traverse?(vertex, incoming, edge)
-            @stats[:edges_skipped][:transit] += 1 if @stats
+          if departure_blocked?(vertex, incoming, edge)
+            @stats[:edges_skipped][:departure] += 1 if @stats
             next
           end
-          unless can_walk?(edge, vertex)
-            @stats[:edges_skipped][:walk] += 1 if @stats
+          if edge_blocked?(edge, vertex)
+            @stats[:edges_skipped][:edge] += 1 if @stats
             next
           end
 
@@ -359,7 +357,7 @@ module Engine
       # @param edge [RouteGraph::Edge]
       # @param from_vertex [RouteGraph::Vertex]
       # @return [Boolean] True if traversal is blocked by an active exit.
-      def crossing_blocked?(edge, from_vertex)
+      def backtracking_blocked?(edge, from_vertex)
         [from_vertex, edge.other_end(from_vertex)].any? do |vertex|
           next false unless vertex.is_a?(HexEdgeVertex)
 
