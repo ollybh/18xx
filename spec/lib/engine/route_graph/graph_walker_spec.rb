@@ -9,6 +9,11 @@ module Engine
       # `hexes` and `tiles` need to be defined at the group or test level.
       let(:game)       { Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles) }
       let(:alpha)      { game.corporation_by_id('α') }
+      # `graph` and `walker` are deliberately lazy: they must not be
+      # materialized until all tile-laying and token-placement for the current
+      # test is complete. Tests that lay tiles or place tokens inside their `it`
+      # body rely on `walker` being first referenced *after* that setup. Do not
+      # reference `graph`/`walker` in a `before` block.
       let(:graph)      { Engine::RouteGraph::Graph.new(game) }
       subject(:walker) { Engine::RouteGraph::GraphWalker.new(graph, alpha) }
 
