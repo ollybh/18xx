@@ -63,7 +63,7 @@ unless ENV['RACK_ENV'] == 'production'
     end
 
     def self.print_diffs(r)
-      %i[connected_nodes connected_paths reachable_hexes].each do |key|
+      %i[connected_nodes connected_paths reachable_hexes connected_hexes].each do |key|
         d = r[key]
         next if d[:extra].empty? && d[:missing].empty?
 
@@ -75,7 +75,7 @@ unless ENV['RACK_ENV'] == 'production'
     end
 
     def self.print_detail_diffs(r, indent: '')
-      %i[connected_nodes connected_paths reachable_hexes].each do |key|
+      %i[connected_nodes connected_paths reachable_hexes connected_hexes].each do |key|
         d = r[key]
         next if d[:extra].empty? && d[:missing].empty?
 

@@ -24,6 +24,7 @@ module Engine
         #   - :connected_nodes [Hash] :extra and :missing as ID arrays
         #   - :connected_paths [Hash] :extra and :missing as ID arrays
         #   - :reachable_hexes [Hash] :extra and :missing as ID arrays
+        #   - :connected_hexes [Hash] :extra and :missing as ID arrays
         #   - :timing [Hash] :old, :new_build, :new_walk in microseconds
         #   - :walk_calls [Hash] :old, :new counts of method calls
         #   - :error [String, nil] error message if old-graph compute failed
@@ -36,12 +37,14 @@ module Engine
           old_nodes = {}
           old_paths = {}
           old_hexes = {}
+          old_connected = {}
           old_start = clock
           begin
             old_graph = Engine::Graph.new(game)
             old_nodes = old_graph.connected_nodes(entity)
             old_paths = old_graph.connected_paths(entity)
             old_hexes = old_graph.reachable_hexes(entity)
+            old_connected = old_graph.connected_hexes(entity)
             call_stats[:old] = old_graph.walk_calls(entity)
           rescue StandardError => e
             comparison[:error] = e.message
@@ -59,6 +62,7 @@ module Engine
           new_nodes = walker.connected_nodes
           new_paths = walker.connected_paths
           new_hexes = walker.reachable_hexes
+          new_connected = walker.connected_hexes
           timing_stats[:new_walk] = clock - walk_start
           call_stats[:new] = walker.statistics
 
@@ -73,14 +77,26 @@ module Engine
           hex_ids_old = old_hexes.keys.to_set(&:id)
           hex_ids_new = new_hexes.to_set(&:id)
 
+          # connected_hexes is {Hex => Array<Integer>}. Flatten to a set of
+          # "hex_id:sorted,edges" strings so that both new-hex differences and
+          # same-hex edge-set differences surface as +extra / -missing entries.
+          ch_old = old_connected.to_set do |hex, edges|
+            "#{hex.id}:#{edges.sort.join(',')}"
+          end
+          ch_new = new_connected.to_set do |hex, edges|
+            "#{hex.id}:#{edges.sort.join(',')}"
+          end
+
           nodes_match = node_ids_old == node_ids_new
           paths_match = path_ids_old == path_ids_new
           hexes_match = hex_ids_old == hex_ids_new
+          connected_hexes_match = ch_old == ch_new
 
           comparison[:connected_nodes] = diff_sets(node_ids_old, node_ids_new)
           comparison[:connected_paths] = diff_sets(path_ids_old, path_ids_new)
           comparison[:reachable_hexes] = diff_sets(hex_ids_old, hex_ids_new)
-          comparison[:match] = nodes_match && paths_match && hexes_match
+          comparison[:connected_hexes] = diff_sets(ch_old, ch_new)
+          comparison[:match] = nodes_match && paths_match && hexes_match && connected_hexes_match
 
           comparison
         end
