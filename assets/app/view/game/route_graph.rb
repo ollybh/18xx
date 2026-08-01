@@ -37,6 +37,7 @@ module View
           props = { on: { click: -> { walk_graph(corp) } } }
           h(:button, props, corp.id)
         end
+        buttons << h(:button, { on: { click: -> { clear_graph } } }, 'Clear')
 
         h('div#graph_buttons', buttons)
       end
@@ -50,6 +51,15 @@ module View
 
         c = Engine::RouteGraph::Comparator.compare(@game, corp)
         c.each { |k, v| log("#{k}: #{v}") }
+
+        ids = @game.route_graph.d3_highlight(walker)
+        Native(`highlightConnected`).call(ids[:nodes].to_n, ids[:links].to_n)
+      end
+
+      # Remove the current highlight without re-walking. Toggles the
+      # +.highlight+ class off every node and link.
+      def clear_graph
+        Native(`highlightConnected`).call([].to_n, [].to_n)
       end
 
       def log(text)

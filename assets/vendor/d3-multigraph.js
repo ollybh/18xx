@@ -196,3 +196,27 @@ function showD3Graph(data) {
 
   document.getElementById("d3_graph").replaceWith(svg.node());
 }
+
+// Toggle in-place highlight on the rendered route graph without restarting the
+// force simulation. nodeIds / linkIds are arrays of "nodeN" / "linkN" ID
+// strings (as produced by Engine::RouteGraph::Graph#to_d3).
+// Pass empty arrays to clear.
+//
+// Highlighted elements are raised to the top of their parent group so their
+// drop-shadow glow is not clipped by sibling elements drawn on top.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function highlightConnected(nodeIds, linkIds) {
+  const connectedNodes = new Set(nodeIds);
+  const connectedLinks = new Set(linkIds);
+  const svg = d3.select("svg#d3_graph");
+  highlightElements(svg.select("g.nodes").selectAll("g"),    connectedNodes);
+  highlightElements(svg.select("g.links").selectAll("path"), connectedLinks);
+}
+
+// Adds the 'highlight' class to each element in `elements` whose `id` is in
+// `set`. Removes it from any element not in `set`.
+// Raises the elements that are in `set`.
+function highlightElements(elements, set) {
+  elements.classed("highlight", (d) => set.has(d.id));
+  elements.filter((d) => set.has(d.id)).raise();
+}

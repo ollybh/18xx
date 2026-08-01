@@ -63,6 +63,7 @@ module Engine
       # Converts the graph state into a hash that can be consumed by the
       # Javascript {D3}[https://d3js.org] library to produce a visualisation
       # of the graph.
+      #
       # @api private
       # @note Intended for the route graph visualisation only.
       # @todo See if this can be method can be removed, and the visualisation
@@ -107,6 +108,29 @@ module Engine
           end,
           width: width,
           height: height,
+        }
+      end
+
+      # Given a {GraphWalker} that has been walked, return the d3 node and link
+      # IDs (as produced by {#to_d3}) for the vertices and edges it reached.
+      #
+      # The walker's {GraphWalker#connected_vertices} and
+      # {GraphWalker#connected_edges} hold the same +Vertex+ / +Edge+ objects
+      # stored in this graph, so the IDs can be derived by index without any
+      # cross-system translation table.
+      #
+      # @api private
+      # @note Intended for the route graph visualisation only.
+      # @param walker [GraphWalker] A walker that has already been walked
+      #   (e.g. by calling one of its query methods).
+      # @return [Hash{Symbol=>Array<String>}]
+      #   - +:nodes+ :: +"nodeN"+ ID strings for reached vertices.
+      #   - +:links+ :: +"linkN"+ ID strings for walked edges.
+      def d3_highlight(walker)
+        vertices = @vertices.values
+        {
+          nodes: walker.connected_vertices.map { |v| "node#{vertices.index(v)}" },
+          links: walker.connected_edges.map { |e| "link#{@edges.index(e)}" },
         }
       end
 

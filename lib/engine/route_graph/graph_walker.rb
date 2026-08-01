@@ -38,6 +38,9 @@ module Engine
     #     an outgoing edge is allowed at a vertex. This prevents immediate
     #     reversal and checks for blocked cities.
     class GraphWalker
+      # @api private
+      attr_reader :connected_edges, :connected_vertices
+
       # Creates a new GraphWalker object.
       # @param graph [RouteGraph::Graph] The route graph to be walked.
       # @param entity [Operator] The entity whose routes will be calculated by

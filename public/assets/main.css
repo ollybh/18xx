@@ -531,3 +531,17 @@ svg#d3_graph g.nodes polygon.hex {
 svg#d3_graph g.nodes polygon.hex + text {
   font-size: 8px;
 }
+
+svg#d3_graph g.nodes > g.highlight,
+svg#d3_graph g.links path.highlight {
+  filter: drop-shadow(0 0 3px #ff7f0e);
+}
+
+svg#d3_graph g.nodes > g.highlight :is(circle, polygon, rect) {
+  stroke: #ff7f0e;
+}
+
+svg#d3_graph g.links path.highlight {
+  stroke: #ff7f0e;
+  stroke-width: 4;
+}
