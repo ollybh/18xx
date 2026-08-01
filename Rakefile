@@ -293,6 +293,149 @@ unless ENV['RACK_ENV'] == 'production'
 
       benchmark_graphs(game, entity)
     end
+
+    # Build a single CSV row from one comparison result. Columns match the
+    # headers emitted by the :stats_csv task.
+    def self.row_from_result(game_id, title, action_id, entity_id, r)
+      t = r[:timing] || {}
+      wc = r[:walk_calls] || {}
+      old = wc[:old] || {}
+      new = wc[:new] || {}
+      new_skipped = new[:skipped] || {}
+      new_edges_skipped = new[:edges_skipped] || {}
+      cn = r[:connected_nodes] || { extra: [], missing: [] }
+      cp = r[:connected_paths] || { extra: [], missing: [] }
+      rh = r[:reachable_hexes] || { extra: [], missing: [] }
+      ch = r[:connected_hexes] || { extra: [], missing: [] }
+      [
+        game_id,
+        title,
+        action_id,
+        entity_id,
+        r[:match] ? 1 : 0,
+        r[:error] || '',
+        t[:old],
+        t[:new_build],
+        t[:new_walk],
+        old[:all],
+        old[:skipped],
+        new[:dfs_calls],
+        new_skipped[:arrival],
+        new_skipped[:explored],
+        new[:edges_traversed],
+        new_edges_skipped[:departure],
+        new_edges_skipped[:edge],
+        cn[:extra].size,
+        cn[:missing].size,
+        cp[:extra].size,
+        cp[:missing].size,
+        rh[:extra].size,
+        rh[:missing].size,
+        ch[:extra].size,
+        ch[:missing].size,
+      ]
+    end
+
+    desc 'Collate graph comparison timings to CSV for statistical analysis ' \
+         '(usage: rake route_graph:stats_csv[titles,limit,interval,output]; ' \
+         'titles joined with +, e.g. 1846+1889, or "all")'
+    task :stats_csv, %i[titles limit interval output] do |_t, args|
+      require_comparator
+      require_db
+      require 'csv'
+
+      titles_arg = args[:titles] || 'all'
+      limit = (args[:limit] || 20).to_i
+      interval = (args[:interval] || 10).to_i
+      output = args[:output] || 'route_graph_stats.csv'
+
+      if titles_arg == 'all'
+        titles = Engine::GAME_TITLES.sort
+      else
+        requested = titles_arg.split('+').map(&:strip).reject(&:empty?)
+        titles = requested & Engine::GAME_TITLES
+        invalid = requested - titles
+        warn "Ignoring unknown titles: #{invalid.join(', ')}" unless invalid.empty?
+      end
+      raise 'No valid titles selected' if titles.empty?
+
+      warn "Collating stats for titles: #{titles.join(', ')}"
+      warn "#{limit} games per title, comparison every #{interval} actions"
+      warn "Output: #{output}"
+
+      # Finished games only (complete, deterministic action history). Oldest
+      # first for reproducibility — newer games may exercise features still
+      # being ported and skew early benchmarks.
+      games =
+        titles.flat_map do |title|
+          ::Game.where(status: 'finished', title: title)
+                .order(:id)
+                .limit(limit)
+                .map { |g| [g.id, g.title] }
+        end
+
+      warn "Selected #{games.size} games"
+
+      headers = %w[
+        game_id title action_id entity_id match error
+        old_time_us new_build_us new_walk_us
+        old_calls_all old_calls_skipped
+        new_dfs_calls new_skipped_arrival new_skipped_explored
+        new_edges_traversed new_edges_skipped_departure new_edges_skipped_edge
+        nodes_extra nodes_missing paths_extra paths_missing
+        hexes_extra hexes_missing ch_extra ch_missing
+      ]
+
+      total_rows = 0
+      total_errors = 0
+
+      # Single empty-field row for a game that failed before any comparison
+      # could be recorded. Keeps column counts aligned with `headers`.
+      empty_game_row = lambda do |game_id, title, message|
+        # 25 fields total: game_id, title, '', '', 0, message + 19 empties
+        # (timings 3, old calls 2, new dfs/skipped 3, new edges 3,
+        #  nodes/paths diffs 4, hexes/ch diffs 4).
+        [game_id, title, '', '', 0, message,
+         '', '', '',                  # timings
+         '', '',                      # old calls
+         '', '', '',                  # new dfs + skipped
+         '', '', '',                  # new edges
+         '', '', '', '',              # nodes/paths diffs
+         '', '', '', '']              # hexes/ch diffs
+      end
+
+      CSV.open(output, 'w') do |csv|
+        csv << headers
+
+        games.each_with_index do |(game_id, game_title), idx|
+          warn "[#{idx + 1}/#{games.size}] game #{game_id} (#{game_title})"
+          game_rows = 0
+          begin
+            results = Engine::RouteGraph::Comparator.compare_replay(
+              game_id, interval: interval
+            )
+            results.each do |action_id, entities|
+              entities.each do |entity_id, r|
+                csv << row_from_result(game_id, game_title, action_id, entity_id, r)
+                game_rows += 1
+              end
+            end
+          rescue StandardError => e
+            total_errors += 1
+            csv << empty_game_row.call(game_id, game_title, e.message)
+            warn "  ERROR: #{e.message}"
+          end
+          total_rows += game_rows
+          csv.flush
+          warn "  wrote #{game_rows} rows" if game_rows.positive?
+        end
+      end
+
+      warn '========================================'
+      warn "Done. #{total_rows} rows written, #{total_errors} game error" \
+           "#{'s' unless total_errors == 1}."
+      warn "CSV: #{output}"
+    end
   end
 end
 
