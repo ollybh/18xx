@@ -150,6 +150,36 @@ unless ENV['RACK_ENV'] == 'production'
         "edges walked: #{new[:edges_traversed]} (skipped #{new[:edges_skipped].values.sum})"
     end
 
+    def self.benchmark_graphs(game, entity)
+      old_graph = Engine::Graph.new(game)
+      new_graph = Engine::RouteGraph::Graph.new(game, statistics: false)
+      walker = Engine::RouteGraph::GraphWalker.new(new_graph, entity, statistics: false)
+
+      benchmark(label: 'old:   ') do
+        old_graph.clear
+        old_graph.compute(entity)
+      end
+      call_stats = old_graph.walk_calls(entity)
+      old_skip_pct = call_stats[:all].zero? ? 0 : 100 * call_stats[:skipped] / call_stats[:all]
+
+      benchmark(label: 'build: ') { new_graph.rebuild! }
+      benchmark(label: 'walk:  ') do
+        new_graph.invalidate!
+        walker.reachable_hexes
+      end
+
+      # carry out one run with statisics to show the walk call counts
+      walker = Engine::RouteGraph::GraphWalker.new(new_graph, entity, statistics: true)
+      walker.reachable_hexes
+      stats = walker.statistics
+      new_skip_pct = stats[:dfs_calls].zero? ? 0 : 100 * stats[:skipped].values.sum / stats[:dfs_calls]
+
+      puts "walk calls: #{call_stats[:all]} (skipped #{old_skip_pct}%)"
+      puts "dfs calls: #{stats[:dfs_calls]} (skipped #{new_skip_pct}%), " \
+           "edges walked: #{stats[:edges_traversed]} " \
+           "(skipped #{stats[:edges_skipped].values.sum})"
+    end
+
     # Runs a block of code repeatedly and outputs timing statistics.
     def self.benchmark(timed_loops: 20, warmup_loops: 3, label: '', &block)
       timings = []
@@ -250,27 +280,22 @@ unless ENV['RACK_ENV'] == 'production'
       entity = game.corporation_by_id(args[:entity])
       raise "No corporation #{args[:entity]} in game #{args[:id]}" unless entity
 
-      graph = Engine::RouteGraph::Graph.new(game, statistics: false)
-      walker = Engine::RouteGraph::GraphWalker.new(graph, entity, statistics: false)
+      benchmark_graphs(game, entity)
+    end
 
-      benchmark(label: 'build: ') { graph.rebuild! }
-      benchmark(label: 'walk:  ') do
-        graph.invalidate!
-        walker.reachable_hexes
-      end
+    desc 'Benchmark graph calculation times from a fixture JSON file (usage: rake route_graph:benchmark_file[path, entity])'
+    task :benchmark_file, [:path, :entity] do |_t, args|
+      require_comparator
 
-      # carry out one run with statisics to show the walk call counts
-      walker = Engine::RouteGraph::GraphWalker.new(graph, entity, statistics: true)
-      walker.reachable_hexes
-      stats = walker.statistics
-      skip_pct = stats[:dfs_calls].zero? ? 0 : 100 * stats[:skipped].values.sum / stats[:dfs_calls]
-      puts "dfs calls: #{stats[:dfs_calls]} (skipped #{skip_pct}%), " \
-           "edges walked: #{stats[:edges_traversed]} " \
-           "(skipped #{stats[:edges_skipped].values.sum})"
+      game = Engine::Game.load(args[:path])
+      entity = game.corporation_by_id(args[:entity])
+      raise "No corporation #{args[:entity]} in game #{args[:path]}" unless entity
+
+      benchmark_graphs(game, entity)
     end
   end
-
 end
+
 migrate = lambda do |env, version, truncate = false|
   ENV['RACK_ENV'] = env
   require_relative 'db'
