@@ -226,7 +226,6 @@ module Engine
       #  - The edge has already been walked on the current route.
       #  - The edge goes to a converging junction where one of the other paths
       #    has been walked.
-      #  - The track path is terminal.
       #  - The track gauge is incompatible.
       #
       # @param edge [RouteGraph::Edge] The edge being walked.
@@ -234,7 +233,6 @@ module Engine
       #   starting from.
       # @return [Boolean] True if the edge is blocked, false if it may be walked.
       def edge_blocked?(edge, from_vertex = nil)
-        return true if edge.terminal?
         return true if @stack_edges.include?(edge)
         return true if backtracking_blocked?(edge, from_vertex)
 
@@ -244,6 +242,13 @@ module Engine
       # Tests whether the walker, entering `vertex` on edge `from_edge` is
       # allowed to leave on edge `to_edge`.
       #
+      # Reason why leaving the vertex is blocked are:
+      #  - This is a tokened out city.
+      #  - This is an off-board area.
+      #  - We have arrived on a path which has a `terminal` attribute.
+      #  - We are attempting to reverse and leave on the same edge as we
+      #    arrived on.
+      #
       # @param vertex [RouteGraph::Vertex] The vertex the walker is currently
       #   exploring.
       # @param from_edge [RouteGraph::Edge, nil] The last edge to have been
@@ -252,6 +257,7 @@ module Engine
       # @return [Boolean] True if departure along `to_edge` is blocked.
       def departure_blocked?(vertex, from_edge, to_edge)
         return false unless from_edge # Starting walk here.
+        return true if from_edge.terminal?
         return true if from_edge == to_edge # Can't reverse.
 
         case vertex
