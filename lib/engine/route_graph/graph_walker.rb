@@ -100,7 +100,6 @@ module Engine
       # These hexes are a superset of those returned by {#reachable_hexes}. That
       # method finds the hexes that contain reachable track, this also includes:
       #  - Home hexes with no track.
-      #  - Teleport destination hexes.
       #  - Hexes which could be reached by extending incomplete tracks.
       #
       # @return [Hash{Engine::Hex => Set<integer>}]
@@ -123,7 +122,7 @@ module Engine
           end
         end
 
-        extra_hexes = home_nodes.map(&:hex) # TODO: add teleport destinations
+        extra_hexes = home_nodes.map(&:hex)
         extra_hexes.each { |hex| hexes_edges[hex] |= hex.neighbors.keys }
 
         @cache_hexes_edges = hexes_edges.freeze
@@ -131,7 +130,7 @@ module Engine
 
       # Nodes (cities, towns, offboards) that can be reached. Used to determine
       # where a corporation can place a token, merge, or establish connectivity
-      # for other purposes (eg teleport abilities).
+      # for other purposes.
       #
       # @return [Set<Engine::Part::Node>]
       #   Returns a set containing each {Engine::Part::Node} that is reachable.
@@ -159,7 +158,7 @@ module Engine
       #
       # This is a subset of the hexes included in {#connected_hexes}. That
       # method also includes hexes that could be connected by laying new track,
-      # unconnected home hexes and teleport token destinations.
+      # and unconnected home hexes.
       #
       # Used in the {Engine::Step::Track#available_hex} checks in the route step
       # (via {Engine::Step::Tracker#hex_neighbors}) and in game-specific logic
@@ -203,21 +202,6 @@ module Engine
       # These are the key methods that determine the behaviour of the walker.
       # Implementing a subclass is likely to involve overriding one or more of
       # these methods.
-
-      # Starting locations for walking the graph.
-      # @return [Array<Engine::Part::Node>] The {Engine::Part::Node}s that are
-      #   starting points for walking the graph.
-      def home_nodes
-        # TODO: This is just returning cities where @entity has a token. This
-        # will be need to be enhanced as this isn't always going to be right.
-        @entity.placed_tokens.map(&:city)
-
-        # Code from Engine::Graph.compute to be included:
-        # if @home_as_token && corporation.coordinates
-        #   hexes.merge!(home_hexes(corporation))
-        #   nodes.merge!(home_hex_nodes(corporation))
-        # end
-      end
 
       # Tests whether the walker is allowed to walk along an edge to reach the
       # vertex at the other end.
@@ -281,12 +265,47 @@ module Engine
       # will not be added.
       #
       # @param vertex [RouteGraph::Vertex] The vertex the walk is about to reach.
-      # @param from_edge [RouteGraph::Edge] The edge being walked.
+      # @param _from_edge [RouteGraph::Edge] The edge being walked.
       # @return [Boolean] True if entry is blocked, false if it may be explored.
       def arrival_blocked?(vertex, _from_edge)
         return false unless vertex.is_a?(NodeVertex)
 
         @stack_nodes.include?(vertex)
+      end
+
+      # @!endgroup
+
+      # @!group Home Location Methods
+
+      # Starting locations for walking the graph.
+      # @return [Array<Engine::Part::Node>] The {Engine::Part::Node}s that are
+      #   starting points for walking the graph.
+      def home_nodes
+        @entity.placed_tokens.map(&:city)
+      end
+
+      # Cities which are the target of teleport token abilities.
+      #
+      # @note The entity's abilities are checked when the graph is walked for
+      #   teleport token abilities. If they are permitted by
+      #   `ability_right_time?` at the point when the graph is walked then these
+      #   cities will be added to {#connected_vertices}. These will be cached
+      #   until the graph state is {RouteGraph::Graph#invalidate! invalidated},
+      #   there is no check in {#connected_nodes} that the ability can be used
+      #   when the query is made.
+      #
+      # @return [Array<Engine::Part::Node>]
+      def teleport_nodes
+        hex_ids = Set[]
+
+        @graph.game.abilities(@entity, :token) do |ability, owner|
+          next unless owner == @entity
+          next unless ability.teleport_price
+
+          hex_ids |= ability.hexes
+        end
+
+        hex_ids.flat_map { |hex_id| @graph.game.hex_by_id(hex_id).tile.cities }
       end
 
       # @!endgroup
@@ -327,7 +346,13 @@ module Engine
           dfs(vertex)
         end
 
-        # TODO: add extra nodes to @connected_vertices for :token and :teleport abilities.
+        # Add extra nodes to @connected_vertices for :token abilities.
+        teleport_nodes.each do |node|
+          vertex = @graph.vertices.find { |v| v.id == node.id }
+          raise GameError, "Unable to find vertex for home node #{node.id}" unless vertex
+
+          @connected_vertices << vertex
+        end
 
         @graph_version = @graph.version
         @stats[:time] = time - start if @stats

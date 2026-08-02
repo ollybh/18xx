@@ -26,6 +26,10 @@ module Engine
       # @return [integer]
       attr_reader :version
 
+      # The game whose state is modelled by this graph.
+      # @return [Engine::Game]
+      attr_reader :game
+
       # Builds a new route graph from the current game state.
       # @param game [Engine::Game] The game to build the map for.
       # @param statistics [Boolean] If true then graph instrumentation
