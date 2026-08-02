@@ -65,14 +65,20 @@ module Engine
         #   to self.class::HEXES.
         # @param tiles [Hash, nil] custom tile definitions in the same format as
         #   TILES constant. When nil, defaults to self.class::TILES.
+        # @param corporations [Array<Hash>, nil] Custom corporation definitions
+        #   in the same format as the CORPORATIONS constant, forwarded to the
+        #   {Engine::Corporation Corporation} constructor (each hash may include
+        #   an `abilities:` key for token/teleport abilities). When nil, defaults
+        #   to self.class::CORPORATIONS.
         # @param kwargs [Hash] Additional keyword arguments forwarded to
         #   Game::Base.
         # @note Future enhancements could involve adding more parameters that
         #   allow custom companies, corporations and trains to be passed as
         #   arguments to the constructor.
-        def initialize(players, hexes: nil, tiles: nil, **kwargs)
+        def initialize(players, hexes: nil, tiles: nil, corporations: nil, **kwargs)
           @custom_hexes = hexes
           @custom_tiles = tiles
+          @custom_corporations = corporations
           super(players, **kwargs)
         end
 
@@ -87,6 +93,14 @@ module Engine
         #   fallback.
         def game_tiles
           @custom_tiles || self.class::TILES
+        end
+
+        # @return [Array<Hash>] Corporation definitions used to build the
+        #   {Engine::Corporation Corporation} objects. Returns the custom
+        #   corporations passed to the constructor, or self.class::CORPORATIONS
+        #   as a fallback.
+        def game_corporations
+          @custom_corporations || self.class::CORPORATIONS
         end
 
         CORPORATIONS = [

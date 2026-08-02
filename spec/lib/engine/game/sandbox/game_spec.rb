@@ -244,6 +244,110 @@ module Engine
             expect(game.hex_by_id('A1')).to be_a(Hex)
           end
         end
+
+        # ---------- custom corporations ----------
+        context 'with custom corporations' do
+          let(:custom_corporations) do
+            [
+              {
+                name: 'Alpha Corporation',
+                sym: 'α',
+                logo: 'sandbox/alpha',
+                tokens: Array.new(10, 0),
+                color: 'red',
+                shares: [100],
+                float_percent: 100,
+                max_ownership_percent: 100,
+              },
+            ]
+          end
+
+          subject(:game) { described_class.new(%w[Alice Bob], corporations: custom_corporations) }
+
+          it 'uses the custom corporations instead of the default CORPORATIONS' do
+            expect(game.corporations.size).to eq(1)
+            corp = game.corporation_by_id('α')
+            expect(corp).to be_a(Corporation)
+            expect(corp.full_name).to eq('Alpha Corporation')
+          end
+
+          it 'does not include corporations from the default CORPORATIONS' do
+            expect(game.corporation_by_id('β')).to be_nil
+            expect(game.corporation_by_id('γ')).to be_nil
+          end
+
+          it 'still loads default hexes' do
+            expect(game.hex_by_id('A1')).to be_a(Hex)
+          end
+
+          it 'still loads default tiles' do
+            expect(game.tile_by_id('5-0')).to be_a(Tile)
+          end
+        end
+
+        context 'with custom corporations carrying abilities' do
+          let(:custom_corporations) do
+            [
+              {
+                name: 'Teleporter',
+                sym: 'α',
+                logo: 'sandbox/alpha',
+                tokens: Array.new(10, 0),
+                color: 'red',
+                shares: [100],
+                float_percent: 100,
+                max_ownership_percent: 100,
+                abilities: [
+                  { type: 'token', hexes: ['A1'], price: 0, teleport_price: 0 },
+                  { type: 'reservation', hex: 'A1', remove: 'IV' },
+                ],
+              },
+            ]
+          end
+
+          subject(:game) { described_class.new(%w[Alice Bob], corporations: custom_corporations) }
+
+          it 'attaches the abilities to the corporation' do
+            corp = game.corporation_by_id('α')
+            expect(corp.all_abilities.map(&:type)).to include(:token, :reservation)
+          end
+
+          it 'assigns the corporation as the ability owner' do
+            corp = game.corporation_by_id('α')
+            token_ability = corp.all_abilities.find { |a| a.type == :token }
+            expect(token_ability.owner).to eq(corp)
+          end
+
+          it 'makes the abilities discoverable via game.abilities(corp, :token)' do
+            corp = game.corporation_by_id('α')
+            found = nil
+            game.abilities(corp, :token) { |ability, owner| found = [ability, owner] }
+            expect(found).not_to be_nil
+            expect(found[0].type).to eq(:token)
+            expect(found[1]).to eq(corp)
+          end
+        end
+
+        context 'with an empty corporations array' do
+          subject(:game) { described_class.new(%w[Alice], corporations: []) }
+
+          it 'produces no corporations' do
+            expect(game.corporations).to be_empty
+          end
+
+          it 'still loads default hexes' do
+            expect(game.hex_by_id('A1')).to be_a(Hex)
+          end
+        end
+
+        context 'with explicit nil corporations (defaults to constant)' do
+          subject(:game) { described_class.new(%w[Alice], corporations: nil) }
+
+          it 'falls back to the CORPORATIONS constant' do
+            expect(game.corporations.size).to eq(3)
+            expect(game.corporation_by_id('α')).to be_a(Corporation)
+          end
+        end
       end
     end
   end
