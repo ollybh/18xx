@@ -29,8 +29,8 @@ module Engine
     # - {#home_nodes} determines the starting locations for walking the graph.
     # - Then, once the walk is underway:
     #   - {#edge_blocked?} controls whether the walker may proceed along an edge.
-    #     This blocks edges that are terminal, of an incompatible gauge, or
-    #     already on the current route (track reuse via a non-immediate loop).
+    #     This blocks edges that are already on the current route or of an
+    #     incompatible gauge.
     #   - {#arrival_blocked?} controls whether a walker may explore a new vertex that
     #     is found. This blocks re-entry to a city/town already on the current
     #     route, and is also the hook for hex-entry restrictions.
@@ -211,6 +211,10 @@ module Engine
       #  - The edge goes to a converging junction where one of the other paths
       #    has been walked.
       #  - The track gauge is incompatible.
+      #  - We have reached terminal track that leads to a junction. These are
+      #    used to represent impassable hexes, such as mountains or sea.
+      #    Multiple tracks can lead up to these hexes, but the routes do not
+      #    pass through them.
       #
       # @param edge [RouteGraph::Edge] The edge being walked.
       # @param from_vertex [RouteGraph::Vertex] The end that the walk is
@@ -220,7 +224,11 @@ module Engine
         return true if @stack_edges.include?(edge)
         return true if backtracking_blocked?(edge, from_vertex)
 
-        false
+        if edge.terminal?
+          edge.other_end(from_vertex).is_a? JunctionVertex
+        else
+          false
+        end
       end
 
       # Tests whether the walker, entering `vertex` on edge `from_edge` is
@@ -229,7 +237,8 @@ module Engine
       # Reason why leaving the vertex is blocked are:
       #  - This is a tokened out city.
       #  - This is an off-board area.
-      #  - We have arrived on a path which has a `terminal` attribute.
+      #  - We are trying to pass through a city using a path which has a
+      #    `terminal` attribute.
       #  - We are attempting to reverse and leave on the same edge as we
       #    arrived on.
       #
@@ -241,14 +250,16 @@ module Engine
       # @return [Boolean] True if departure along `to_edge` is blocked.
       def departure_blocked?(vertex, from_edge, to_edge)
         return false unless from_edge # Starting walk here.
-        return true if from_edge.terminal?
         return true if from_edge == to_edge # Can't reverse.
 
         case vertex
         when JunctionVertex, HexEdgeVertex
           false
         when NodeVertex
-          vertex.node.blocks?(@entity)
+          # The terminal check is for offboard-type cities where there are
+          # terminal paths (track spikes) pointing to the city. Routes cannot
+          # pass through these cities.
+          vertex.node.blocks?(@entity) || from_edge.terminal? || to_edge.terminal?
         end
       end
 
