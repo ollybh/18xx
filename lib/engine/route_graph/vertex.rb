@@ -187,12 +187,25 @@ module Engine
 
       # A hex edge vertex can be optimised out of the route graph by merging
       # its edges if there are two paths meeting at this hex edge, they are on
-      # different hexes, and they both have the same track gauge.
+      # different hexes, they both have the same track gauge and neither are
+      # terminal.
       # @return [boolean] True if this vertex's edges can be merged.
       def edges_mergeable?
+        # If an path is terminal then it also must be on its own edge, not
+        # merged with any other paths. This is to block walks at the hex
+        # boundaries.
+        return false if edges.any?(&:terminal?)
+        # If an path forms part of a converging junction then it must be on its
+        # own edge, not merged with any other paths. This is so a walk
+        # approaching a converging junction can be blocked at the hex boundary.
         return false if edges.any? { |e| edge_converges?(e) || far_end_converges?(e) }
-        return false unless paths_cross_edge?
+        # There must be exactly two edges to merge. The previous check for
+        # converging junctions ensures that these edges are approaching from
+        # different hexes.
+        return false unless edges.size == 2
 
+        # Don't merge edges/paths with different gauges. Again, this is to stop
+        # walks at hex boundaries if there is an incompatible gauge change.
         edges.map(&:gauge).uniq.one?
       end
 
