@@ -1,55 +1,18 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
-
 module Engine
   module RouteGraph
-    # Shared scaffold and example groups for GraphWalker specs.
+    # Tests to make sure converging junctions are handled correctly, with
+    # backtracking blocked.
     #
-    # A future GraphWalker subclass spec can reuse the converging-junction
-    # and highly-connected-map matrices by including the context and the
-    # example groups, overriding `subject(:walker)` as needed, e.g.:
-    #
+    # A GraphWalker subclass spec can use these tests by including the context
+    # and the example groups, overriding `subject(:walker)` as needed:
     #   describe MyWalker, :graph do
     #     include_context 'GraphWalker spec setup'
     #     subject(:walker) { MyWalker.new(graph, alpha) }
     #     it_behaves_like 'a GraphWalker on converging junctions'
-    #     it_behaves_like 'a GraphWalker on highly connected maps'
     #   end
-    #
-    shared_context 'GraphWalker spec setup' do
-      let(:players)    { %w[Alice] }
-      # `hexes` and `tiles` need to be defined at the group or test level.
-      let(:corporations) { nil } # defaults to the Sandbox CORPORATIONS constant
-      let(:game)       { Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles, corporations: corporations) }
-      let(:alpha)      { game.corporation_by_id('α') }
-      # `graph` and `walker` are deliberately lazy: they must not be
-      # materialized until all tile-laying and token-placement for the current
-      # test is complete. Tests that lay tiles or place tokens inside their `it`
-      # body rely on `walker` being first referenced *after* that setup. Do not
-      # reference `graph`/`walker` in a `before` block.
-      let(:graph)      { Engine::RouteGraph::Graph.new(game) }
-      subject(:walker) { Engine::RouteGraph::GraphWalker.new(graph, alpha) }
-
-      def hex(id)
-        game.hex_by_id(id)
-      end
-
-      def tile(name, index = 0)
-        game.tile_by_id("#{name}-#{index}")
-      end
-
-      def lay_tile(hex_id, tile_name, rotation = 0, index = 0)
-        h = hex(hex_id)
-        t = tile(tile_name, index)
-        t.rotate!(rotation)
-        h.lay(t)
-      end
-    end
-
     shared_examples 'a GraphWalker on converging junctions' do
-      include_context 'GraphWalker spec setup'
-
       describe 'direct backtracking' do
         # This is a four-tile map, designed to check that routes do not directly
         # backtrack at converging junctions.
@@ -349,126 +312,6 @@ module Engine
                                 .map { |path| path.edges.map(&:num).sort }
           expect(b6_path_edges).to match_array([[1, 5], [2, 5]])
         end
-      end
-    end
-
-    shared_examples 'a GraphWalker on highly connected maps' do
-      include_context 'GraphWalker spec setup'
-
-      describe 'on a highly connected map with Lawson tiles' do
-        let(:hexes) { { white: { %w[A3 A5 A7 B2 B4 B6 B8 C1 C3 C5 C7 C9 D2 D4 D6 D8 E3 E5 E7] => '' } } }
-        let(:tiles) { { '12' => 2, '60' => 7, '80' => 4, '545' => 6 } }
-
-        before :each do
-          lay_tile('C1', '12',  5, 0)
-          lay_tile('C9', '12',  2, 1)
-          lay_tile('A3', '80',  4, 0)
-          lay_tile('A7', '80',  3, 1)
-          lay_tile('E3', '80',  0, 2)
-          lay_tile('E7', '80',  1, 3)
-          %w[B4 B6 C3 C5 C7 D4 D6].each_with_index { |hex, i| lay_tile(hex, '60',  0, i) }
-          %w[E5 D8 B8 A5 B2 D2].each_with_index    { |hex, i| lay_tile(hex, '545', i, i) }
-          hex('C1').tile.cities.first.place_token(alpha, alpha.next_token, free: true)
-        end
-
-        it 'can reach all hexes' do
-          all_hexes = hexes.map { |_color, hexdefs| hexdefs.keys }.flatten
-          expect(walker.reachable_hexes.map(&:coordinates)).to match_array(all_hexes)
-        end
-
-        it 'can reach all paths' do
-          all_paths = game.hexes.map(&:tile).flat_map(&:paths)
-          expect(walker.connected_paths).to match_array(all_paths)
-        end
-      end
-
-      describe 'on a highly connected map with converging junctions' do
-        let(:hexes) { { white: { %w[A3 A5 A7 B2 B4 B6 B8 C1 C3 C5 C7 C9 D2 D4 D6 D8 E3 E5 E7] => '' } } }
-        let(:tiles) { { '12' => 2, '39' => 4, '43' => 6, '114' => 7 } }
-
-        before :each do
-          lay_tile('C1', '12',  5, 0)
-          lay_tile('C9', '12',  2, 1)
-          lay_tile('A3', '39',  4, 0)
-          lay_tile('A7', '39',  3, 1)
-          lay_tile('E3', '39',  0, 2)
-          lay_tile('E7', '39',  1, 3)
-          %w[B4 B6 C3 C5 C7 D4 D6].each_with_index { |hex, i| lay_tile(hex, '114', 0, i) }
-          %w[E5 D8 B8 A5 B2 D2].each_with_index    { |hex, i| lay_tile(hex, '43',  i, i) }
-          hex('C1').tile.cities.first.place_token(alpha, alpha.next_token, free: true)
-        end
-
-        it 'can reach all hexes' do
-          all_hexes = hexes.map { |_color, hexdefs| hexdefs.keys }.flatten
-          expect(walker.reachable_hexes.map(&:coordinates)).to match_array(all_hexes)
-        end
-
-        it 'can reach all paths' do
-          all_paths = game.hexes.map(&:tile).flat_map(&:paths)
-          expect(walker.connected_paths).to match_array(all_paths)
-        end
-      end
-    end
-
-    shared_examples 'a GraphWalker with teleport token abilities' do
-      include_context 'GraphWalker spec setup'
-
-      # Hex A1 is Alpha's home; A5 is an isolated city with no track connecting
-      # it. Alpha gains a `:token` ability with a `teleport_price`, so its
-      # destination city is added to the walker's result set even though no walk
-      # can reach it. Mirrors the corp-direct `:token` teleports in 1846 /
-      # 18_LA / 18_MO, and matches Engine::Graph#compute, which reads the same
-      # `game.abilities(entity, :token)` gate (§2.6).
-      let(:hexes) do
-        {
-          white: {
-            %w[A1] => 'city=revenue:0;',
-            %w[A5] => 'city=revenue:0;',
-          },
-        }
-      end
-      let(:tiles) { {} }
-      let(:corporations) do
-        [
-          {
-            name: 'Alpha Corporation',
-            sym: 'α',
-            logo: 'sandbox/alpha',
-            tokens: Array.new(10, 0),
-            color: 'red',
-            shares: [100],
-            float_percent: 100,
-            max_ownership_percent: 100,
-            abilities: [
-              { type: 'token', hexes: %w[A5], price: 0, teleport_price: 0 },
-            ],
-          },
-        ]
-      end
-      let(:a1_city) { hex('A1').tile.cities.first }
-      let(:a5_city) { hex('A5').tile.cities.first }
-      let(:a5_hex) { hex('A5') }
-
-      before :each do
-        a1_city.place_token(alpha, alpha.tokens.first, free: true)
-      end
-
-      it 'lists the destination city in teleport_nodes' do
-        expect(walker.send(:teleport_nodes)).to contain_exactly(a5_city)
-      end
-
-      it 'includes the destination city in connected_nodes' do
-        expect(walker.connected_nodes.map(&:node)).to include(a5_city)
-      end
-
-      it 'does not add the destination hex to connected_hexes' do
-        # A :token teleport adds destination cities to `connected_nodes` only;
-        # the hex itself is not added to `connected_hexes`.
-        expect(walker.connected_hexes).not_to have_key(a5_hex)
-      end
-
-      it 'does not treat the destination as reachable by track' do
-        expect(walker.reachable_hexes).not_to include(a5_hex)
       end
     end
   end
