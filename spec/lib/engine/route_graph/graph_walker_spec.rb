@@ -59,6 +59,7 @@ module Engine
 
       it_behaves_like 'a GraphWalker on converging junctions'
       it_behaves_like 'a GraphWalker on highly connected maps'
+      it_behaves_like 'a GraphWalker with teleport token abilities'
     end
   end
 end
