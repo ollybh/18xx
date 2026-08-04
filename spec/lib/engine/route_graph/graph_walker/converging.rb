@@ -24,29 +24,39 @@ module Engine
         # route is now found to C2: A2→B3→B1→C2.
         let(:hexes) { { white: { %w[A2 B1 B3 C2] => '' } } }
         let(:tiles) { { '5' => 1, '7' => 1, '115' => 1, '624' => 1 } }
-        let(:a2_city) { hex('A2').tile.cities.first }
         let(:c2_city) { hex('C2').tile.cities.first }
         let(:found_hexes) { walker.reachable_hexes.map(&:coordinates) }
         let(:found_nodes) { walker.connected_nodes.map(&:node) }
 
-        before :each do
+        before do
           lay_tile('A2', '5', 4)
           lay_tile('B1', '624', 5)
           lay_tile('C2', '115', 2)
-          a2_city.place_token(alpha, alpha.next_token, free: true)
+          hex('A2').tile.cities.first.place_token(alpha, alpha.next_token, free: true)
         end
 
-        it 'cannot reach C2 from a token in A2' do
-          expect(found_hexes).to match_array(%w[A2 B1])
-          expect(found_nodes).to include(a2_city)
-          expect(found_nodes).not_to include(c2_city)
+        context 'with no track in B3' do
+          it 'cannot reach hex C2' do
+            expect(found_hexes).to match_array(%w[A2 B1])
+          end
+
+          it 'cannot reach city in C2' do
+            expect(found_nodes).not_to include(c2_city)
+          end
         end
 
-        it 'can reach C2 after linked through B3' do
-          lay_tile('B3', '7', 2)
-          expect(found_hexes).to match_array(%w[A2 B1 B3 C2])
-          expect(found_nodes).to include(a2_city)
-          expect(found_nodes).to include(c2_city)
+        context 'with track link in B3' do
+          before do
+            lay_tile('B3', '7', 2)
+          end
+
+          it 'can reach all hexes' do
+            expect(found_hexes).to match_array(%w[A2 B1 B3 C2])
+          end
+
+          it 'can reach city in C2' do
+            expect(found_nodes).to include(c2_city)
+          end
         end
       end
 
@@ -70,7 +80,7 @@ module Engine
         let(:a3_city) { hex('A3').tile.cities.first }
         let(:b4_city) { hex('B4').tile.cities.first }
 
-        before :each do
+        before do
           lay_tile('A1', '115', 5, 0)
           lay_tile('B2', '29', 0, 0)
           lay_tile('B4', '115', 3, 1)
@@ -120,7 +130,7 @@ module Engine
         let(:all_paths) { game.hexes.map(&:tile).flat_map(&:paths) }
         let(:connected_paths) { walker.connected_paths }
 
-        before :each do
+        before do
           lay_tile('A1', '115', 0)
           lay_tile('A3', '23', 0)
           lay_tile('A5', '5', 3)
@@ -129,11 +139,11 @@ module Engine
           hex('A1').tile.cities.first.place_token(alpha, alpha.tokens.first, free: true)
         end
 
-        it 'discovers only the north-south path on A3' do
+        it 'discovers only the north-south path on A3', :aggregate_failures do
           missing = all_paths - connected_paths.to_a
           expect(missing.size).to eq(1)
           expect(missing.first.hex.coordinates).to eq('A3')
-          expect(missing.first.ends.map(&:num)).to match_array([0, 4])
+          expect(missing.first.ends.map(&:num)).to contain_exactly(0, 4)
         end
 
         it 'can reach all paths from A5' do
@@ -171,7 +181,7 @@ module Engine
             .map { |path| path.edges.map(&:num).sort }
         end
 
-        before :each do
+        before do
           lay_tile('B1', '5',  0, 0)
           lay_tile('B3', '47', 0, 0)
           lay_tile('B5', '5',  3, 1)
@@ -183,26 +193,26 @@ module Engine
 
         it 'cannot reach the S→SW path on B3 from a token in B1' do
           b1_city.place_token(alpha, alpha.next_token, free: true)
-          expect(b3_paths_edges).to match_array([[0, 3], [1, 3], [1, 4]])
+          expect(b3_paths_edges).to contain_exactly([0, 3], [1, 3], [1, 4])
         end
 
         it 'cannot reach the N→NE path on B3 from a token in B5' do
           b5_city.place_token(alpha, alpha.next_token, free: true)
-          expect(b3_paths_edges).to match_array([[0, 3], [0, 4], [1, 4]])
+          expect(b3_paths_edges).to contain_exactly([0, 3], [0, 4], [1, 4])
         end
 
         it 'can reach all paths on B3 from a tokens in B1 and B5' do
           # Routes from B1 are walked first, routes from B5 second.
           b1_city.place_token(alpha, alpha.next_token, free: true)
           b5_city.place_token(alpha, alpha.next_token, free: true)
-          expect(b3_paths_edges).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
+          expect(b3_paths_edges).to contain_exactly([0, 3], [0, 4], [1, 3], [1, 4])
         end
 
         it 'can reach all paths on B3 from a tokens in B5 and B1' do
           # Routes from B5 are walked first, routes from B1 second.
           b5_city.place_token(alpha, alpha.next_token, free: true)
           b1_city.place_token(alpha, alpha.next_token, free: true)
-          expect(b3_paths_edges).to match_array([[0, 3], [0, 4], [1, 3], [1, 4]])
+          expect(b3_paths_edges).to contain_exactly([0, 3], [0, 4], [1, 3], [1, 4])
         end
       end
 
@@ -233,7 +243,7 @@ module Engine
         let(:hexes) { { white: { %w[A3 A5 A7 B2 B4 B6 B8 C1 C3 C5 C7 C9] => '' } } }
         let(:tiles) { { '5' => 5, '9' => 1, '15' => 2, '23' => 1, '24' => 1, '115' => 2 } }
 
-        before :each do
+        before do
           lay_tile('A3', '115', 5, 0)
           lay_tile('A5', '5',   4, 0)
           lay_tile('A7', '115', 4, 1)
@@ -258,14 +268,14 @@ module Engine
           b4_path_edges = walker.connected_paths
                                 .select { |path| path.hex.coordinates == 'B4' }
                                 .map { |path| path.edges.map(&:num).sort }
-          expect(b4_path_edges).to match_array([[1, 4], [2, 4]])
+          expect(b4_path_edges).to contain_exactly([1, 4], [2, 4])
         end
 
         it 'can reach both paths on B6' do
           b6_path_edges = walker.connected_paths
                                 .select { |path| path.hex.coordinates == 'B6' }
                                 .map { |path| path.edges.map(&:num).sort }
-          expect(b6_path_edges).to match_array([[1, 5], [2, 5]])
+          expect(b6_path_edges).to contain_exactly([1, 5], [2, 5])
         end
       end
 
@@ -278,7 +288,7 @@ module Engine
         let(:hexes) { { white: { %w[A3 A5 A7 B2 B4 B6 B8 C1 C3 C5 C7 C9] => '' } } }
         let(:tiles) { { '5' => 1, '7' => 4, '9' => 1, '23' => 1, '24' => 1, '115' => 2, '545' => 2 } }
 
-        before :each do
+        before do
           lay_tile('A3', '115',  5, 0)
           lay_tile('A5', '5',    4, 0)
           lay_tile('A7', '115',  4, 1)
@@ -303,14 +313,14 @@ module Engine
           b4_path_edges = walker.connected_paths
                                 .select { |path| path.hex.coordinates == 'B4' }
                                 .map { |path| path.edges.map(&:num).sort }
-          expect(b4_path_edges).to match_array([[1, 4], [2, 4]])
+          expect(b4_path_edges).to contain_exactly([1, 4], [2, 4])
         end
 
         it 'can reach both paths on B6' do
           b6_path_edges = walker.connected_paths
                                 .select { |path| path.hex.coordinates == 'B6' }
                                 .map { |path| path.edges.map(&:num).sort }
-          expect(b6_path_edges).to match_array([[1, 5], [2, 5]])
+          expect(b6_path_edges).to contain_exactly([1, 5], [2, 5])
         end
       end
     end

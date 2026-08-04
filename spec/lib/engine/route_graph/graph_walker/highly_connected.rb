@@ -12,13 +12,11 @@ module Engine
     #     it_behaves_like 'a GraphWalker on highly connected maps'
     #   end
     shared_examples 'a GraphWalker on highly connected maps' do
-      include_context 'GraphWalker spec setup'
-
       describe 'on a highly connected map with Lawson tiles' do
         let(:hexes) { { white: { %w[A3 A5 A7 B2 B4 B6 B8 C1 C3 C5 C7 C9 D2 D4 D6 D8 E3 E5 E7] => '' } } }
         let(:tiles) { { '12' => 2, '60' => 7, '80' => 4, '545' => 6 } }
 
-        before :each do
+        before do
           lay_tile('C1', '12',  5, 0)
           lay_tile('C9', '12',  2, 1)
           lay_tile('A3', '80',  4, 0)
@@ -45,7 +43,7 @@ module Engine
         let(:hexes) { { white: { %w[A3 A5 A7 B2 B4 B6 B8 C1 C3 C5 C7 C9 D2 D4 D6 D8 E3 E5 E7] => '' } } }
         let(:tiles) { { '12' => 2, '39' => 4, '43' => 6, '114' => 7 } }
 
-        before :each do
+        before do
           lay_tile('C1', '12',  5, 0)
           lay_tile('C9', '12',  2, 1)
           lay_tile('A3', '39',  4, 0)

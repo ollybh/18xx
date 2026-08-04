@@ -11,7 +11,7 @@ require_relative 'graph_walker/terminal'
 module Engine
   module RouteGraph
     describe GraphWalker, :graph do
-      include_context 'GraphWalker spec setup'
+      include_context 'with GraphWalker spec setup'
 
       it_behaves_like 'a GraphWalker'
       it_behaves_like 'a GraphWalker on converging junctions'

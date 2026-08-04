@@ -12,8 +12,6 @@ module Engine
     #     it_behaves_like 'a GraphWalker with teleport token abilities'
     #   end
     shared_examples 'a GraphWalker with teleport token abilities' do
-      include_context 'GraphWalker spec setup'
-
       # Hex A1 is Alpha's home; A5 is an isolated city with no track connecting
       # it. Alpha gains a `:token` ability with a `teleport_price`, so its
       # destination city is added to the walker's result set even though no walk
@@ -46,12 +44,11 @@ module Engine
           },
         ]
       end
-      let(:a1_city) { hex('A1').tile.cities.first }
       let(:a5_city) { hex('A5').tile.cities.first }
       let(:a5_hex) { hex('A5') }
 
-      before :each do
-        a1_city.place_token(alpha, alpha.tokens.first, free: true)
+      before do
+        hex('A1').tile.cities.first.place_token(alpha, alpha.tokens.first, free: true)
       end
 
       it 'lists the destination city in teleport_nodes' do

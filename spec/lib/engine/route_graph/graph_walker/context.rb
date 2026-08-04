@@ -3,7 +3,7 @@
 module Engine
   module RouteGraph
     # Shared scaffold for GraphWalker specs.
-    shared_context 'GraphWalker spec setup' do
+    shared_context 'with GraphWalker spec setup' do
       # `graph` and `walker` are deliberately lazy: they must not be
       # materialized until all tile-laying and token-placement for the current
       # test is complete. Tests that lay tiles or place tokens inside their `it`

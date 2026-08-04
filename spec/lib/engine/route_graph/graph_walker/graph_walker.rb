@@ -12,13 +12,11 @@ module Engine
     #     it_behaves_like 'a GraphWalker'
     #   end
     shared_examples 'a GraphWalker' do
-      include_context 'GraphWalker spec setup'
-
       describe '#departure_blocked?' do
         let(:hexes) { { white: { %w[A1 A3 A5 B2 B6] => '' } } }
         let(:tiles) { { '5' => 1, '9' => 1, '6' => 1 } }
 
-        before :each do
+        before do
           lay_tile('A1', '5', 0)
           a1_city = hex('A1').tile.cities.first
           a1_city.place_token(alpha, alpha.tokens.first, free: true)
@@ -30,7 +28,7 @@ module Engine
           expect(walker.send(:departure_blocked?, vertex, edge, edge)).to be true
         end
 
-        it 'allows departure to a different edge from a city' do
+        it 'allows departure to a different edge from a city', :aggregate_failures do
           # The city has 2 edges; pick one as incoming and the other as outgoing.
           city_vertex = graph.vertices.find { |v| v.is_a?(NodeVertex) }
           edges = city_vertex.edges.to_a
@@ -45,7 +43,7 @@ module Engine
         let(:a1_city) { hex('A1').tile.cities.first }
         let(:a5_city) { hex('A5').tile.cities.first }
 
-        before :each do
+        before do
           lay_tile('A1', '5', 0)
           lay_tile('A3', '9', 0)
           lay_tile('A5', '6', 3)
@@ -53,7 +51,7 @@ module Engine
         end
 
         it 'finds connected nodes when walking from a token' do
-          expect(walker.connected_nodes.map(&:node)).to match_array([a1_city, a5_city])
+          expect(walker.connected_nodes.map(&:node)).to contain_exactly(a1_city, a5_city)
         end
 
         it 'finds no connected nodes when no token is placed' do
