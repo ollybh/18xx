@@ -5,27 +5,20 @@ require 'spec_helper'
 module Engine
   module RouteGraph
     describe Graph, :graph do
-      # A minimal hex grid covering everything the tests need.
-      # A1, A3, A5 form a vertical chain: A1(south) ↔ A3(north),
-      # A3(south) ↔ A5(north).  B2 is A1's south-east neighbour,
-      # and B6 is A5's south-east neighbour.
-      test_hexes = {
-        white: {
-          %w[A1 A3 A5 B2 B6] => '',
-        },
-      }
-
-      # One copy of each tile type needed by these tests.
-      test_tiles = {
-        '5' => 1,
-        '9' => 1,
-        '6' => 1,
-        '8' => 1,
-        '3' => 1,
-      }
+      # Build a new RouteGraph from the current game state.
+      subject(:graph) { described_class.new(game) }
 
       let(:players) { %w[Alice Bob Charlie] }
-      let(:game) { Game::Sandbox::Game.new(players, hexes: test_hexes, tiles: test_tiles) }
+      let(:game) do
+        # A minimal hex grid covering everything the tests need.
+        # A1, A3, A5 form a vertical chain: A1(south) ↔ A3(north),
+        # A3(south) ↔ A5(north).  B2 is A1's south-east neighbour,
+        # and B6 is A5's south-east neighbour.
+        hexes = { white: { %w[A1 A3 A5 B2 B6] => '' } }
+        # One copy of each tile type needed by these tests.
+        tiles = { '5' => 1, '9' => 1, '6' => 1, '8' => 1, '3' => 1 }
+        Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
+      end
 
       # Helper: look up a hex by its coordinates string, e.g. 'A1', 'A3'.
       def hex(id)
@@ -45,11 +38,8 @@ module Engine
         h.lay(t)
       end
 
-      # Build a new RouteGraph from the current game state.
-      subject(:graph) { game.route_graph }
-
       context 'with a single city tile' do
-        before :each do
+        before do
           # Tile 5: yellow city at edges 0 (south) and 1 (south-west)
           lay_tile('A1', '5', 0)
         end
@@ -66,14 +56,10 @@ module Engine
           # One edge goes to hex edge A1_0_0|A3_3_0 (south towards A3),
           # the other to A1_1_0 (south-west, off the map).
           edge_ids = graph.edges.map { |e| [e.left.id, e.right.id] }
-          expect(edge_ids).to include(
-            include('5-0-0'),
-            include('A1_0_0|A3_3_0'),
-            include('A1_1_0')
-          )
+          expect(edge_ids).to include(include('5-0-0'), include('A1_0_0|A3_3_0'), include('A1_1_0'))
         end
 
-        it 'has a node vertex for the city' do
+        it 'has a node vertex for the city', :aggregate_failures do
           cities = graph.vertices.grep(NodeVertex)
           expect(cities.size).to eq(1)
           expect(cities.first.id).to eq('5-0-0')
@@ -81,7 +67,7 @@ module Engine
       end
 
       context 'with two cities connected by track' do
-        before :each do
+        before do
           # A1: tile 5 (city at edges 0,1)   path a:0,b:_0; a:1,b:_0
           # A3: tile 9 (straight north–south) path a:0,b:3
           # A5: tile 6 (city at edges 0,2)   path a:0,b:_0; a:2,b:_0
@@ -119,7 +105,7 @@ module Engine
           expect(cities.size).to eq(2)
         end
 
-        it 'connects both cities via a single merged edge' do
+        it 'connects both cities via a single merged edge', :aggregate_failures do
           city_edge = graph.edges.find do |e|
             e.left.is_a?(NodeVertex) && e.right.is_a?(NodeVertex)
           end
@@ -132,7 +118,7 @@ module Engine
         context 'when a token is placed' do
           let(:alpha) { game.corporations.find { |c| c.id == 'α' } }
 
-          before :each do
+          before do
             a1_city = hex('A1').tile.cities.first
             a1_city.place_token(alpha, alpha.tokens.first, free: true)
           end
@@ -146,7 +132,7 @@ module Engine
       end
 
       context 'with a branching track configuration' do
-        before :each do
+        before do
           # A1: tile 5 (city edges 0,1)
           # A3: tile 9 (straight a:0,b:3)
           #
@@ -171,7 +157,7 @@ module Engine
       end
 
       context 'with a town tile' do
-        before :each do
+        before do
           # Tile 3: yellow town at edges 0 (south) and 1 (south-west)
           lay_tile('A3', '3', 0)
         end
@@ -209,7 +195,7 @@ module Engine
             Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
           end
 
-          before :each do
+          before do
             lay_tile('A2', 'ML_STRAIGHT', 0, 0)
             lay_tile('A4', 'ML_STRAIGHT', 0, 1)
           end
@@ -250,7 +236,7 @@ module Engine
             Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
           end
 
-          before :each do
+          before do
             lay_tile('A2', '9', 0)
             lay_tile('A4', 'ML_STRAIGHT', 0, 0)
           end
@@ -296,7 +282,7 @@ module Engine
             Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
           end
 
-          before :each do
+          before do
             lay_tile('A2', 'ML_CITY', 0, 0)  # copy 0, rot 0 → edge 0 south
             lay_tile('A4', 'ML_CITY', 3, 1)  # copy 1, rot 3 → edge 0 north
           end
@@ -324,7 +310,7 @@ module Engine
           context 'when a token is placed' do
             let(:alpha) { game.corporations.find { |c| c.id == 'α' } }
 
-            before :each do
+            before do
               a2_city = hex('A2').tile.cities.first
               a2_city.place_token(alpha, alpha.tokens.first, free: true)
             end
@@ -332,8 +318,7 @@ module Engine
             it 'the walker finds both cities' do
               walker = game.graph_walker(alpha)
               city_ids = [hex('A2'), hex('A4')].map { |h| h.tile.cities.first.id }
-              expect(walker.connected_nodes.map(&:id))
-                .to contain_exactly(*city_ids)
+              expect(walker.connected_nodes.map(&:id)).to match_array(city_ids)
             end
           end
         end
@@ -355,7 +340,7 @@ module Engine
           Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
         end
 
-        before :each do
+        before do
           #     _   _   _   _
           #    / \ / \ / \ / \
           #   O   X   =   X   O
@@ -374,11 +359,19 @@ module Engine
           lay_tile('I2', '5', 1, 1)
         end
 
-        it 'join_edges! resolves to two city vertices connected by two edges' do
-          expect(graph.vertices.size).to eq(2)
+        it 'resolves to two edges' do
           expect(graph.edges.size).to eq(2)
-          expect(graph.vertices).to all(be_a(NodeVertex))
+        end
 
+        it 'resolves to two vertices' do
+          expect(graph.vertices.size).to eq(2)
+        end
+
+        it 'only has node vertices' do
+          expect(graph.vertices).to all(be_a(NodeVertex))
+        end
+
+        it 'both edges join both cities' do
           a2_city_id = hex('A2').tile.cities.first.id
           i2_city_id = hex('I2').tile.cities.first.id
           edge_pairs = graph.edges.map { |e| [e.left.id, e.right.id].sort }
@@ -405,13 +398,13 @@ module Engine
           Game::Sandbox::Game.new(players, hexes: hexes, tiles: tiles)
         end
 
-        before :each do
+        before do
           lay_tile('A1', '5', 5, 0)
           lay_tile('A3', '7', 3, 0)
           lay_tile('B2', '7', 1, 1)
         end
 
-        it 'reduces to 1 vertex (the city)' do
+        it 'reduces to 1 vertex (the city)', :aggregate_failures do
           expect(graph.vertices.size).to eq(1)
           expect(graph.vertices.first).to be_a(NodeVertex)
         end
@@ -420,7 +413,7 @@ module Engine
           expect(graph.edges.size).to eq(1)
         end
 
-        it 'the self-loop edge connects the city to itself' do
+        it 'the self-loop edge connects the city to itself', :aggregate_failures do
           edge = graph.edges.first
           city = graph.vertices.first
           expect(edge.left).to eq(city)
@@ -436,7 +429,7 @@ module Engine
       end
 
       describe 'the to_d3 visualisation format' do
-        before :each do
+        before do
           # Use hexes from different columns so that min_x != max_x.
           # A1 is col A (x=0), B2 is col B (x=1).
           # Also lay a tile on B2 so we have vertices on both columns.
@@ -444,7 +437,7 @@ module Engine
           lay_tile('B2', '8', 0)
         end
 
-        it 'returns a hash with nodes and links' do
+        it 'returns a hash with nodes and links', :aggregate_failures do
           d3 = graph.to_d3
           expect(d3).to have_key(:nodes)
           expect(d3).to have_key(:links)
