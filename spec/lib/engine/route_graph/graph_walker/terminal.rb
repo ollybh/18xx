@@ -65,7 +65,7 @@ module Engine
         end
 
         it 'can reach city in A7' do
-          expect(walker.connected_nodes.map(&:node)).to include(a7_city)
+          expect(walker.connected_nodes).to include(a7_city)
         end
 
         it 'cannot reach hex B6 through city in A7 or impassable hex B4' do
@@ -83,7 +83,7 @@ module Engine
         end
 
         it 'can reach city in A1' do
-          expect(walker.connected_nodes.map(&:node)).to include(a1_city)
+          expect(walker.connected_nodes).to include(a1_city)
         end
 
         it 'can reach hex B6' do

@@ -137,7 +137,7 @@ module Engine
       def connected_nodes
         walk! if stale?
 
-        @cache_nodes ||= @connected_vertices.grep(NodeVertex).to_set.freeze
+        @cache_nodes ||= @connected_vertices.grep(NodeVertex).to_set(&:node).freeze
       end
 
       # Connected track paths for track-laying validation.

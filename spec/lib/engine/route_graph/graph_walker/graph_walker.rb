@@ -51,7 +51,7 @@ module Engine
         end
 
         it 'finds connected nodes when walking from a token' do
-          expect(walker.connected_nodes.map(&:node)).to contain_exactly(a1_city, a5_city)
+          expect(walker.connected_nodes).to contain_exactly(a1_city, a5_city)
         end
 
         it 'finds no connected nodes when no token is placed' do

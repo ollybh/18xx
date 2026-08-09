@@ -56,7 +56,7 @@ module Engine
       end
 
       it 'includes the destination city in connected_nodes' do
-        expect(walker.connected_nodes.map(&:node)).to include(a5_city)
+        expect(walker.connected_nodes).to include(a5_city)
       end
 
       it 'does not add the destination hex to connected_hexes' do

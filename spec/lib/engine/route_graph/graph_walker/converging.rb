@@ -26,7 +26,7 @@ module Engine
         let(:tiles) { { '5' => 1, '7' => 1, '115' => 1, '624' => 1 } }
         let(:c2_city) { hex('C2').tile.cities.first }
         let(:found_hexes) { walker.reachable_hexes.map(&:coordinates) }
-        let(:found_nodes) { walker.connected_nodes.map(&:node) }
+        let(:found_nodes) { walker.connected_nodes }
 
         before do
           lay_tile('A2', '5', 4)
@@ -89,11 +89,11 @@ module Engine
         end
 
         it 'does not reach A3 from A1 via the converging junction and B4' do
-          expect(walker.connected_nodes.map(&:node)).not_to include(a3_city)
+          expect(walker.connected_nodes).not_to include(a3_city)
         end
 
         it 'reaches B4 (the dead-end city)' do
-          expect(walker.connected_nodes.map(&:node)).to include(b4_city)
+          expect(walker.connected_nodes).to include(b4_city)
         end
       end
 
