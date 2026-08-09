@@ -337,22 +337,7 @@ module Engine
         @cache_hexes_edges = nil
         start = time if @stats
 
-        home_vertices.each do |vertex|
-          # TODO: Resetting @walk_explored here ensures that the graph is fully
-          # walked from each home node, not stopping when previously walked
-          # vertices/edges are encountered. Some games will not need this and
-          # could get better performance by keeping the @walk_explored state.
-          # This would only apply if there are no concerns like backtracking or
-          # track gauges.
-          @walk_explored.clear
-          # Reset all the stacks. They *should* all be empty after the previous
-          # walk finished, but there's almost no cost in doing this.
-          @stack_exits.clear
-          @stack_edges.clear
-          @stack_nodes.clear
-
-          dfs(vertex)
-        end
+        walk_home_vertices { |vertex| dfs(vertex) }
 
         # Add extra nodes to @connected_vertices for :token abilities.
         teleport_nodes.each do |node|
@@ -364,6 +349,20 @@ module Engine
 
         @graph_version = @graph.version
         @stats[:time] = time - start if @stats
+      end
+
+      # Starts the walk for each home vertex.
+      # @yield The code block to execute for each vertex.
+      # @yieldparam vertex [Vertex]
+      def walk_home_vertices
+        home_vertices.each do |vertex|
+          @walk_explored.clear
+          @stack_exits.clear
+          @stack_edges.clear
+          @stack_nodes.clear
+
+          yield vertex
+        end
       end
 
       # The core depth-first search algorithm for walking the graph.
