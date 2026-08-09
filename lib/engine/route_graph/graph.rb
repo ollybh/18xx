@@ -64,6 +64,16 @@ module Engine
         load_map(@game)
       end
 
+      # Returns the vertex representing a city/town/offboard.
+      # @param node [Part::Node]
+      # @return [NodeVertex, nil]
+      # @raise [GameError] If a node has no corresponding vertex.
+      def vertex_for(node)
+        raise GameError, "Unable to find vertex for node #{node.id}" unless @vertices.key?(node)
+
+        @vertices[node]
+      end
+
       # Converts the graph state into a hash that can be consumed by the
       # Javascript {D3}[https://d3js.org] library to produce a visualisation
       # of the graph.

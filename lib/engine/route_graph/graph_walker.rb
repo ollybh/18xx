@@ -337,7 +337,7 @@ module Engine
         @cache_hexes_edges = nil
         start = time if @stats
 
-        home_nodes.each do |node|
+        home_vertices.each do |vertex|
           # TODO: Resetting @walk_explored here ensures that the graph is fully
           # walked from each home node, not stopping when previously walked
           # vertices/edges are encountered. Some games will not need this and
@@ -350,9 +350,6 @@ module Engine
           @stack_exits.clear
           @stack_edges.clear
           @stack_nodes.clear
-
-          vertex = @graph.vertices.find { |v| v.id == node.id }
-          raise GameError, "Unable to find vertex for home node #{node.id}" unless vertex
 
           dfs(vertex)
         end
@@ -408,6 +405,13 @@ module Engine
         end
         @stack_nodes.delete(vertex) if vertex.is_a?(NodeVertex)
         unmark_crossed_exit(vertex, incoming)
+      end
+
+      # The graph vertices for the home nodes.
+      # @raise [GameError] if a home node has no corresponding vertex.
+      # @return [Array<Vertex>]
+      def home_vertices
+        home_nodes.map { |node| @graph.vertex_for(node) }
       end
 
       # Checks whether walking an edge would involve crossing a HexExit that
