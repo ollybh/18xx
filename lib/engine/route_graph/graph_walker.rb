@@ -372,33 +372,21 @@ module Engine
       #   reach this vertex. nil if the walk is starting at this vertex.
       # @return [void]
       def dfs(vertex, incoming = nil)
-        @stats[:dfs_calls] += 1 if @stats
-        if arrival_blocked?(vertex, incoming)
-          @stats[:skipped][:arrival] += 1 if @stats
-          return
-        end
-        if @walk_explored.include?([vertex, incoming])
-          @stats[:skipped][:explored] += 1 if @stats
-          return
-        end
+        increment_stats(:dfs_calls)
+        return skip_vertex(:arrival) if arrival_blocked?(vertex, incoming)
+        return skip_vertex(:explored) if @walk_explored.include?([vertex, incoming])
 
         @walk_explored << [vertex, incoming]
         @connected_vertices << vertex
         mark_crossed_exit(vertex, incoming)
         @stack_nodes << vertex if vertex.is_a?(NodeVertex)
         vertex.edges.each do |edge|
-          if departure_blocked?(vertex, incoming, edge)
-            @stats[:edges_skipped][:departure] += 1 if @stats
-            next
-          end
-          if edge_blocked?(edge, vertex)
-            @stats[:edges_skipped][:edge] += 1 if @stats
-            next
-          end
+          next skip_edge(:departure) if departure_blocked?(vertex, incoming, edge)
+          next skip_edge(:edge) if edge_blocked?(edge, vertex)
 
           @connected_edges << edge
           @stack_edges << edge
-          @stats[:edges_traversed] += 1 if @stats
+          increment_stats(:edges_traversed)
           dfs(edge.other_end(vertex), edge)
           @stack_edges.delete(edge)
         end
@@ -471,6 +459,40 @@ module Engine
       # @return [integer]
       def time
         Process.clock_gettime(Process::CLOCK_MONOTONIC, :microsecond)
+      end
+
+      # Increments a statistics counter, if statistics are being collected.
+      # @param key [label]
+      # @param group [Label, nil]
+      # @return [integer] The value of the counter.
+      def increment_stats(key, group = nil)
+        return unless @stats
+
+        if group
+          @stats[group][key] += 1
+        else
+          @stats[key] += 1
+        end
+      end
+
+      # Increments the statistics showing why an edge was skipped, if statistics
+      # are being collected. This returns nil so this method can be used for its
+      # side effects in a chain: `next skip_edge(reason) if blocked?`.
+      # @param reason [Label] The key for the statistics hash.
+      # @return nil
+      def skip_edge(reason)
+        increment_stats(reason, :edges_skipped)
+        nil
+      end
+
+      # Increments the statistics showing why an edge was skipped, if statistics
+      # are being collected. This returns nil so this method can be used for its
+      # side effects in a chain: `return skip_vertex(reason) if blocked?`.
+      # @param reason [Label] The key for the statistics hash.
+      # @return nil
+      def skip_vertex(reason)
+        increment_stats(reason, :skipped)
+        nil
       end
     end
   end
