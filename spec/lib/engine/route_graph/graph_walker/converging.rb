@@ -323,6 +323,54 @@ module Engine
           expect(b6_path_edges).to contain_exactly([1, 5], [2, 5])
         end
       end
+
+      describe 'converging junction looped towns' do
+        # This is another test for loops poisoning the DFS explored cached. Here
+        # there are two overlapping loops:
+        # 1. A large one (A5-A3-B2-C1-D2-D4-C5-B6-A5, and
+        # 2. A smaller one (B6-C3-D4-C5-B6).
+        # It should be possible to trace a route from A5 to the converging
+        # junction in B2 by going the long way round the large loop
+        # (anitclockwise A5-B6-{C5 or B4-C4}-D4-D2-C1-B2) and then onto B2. But
+        # if the large loop is explored first clockwise by the DFS algorithm,
+        # then the explored cache will be poisoned when it gets to D4 and
+        # explores the smaller loop in both directions.
+        let(:hexes) { { white: { %w[A1 A3 A5 B2 B4 B6 C1 C3 C5 D2 D4] => '' } } }
+        let(:tiles) { { '4' => 1, '6' => 1, '8' => 4, '12' => 1, '23' => 1, '58' => 1, '115' => 1, '143' => 1 } }
+
+        before do
+          lay_tile('A1', '115', 5, 0)
+          lay_tile('A3', '8',   4, 0)
+          lay_tile('A5', '6',   3, 0)
+          lay_tile('B2', '23',  4, 0)
+          lay_tile('B4', '8',   4, 1)
+          lay_tile('B6', '12',  2, 0)
+          lay_tile('C1', '8',   5, 2)
+          lay_tile('C3', '58',  5, 0)
+          lay_tile('C5', '4',   1, 0)
+          lay_tile('D2', '8',   0, 3)
+          lay_tile('D4', '143', 1, 0)
+          hex('A5').tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+        end
+
+        it 'can reach all hexes' do
+          pending 'change to DFS explored algorithm'
+          all_hexes = hexes.map { |_color, hexdefs| hexdefs.keys }.flatten
+          expect(walker.reachable_hexes.map(&:coordinates)).to match_array(all_hexes)
+        end
+
+        it 'can reach all paths' do
+          pending 'change to DFS explored algorithm'
+          all_paths = game.hexes.map(&:tile).flat_map(&:paths)
+          expect(walker.connected_paths).to match_array(all_paths)
+        end
+
+        it 'can reach all nodes' do
+          pending 'change to DFS explored algorithm'
+          all_nodes = game.hexes.map(&:tile).flat_map(&:nodes)
+          expect(walker.connected_nodes).to match_array(all_nodes)
+        end
+      end
     end
   end
 end
