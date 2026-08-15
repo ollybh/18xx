@@ -318,12 +318,7 @@ module Engine
         @connected_edges = found.edges
 
         # Add extra nodes to @connected_vertices for :token abilities.
-        teleport_nodes.each do |node|
-          vertex = @graph.vertices.find { |v| v.id == node.id }
-          raise GameError, "Unable to find vertex for home node #{node.id}" unless vertex
-
-          @connected_vertices << vertex
-        end
+        teleport_nodes.each { |n| @connected_vertices << @graph.vertex_for(n) }
 
         @graph_version = @graph.version
         @stats[:time] = time - start if @stats
@@ -373,7 +368,6 @@ module Engine
       end
 
       # The graph vertices for the home nodes.
-      # @raise [GameError] if a home node has no corresponding vertex.
       # @return [Array<Vertex>]
       def home_vertices
         home_nodes.map { |node| @graph.vertex_for(node) }
