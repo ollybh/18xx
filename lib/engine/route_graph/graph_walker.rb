@@ -65,32 +65,6 @@ module Engine
         # the vertices and edges that are reachable by @entity.
         @connected_vertices = Set[]
         @connected_edges = Set[]
-
-        # This accumulates the `[vertex, edge]` tuples that have been explored
-        # from a home node when {#walk!} is called. This prevents the walker
-        # getting stuck in infinite loops.
-        @walk_explored = Set[]
-
-        # These variables are stacks of items encountered whilst building a
-        # route from a home node. These are used for rules enforcement, to check
-        # that the current route being built is legal.
-        #
-        # These stacks have a push on entry/pop on exit lifecycle. They describe
-        # the route from the home node to the current exploration tip. As the
-        # DFS algorithm backtracks the removal of items from these stacks means
-        # that alternate routes being explored from the same home node can
-        # revisit the same vertices/edges that were explored earlier.
-        #
-        # Note: These stacks are maintained as sets. This works because they are
-        # all being used to prevent an edge/node/hex exit from being revisited,
-        # so there is never an attempt to add an item that is already in the set
-        # -- this is prevented by the guard that checks the stack. If there is a
-        # change that removes or relaxes the guard then the stack should be
-        # changed to be a counter (`Hash.new(0)`) so that it can track multiple
-        # visits to the same item.
-        @stack_exits = Set[] # Hex exits crossed.
-        @stack_edges = Set[] # Edges walked.
-        @stack_nodes = Set[] # Node vertices visited.
       end
 
       # @!group Query Methods
@@ -219,10 +193,11 @@ module Engine
       # @param edge [RouteGraph::Edge] The edge being walked.
       # @param from_vertex [RouteGraph::Vertex] The end that the walk is
       #   starting from.
+      # @param state [WalkState, nil]
       # @return [Boolean] True if the edge is blocked, false if it may be walked.
-      def edge_blocked?(edge, from_vertex = nil)
-        return true if @stack_edges.include?(edge)
-        return true if backtracking_blocked?(edge, from_vertex)
+      def edge_blocked?(edge, from_vertex = nil, state = nil)
+        return true if state&.stack_edges&.include?(edge)
+        return true if backtracking_blocked?(edge, from_vertex, state)
 
         if edge.terminal?
           edge.other_end(from_vertex).is_a? JunctionVertex
@@ -277,11 +252,12 @@ module Engine
       #
       # @param vertex [RouteGraph::Vertex] The vertex the walk is about to reach.
       # @param _from_edge [RouteGraph::Edge] The edge being walked.
+      # @param state [WalkState, nil]
       # @return [Boolean] True if entry is blocked, false if it may be explored.
-      def arrival_blocked?(vertex, _from_edge)
+      def arrival_blocked?(vertex, _from_edge, state)
         return false unless vertex.is_a?(NodeVertex)
 
-        @stack_nodes.include?(vertex)
+        state.stack_nodes.include?(vertex)
       end
 
       # @!endgroup
@@ -337,7 +313,8 @@ module Engine
         @cache_hexes_edges = nil
         start = time if @stats
 
-        walk_home_vertices { |vertex| dfs(vertex) }
+        state = WalkState.new
+        walk_home_vertices(state) { |vertex| dfs(vertex, nil, state) }
 
         # Add extra nodes to @connected_vertices for :token abilities.
         teleport_nodes.each do |node|
@@ -352,14 +329,12 @@ module Engine
       end
 
       # Starts the walk for each home vertex.
+      # @param state [WalkState]
       # @yield The code block to execute for each vertex.
       # @yieldparam vertex [Vertex]
-      def walk_home_vertices
+      def walk_home_vertices(state)
         home_vertices.each do |vertex|
-          @walk_explored.clear
-          @stack_exits.clear
-          @stack_edges.clear
-          @stack_nodes.clear
+          state.reset!
 
           yield vertex
         end
@@ -370,28 +345,29 @@ module Engine
       # @param vertex [RouteGraph::Vertex] The vertex to be explored.
       # @param incoming [RouteGraph::Edge, nil] The edge which was walked to
       #   reach this vertex. nil if the walk is starting at this vertex.
+      # @param state [WalkState]
       # @return [void]
-      def dfs(vertex, incoming = nil)
+      def dfs(vertex, incoming, state)
         increment_stats(:dfs_calls)
-        return skip_vertex(:arrival) if arrival_blocked?(vertex, incoming)
-        return skip_vertex(:explored) if @walk_explored.include?([vertex, incoming])
+        return skip_vertex(:arrival) if arrival_blocked?(vertex, incoming, state)
+        return skip_vertex(:explored) if state.walk_explored.include?([vertex, incoming])
 
-        @walk_explored << [vertex, incoming]
+        state.walk_explored << [vertex, incoming]
         @connected_vertices << vertex
-        mark_crossed_exit(vertex, incoming)
-        @stack_nodes << vertex if vertex.is_a?(NodeVertex)
+        mark_crossed_exit(vertex, incoming, state)
+        state.stack_nodes << vertex if vertex.is_a?(NodeVertex)
         vertex.edges.each do |edge|
           next skip_edge(:departure) if departure_blocked?(vertex, incoming, edge)
-          next skip_edge(:edge) if edge_blocked?(edge, vertex)
+          next skip_edge(:edge) if edge_blocked?(edge, vertex, state)
 
           @connected_edges << edge
-          @stack_edges << edge
+          state.stack_edges << edge
           increment_stats(:edges_traversed)
-          dfs(edge.other_end(vertex), edge)
-          @stack_edges.delete(edge)
+          dfs(edge.other_end(vertex), edge, state)
+          state.stack_edges.delete(edge)
         end
-        @stack_nodes.delete(vertex) if vertex.is_a?(NodeVertex)
-        unmark_crossed_exit(vertex, incoming)
+        state.stack_nodes.delete(vertex) if vertex.is_a?(NodeVertex)
+        unmark_crossed_exit(vertex, incoming, state)
       end
 
       # The graph vertices for the home nodes.
@@ -414,35 +390,38 @@ module Engine
       #
       # @param edge [RouteGraph::Edge]
       # @param from_vertex [RouteGraph::Vertex]
+      # @param state [WalkState]
       # @return [Boolean] True if traversal is blocked by an active exit.
-      def backtracking_blocked?(edge, from_vertex)
+      def backtracking_blocked?(edge, from_vertex, state)
         [from_vertex, edge.other_end(from_vertex)].any? do |vertex|
           next false unless vertex.is_a?(HexEdgeVertex)
 
           hex_exit = vertex.exit_for_edge(edge)
-          hex_exit && @stack_exits.include?(hex_exit)
+          hex_exit && state.stack_exits.include?(hex_exit)
         end
       end
 
       # Marks a HexExit at a vertex as active on the call stack.
       # @param vertex [Vertex] The vertex being crossed.
       # @param edge [Edge] The edge that the walk has come from.
-      def mark_crossed_exit(vertex, edge)
+      # @param state [WalkState]
+      def mark_crossed_exit(vertex, edge, state)
         return unless vertex.is_a?(HexEdgeVertex)
 
         hex_exit = vertex.exit_for_edge(edge)
         return unless hex_exit
 
-        @stack_exits << hex_exit
+        state.stack_exits << hex_exit
       end
 
       # Unmarks a HexExit at a vertex after their subtree returns.
       # @param vertex [Vertex]
       # @param edge [Edge]
-      def unmark_crossed_exit(vertex, edge)
+      # @param state [WalkState]
+      def unmark_crossed_exit(vertex, edge, state)
         return unless vertex.is_a?(HexEdgeVertex)
 
-        @stack_exits.delete(vertex.exit_for_edge(edge))
+        state.stack_exits.delete(vertex.exit_for_edge(edge))
       end
 
       # Checks whether the GraphWalker is synchronised with the current graph
@@ -493,6 +472,59 @@ module Engine
       def skip_vertex(reason)
         increment_stats(reason, :skipped)
         nil
+      end
+    end
+
+    # State carried down one DFS branch: the whole-walk set of visited locations
+    # and the route stacks.
+    #
+    # The stacks are items encountered whilst building a route from a home node.
+    # These are used for rules enforcement, to check that the current route
+    # being built is legal.
+    #
+    # These stacks have a push on entry/pop on exit lifecycle. They describe
+    # the route from the home node to the current exploration tip. As the
+    # DFS algorithm backtracks the removal of items from these stacks means
+    # that alternate routes being explored from the same home node can
+    # revisit the same vertices/edges that were explored earlier.
+    class WalkState
+      # This accumulates the set of visited `[vertex, edge]` tuples that have
+      # been explored from a home node.
+      # @return [Set<Array<Vertex, Edge>]
+      attr_reader :walk_explored
+
+      # {HexExit HexExits} that have been crossed.
+      # @return [Set<HexExit>]
+      attr_reader :stack_exits
+
+      # {Edge Edges} that have been walked.
+      # @return [Set<Edge>]
+      attr_reader :stack_edges
+
+      # {NodeVertex Node vertices} that have been visited.
+      # @return [Set<NodeVertex>]
+      attr_reader :stack_nodes
+
+      def initialize
+        # NOTE: These stacks are maintained as sets. This works because they are
+        # all being used to prevent an edge/node/hex exit from being revisited,
+        # so there is never an attempt to add an item that is already in the set
+        # -- this is prevented by the guard that checks the stack. If there is a
+        # change that removes or relaxes the guard then the stack should be
+        # changed to be a counter (`Hash.new(0)`) so that it can track multiple
+        # visits to the same item.
+        @walk_explored = Set[]
+        @stack_exits = Set[]
+        @stack_edges = Set[]
+        @stack_nodes = Set[]
+      end
+
+      # Clears the per-route state between home nodes.
+      def reset!
+        @walk_explored.clear
+        @stack_exits.clear
+        @stack_edges.clear
+        @stack_nodes.clear
       end
     end
   end
