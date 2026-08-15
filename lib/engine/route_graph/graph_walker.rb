@@ -305,16 +305,17 @@ module Engine
       # the walker is stale.
       # @return [void]
       def walk!
-        @connected_vertices.clear
-        @connected_edges.clear
         @cache_paths = nil
         @cache_nodes = nil
         @cache_hexes = nil
         @cache_hexes_edges = nil
         start = time if @stats
 
+        found = Found.new(Set[], Set[])
         state = WalkState.new
-        walk_home_vertices(state) { |vertex| dfs(vertex, nil, state) }
+        walk_home_vertices(state) { |vertex| dfs(vertex, nil, state, found) }
+        @connected_vertices = found.vertices
+        @connected_edges = found.edges
 
         # Add extra nodes to @connected_vertices for :token abilities.
         teleport_nodes.each do |node|
@@ -346,24 +347,25 @@ module Engine
       # @param incoming [RouteGraph::Edge, nil] The edge which was walked to
       #   reach this vertex. nil if the walk is starting at this vertex.
       # @param state [WalkState]
+      # @param found [Found]
       # @return [void]
-      def dfs(vertex, incoming, state)
+      def dfs(vertex, incoming, state, found)
         increment_stats(:dfs_calls)
         return skip_vertex(:arrival) if arrival_blocked?(vertex, incoming, state)
         return skip_vertex(:explored) if state.walk_explored.include?([vertex, incoming])
 
         state.walk_explored << [vertex, incoming]
-        @connected_vertices << vertex
+        found.vertices << vertex
         mark_crossed_exit(vertex, incoming, state)
         state.stack_nodes << vertex if vertex.is_a?(NodeVertex)
         vertex.edges.each do |edge|
           next skip_edge(:departure) if departure_blocked?(vertex, incoming, edge)
           next skip_edge(:edge) if edge_blocked?(edge, vertex, state)
 
-          @connected_edges << edge
+          found.edges << edge
           state.stack_edges << edge
           increment_stats(:edges_traversed)
-          dfs(edge.other_end(vertex), edge, state)
+          dfs(edge.other_end(vertex), edge, state, found)
           state.stack_edges.delete(edge)
         end
         state.stack_nodes.delete(vertex) if vertex.is_a?(NodeVertex)
@@ -472,6 +474,16 @@ module Engine
       def skip_vertex(reason)
         increment_stats(reason, :skipped)
         nil
+      end
+    end
+
+    # The result of a graph walk: the vertices and edges that were reached.
+    Found = Struct.new(:vertices, :edges) do
+      # @param vertices [Set<Vertex>]
+      # @param edges [Set<Edge>]
+      # @return [Found]
+      def initialize(vertices = Set[], edges = Set[])
+        super
       end
     end
 
