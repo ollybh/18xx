@@ -354,19 +354,16 @@ module Engine
         end
 
         it 'can reach all hexes' do
-          pending 'change to DFS explored algorithm'
           all_hexes = hexes.map { |_color, hexdefs| hexdefs.keys }.flatten
           expect(walker.reachable_hexes.map(&:coordinates)).to match_array(all_hexes)
         end
 
         it 'can reach all paths' do
-          pending 'change to DFS explored algorithm'
           all_paths = game.hexes.map(&:tile).flat_map(&:paths)
           expect(walker.connected_paths).to match_array(all_paths)
         end
 
         it 'can reach all nodes' do
-          pending 'change to DFS explored algorithm'
           all_nodes = game.hexes.map(&:tile).flat_map(&:nodes)
           expect(walker.connected_nodes).to match_array(all_nodes)
         end

@@ -9,7 +9,7 @@ module Engine
     # A GraphWalker walks the {RouteGraph::Graph} for a specific entity,
     # calculating which of the graph’s {RouteGraph::Vertex vertices} and
     # {RouteGraph::Edge edges} can be reached. These are then used to calculate
-    # the maps parts that are accessible: {Engine::Hex hexes}, {Part::Node nodes}
+    # the map parts that are accessible: {Engine::Hex hexes}, {Part::Node nodes}
     # and {Part::Path paths}.
     #
     # The {RouteGraph::Graph} is an abstract representation of the game map's
@@ -19,7 +19,7 @@ module Engine
     # The walk is triggered lazily: creating a GraphWalker stores references to
     # the graph and entity but does not carry out any computation. The first
     # call to any of the query methods will trigger the DFS graph walk.
-    # Subsequent calls to the query methods will returned cached data, until a
+    # Subsequent calls to the query methods will return cached data, until a
     # change in the underlying graph is detected. At this point the graph will
     # be re-run transparently. Callers never need to directly invoke the walk.
     #
@@ -58,6 +58,8 @@ module Engine
                      skipped: Hash.new(0),
                      edges_traversed: 0,
                      edges_skipped: Hash.new(0),
+                     resolving_dfs_calls: 0,
+                     frontier: nil,
                    }
                  end
 
@@ -193,10 +195,10 @@ module Engine
       # @param edge [RouteGraph::Edge] The edge being walked.
       # @param from_vertex [RouteGraph::Vertex] The end that the walk is
       #   starting from.
-      # @param state [WalkState, nil]
+      # @param state [WalkState]
       # @return [Boolean] True if the edge is blocked, false if it may be walked.
-      def edge_blocked?(edge, from_vertex = nil, state = nil)
-        return true if state&.stack_edges&.include?(edge)
+      def edge_blocked?(edge, from_vertex, state)
+        return true if state.stack_edges.include?(edge)
         return true if backtracking_blocked?(edge, from_vertex, state)
 
         if edge.terminal?
@@ -209,7 +211,7 @@ module Engine
       # Tests whether the walker, entering `vertex` on edge `from_edge` is
       # allowed to leave on edge `to_edge`.
       #
-      # Reason why leaving the vertex is blocked are:
+      # Reasons why leaving the vertex is blocked are:
       #  - This is a tokened out city.
       #  - This is an off-board area.
       #  - We are trying to pass through a city using a path which has a
@@ -252,7 +254,7 @@ module Engine
       #
       # @param vertex [RouteGraph::Vertex] The vertex the walk is about to reach.
       # @param _from_edge [RouteGraph::Edge] The edge being walked.
-      # @param state [WalkState, nil]
+      # @param state [WalkState]
       # @return [Boolean] True if entry is blocked, false if it may be explored.
       def arrival_blocked?(vertex, _from_edge, state)
         return false unless vertex.is_a?(NodeVertex)
@@ -303,6 +305,35 @@ module Engine
       # whether the walker state is already up to date. This method will be
       # called automatically from the public node/hex/path accessor methods if
       # the walker is stale.
+      #
+      # The walk is implemented as a three-stage algorithm. The goal is to find
+      # the set of vertices and edges that are reachable by @entity, `R` (real
+      # set).
+      # 1. Backtracking walk. This is the fastest DFS walk, with time complexity
+      #    O(V+E). It allows backtracking at converging junctions and uses
+      #    [vertex] as the DFS visited set. If no converging junctions are
+      #    found in the walk, or if backtracking is permitted, then this will
+      #    find the real set of reachable vertices and edges (R) and stages 2
+      #    and 3 are skipped. If backtracking should have been prevented then
+      #    this walk might reach sections of the graph that should be
+      #    inaccessible. The result of this walk (`L`, lax set) is a superset
+      #    of R.
+      # 2. Approximate walk. This is another DFS walk with time complexity
+      #    O(V+E) but is slower than the stage 1 walk. It uses [vertex, incoming
+      #    edge] as the DFS visited set and prevents backtracking at converging
+      #    junctions. This will often return the correct results (R) but there
+      #    are cases with nested loops where the DFS visited set is poisoned and
+      #    valid routes to converging junctions are blocked. The result of this
+      #    walk (`S`, strict) is a subset of R.
+      # 3. Exact walk. If there is a difference between L and S (`F` the
+      #    frontier set) then the exact set of reachable vertices and edges
+      #    needs to be resolved. This is another DFS walk that uses [vertex,
+      #    incoming edge] as the visited set, but differs from stage 2 in that
+      #    items are removed from the visited set as the DFS algorithm
+      #    backtracks (in stage 2 this set accumulates and nothing is removed
+      #    until the set is reset when the walk is restarted from another home
+      #    node). This walk has potentially exponential time complexity.
+      #
       # @return [void]
       def walk!
         @cache_paths = nil
@@ -311,9 +342,13 @@ module Engine
         @cache_hexes_edges = nil
         start = time if @stats
 
-        found = Found.new(Set[], Set[])
-        state = WalkState.new
-        walk_home_vertices(state) { |vertex| dfs(vertex, nil, state, found) }
+        l = backtracking_walk
+        s = approximate_walk
+        frontier = l.vertices - s.vertices
+        @stats[:frontier] = frontier.size if @stats
+
+        found = frontier.empty? ? s : resolve_walk
+
         @connected_vertices = found.vertices
         @connected_edges = found.edges
 
@@ -324,32 +359,104 @@ module Engine
         @stats[:time] = time - start if @stats
       end
 
-      # Starts the walk for each home vertex.
-      # @param state [WalkState]
-      # @yield The code block to execute for each vertex.
-      # @yieldparam vertex [Vertex]
-      def walk_home_vertices(state)
-        home_vertices.each do |vertex|
-          state.reset!
+      # Stage 1 walk: backtracking allowed.
+      #
+      # A simplified walk algorithm that does not prevent backtracking at
+      # converging junctions. It will return the correct set of reachable
+      # vertices and edges if no converging junctions are found or backtracking
+      # is allowed. In other cases it might allow illegal routes through
+      # converging junctions and include vertices and edges that should not be
+      # reachable.
+      #
+      # @see #walk!
+      # @return [Found] The sets of vertices and edges reachable using this walk
+      #   algorithm.
+      def backtracking_walk
+        # TODO: change this to call `dfs` rather than writing its own DFS loop.
+        vertices = Set[]
+        edges = Set[]
+        stack = home_vertices.dup
+        until stack.empty?
+          v = stack.pop
+          next if vertices.include?(v)
 
-          yield vertex
+          vertices << v
+          v.edges.each do |edge|
+            # TODO: this should be calling `edge_blocked?`.
+            next if edge.terminal? && edge.other_end(v).is_a?(JunctionVertex)
+            # TODO: this should be calling `departure_blocked?`.
+            next if v.is_a?(NodeVertex) && v.node.blocks?(@entity)
+
+            edges << edge
+            stack << edge.other_end(v)
+          end
         end
+
+        Found.new(vertices, edges)
+      end
+
+      # Stage 2: the fast route-aware walk.
+      #
+      # Runs the DFS once per home node with a whole-walk `[vertex, incoming]`
+      # visited set and route stacks of hex exits, nodes and edges to check
+      # route validity. Linear time complexity but can under-report if nested
+      # loops poison the DFS visited set.
+      #
+      # @see #walk!
+      # @return [Found] The sets of vertices and edges reachable using this walk
+      #   algorithm.
+      def approximate_walk
+        found = Found.new
+        state = WalkState.new(:whole_walk)
+        home_vertices.each do |home|
+          state.reset!
+          dfs(home, nil, state, found)
+        end
+        found
+      end
+
+      # Stage 3: exact route resolution.
+      #
+      # Runs the DFS with a `[vertex, incoming]` visited set that is cleared on
+      # backtrack, so each route will fully explore subtrees with its own
+      # context, avoiding the risk of visited set poisoning in the stage 2 walk.
+      #
+      # @todo This is a brute-force approach to finding the correct set of
+      # reachable vertices and edges. It will always work but has potentially
+      # exponential time complexity. It is unlikely that this can be avoided in
+      # all cases, but there might be ways to take the difference between the
+      # stage 1 and stage 2 walks (the frontier vertices/edges), break them into
+      # subgraphs and test whether they are reachable.
+      #
+      # @see #walk!
+      # @return [Found] The sets of vertices and edges reachable using this walk
+      #   algorithm.
+      def resolve_walk
+        found = Found.new
+        state = WalkState.new(:route_local)
+        home_vertices.each do |home|
+          state.reset!
+          dfs(home, nil, state, found)
+        end
+        found
       end
 
       # The core depth-first search algorithm for walking the graph.
       # This calls itself recursively for each new vertex it encounters.
+      #
       # @param vertex [RouteGraph::Vertex] The vertex to be explored.
       # @param incoming [RouteGraph::Edge, nil] The edge which was walked to
       #   reach this vertex. nil if the walk is starting at this vertex.
-      # @param state [WalkState]
-      # @param found [Found]
+      # @param state [WalkState] Route-local state for the current stage.
+      # @param found [Found] Result accumulator for the current stage.
       # @return [void]
       def dfs(vertex, incoming, state, found)
         increment_stats(:dfs_calls)
+        increment_stats(:resolving_dfs_calls) if state.mode == :route_local
         return skip_vertex(:arrival) if arrival_blocked?(vertex, incoming, state)
         return skip_vertex(:explored) if state.walk_explored.include?([vertex, incoming])
 
-        state.walk_explored << [vertex, incoming]
+        state.on_explored_enter(vertex, incoming)
         found.vertices << vertex
         mark_crossed_exit(vertex, incoming, state)
         state.stack_nodes << vertex if vertex.is_a?(NodeVertex)
@@ -365,10 +472,12 @@ module Engine
         end
         state.stack_nodes.delete(vertex) if vertex.is_a?(NodeVertex)
         unmark_crossed_exit(vertex, incoming, state)
+        state.on_explored_leave(vertex, incoming)
       end
 
       # The graph vertices for the home nodes.
       # @return [Array<Vertex>]
+      # @raise [GameError] if a home node is not found in the graph.
       def home_vertices
         home_nodes.map { |node| @graph.vertex_for(node) }
       end
@@ -437,9 +546,10 @@ module Engine
       end
 
       # Increments a statistics counter, if statistics are being collected.
-      # @param key [label]
+      # @param key [Label]
       # @param group [Label, nil]
-      # @return [integer] The value of the counter.
+      # @return [integer, nil] The value of the counter or nil if stats are not
+      #   being collected.
       def increment_stats(key, group = nil)
         return unless @stats
 
@@ -471,7 +581,8 @@ module Engine
       end
     end
 
-    # The result of a graph walk: the vertices and edges that were reached.
+    # The result of a single stage's graph walk: the vertices and edges that
+    # were reached.
     Found = Struct.new(:vertices, :edges) do
       # @param vertices [Set<Vertex>]
       # @param edges [Set<Edge>]
@@ -511,7 +622,24 @@ module Engine
       # @return [Set<NodeVertex>]
       attr_reader :stack_nodes
 
-      def initialize
+      # The lifecycle of the {#walk_explored} visited set.
+      #   - `:whole_walk` (stage 2) — the visited set persists for the whole
+      #     walk from a home node: the hook is a no-op, so entries added on
+      #     `enter` survive after the subtree returns. Makes the walk linear on
+      #     plain track, but is unsound inside a loop (a cached subtree can hide
+      #     a valid route).
+      #   - `:route_local` (stage 3) — the visited set is cleared on backtrack:
+      #     the hook removes the entry, so each route re-explores the subtree
+      #     under its own context. Exact but exponential in the number of routes
+      #     through the loop; only used when stage 2 demonstrably under-reached.
+      # @return [Label]
+      attr_reader :mode
+
+      # @param mode [Symbol] Controls the lifecycle of the {#walk_explored}
+      #   visited set.
+      # @see #mode
+      def initialize(mode)
+        @mode = mode
         # NOTE: These stacks are maintained as sets. This works because they are
         # all being used to prevent an edge/node/hex exit from being revisited,
         # so there is never an attempt to add an item that is already in the set
@@ -531,6 +659,16 @@ module Engine
         @stack_exits.clear
         @stack_edges.clear
         @stack_nodes.clear
+      end
+
+      def on_explored_enter(vertex, edge)
+        @walk_explored << [vertex, edge]
+      end
+
+      def on_explored_leave(vertex, edge)
+        return unless @mode == :route_local
+
+        @walk_explored.delete([vertex, edge])
       end
     end
   end
