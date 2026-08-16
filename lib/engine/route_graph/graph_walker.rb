@@ -369,38 +369,31 @@ module Engine
 
       # Stage 1 walk: backtracking allowed.
       #
-      # A simplified walk algorithm that does not prevent backtracking at
-      # converging junctions. It will return the correct set of reachable
-      # vertices and edges if no converging junctions are found or backtracking
-      # is allowed. In other cases it might allow illegal routes through
-      # converging junctions and include vertices and edges that should not be
-      # reachable.
+      # A simplified walk that does not prevent backtracking at converging
+      # junctions. It returns the correct set of reachable vertices and edges
+      # if no converging junctions are found, or when the walker permits
+      # backtracking (e.g. for token placement). In other cases it may allow
+      # illegal routes through converging junctions and include vertices and
+      # edges that should not be reachable.
+      #
+      # Implemented as a {#dfs} walk with a `:backtracking` {WalkState}: the
+      # route-local stacks are not populated (so the route-local gates no-op
+      # and converging backtracking is allowed) and the visited set is keyed on
+      # the vertex alone. The static gates ({#edge_blocked?}'s terminal spur,
+      # {#departure_blocked?}'s blocked-city and terminal-through-node rules)
+      # still fire.
       #
       # @see #walk!
       # @return [Found] The sets of vertices and edges reachable using this walk
       #   algorithm.
       def backtracking_walk
-        # TODO: change this to call `dfs` rather than writing its own DFS loop.
-        vertices = Set[]
-        edges = Set[]
-        stack = home_vertices.dup
-        until stack.empty?
-          v = stack.pop
-          next if vertices.include?(v)
-
-          vertices << v
-          v.edges.each do |edge|
-            # TODO: this should be calling `edge_blocked?`.
-            next if edge.terminal? && edge.other_end(v).is_a?(JunctionVertex)
-            # TODO: this should be calling `departure_blocked?`.
-            next if v.is_a?(NodeVertex) && v.node.blocks?(@entity)
-
-            edges << edge
-            stack << edge.other_end(v)
-          end
+        found = Found.new
+        state = WalkState.new(:backtracking)
+        home_vertices.each do |home|
+          state.reset!
+          dfs(home, nil, state, found)
         end
-
-        Found.new(vertices, edges)
+        found
       end
 
       # Stage 2: the fast route-aware walk.
