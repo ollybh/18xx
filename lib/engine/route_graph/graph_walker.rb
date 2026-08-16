@@ -462,24 +462,24 @@ module Engine
         increment_stats(:dfs_calls)
         increment_stats(:resolving_dfs_calls) if state.mode == :route_local
         return skip_vertex(:arrival) if arrival_blocked?(vertex, incoming, state)
-        return skip_vertex(:explored) if state.walk_explored.include?([vertex, incoming])
+        return skip_vertex(:explored) if state.explored?(vertex, incoming)
 
         state.on_explored_enter(vertex, incoming)
         found.vertices << vertex
-        mark_crossed_exit(vertex, incoming, state)
-        state.stack_nodes << vertex if vertex.is_a?(NodeVertex)
+        state.push_exit(vertex, incoming)
+        state.push_node(vertex) if vertex.is_a?(NodeVertex)
         vertex.edges.each do |edge|
           next skip_edge(:departure) if departure_blocked?(vertex, incoming, edge)
           next skip_edge(:edge) if edge_blocked?(edge, vertex, state)
 
           found.edges << edge
-          state.stack_edges << edge
+          state.push_edge(edge)
           increment_stats(:edges_traversed)
           dfs(edge.other_end(vertex), edge, state, found)
-          state.stack_edges.delete(edge)
+          state.pop_edge(edge)
         end
-        state.stack_nodes.delete(vertex) if vertex.is_a?(NodeVertex)
-        unmark_crossed_exit(vertex, incoming, state)
+        state.pop_node(vertex) if vertex.is_a?(NodeVertex)
+        state.pop_exit(vertex, incoming)
         state.on_explored_leave(vertex, incoming)
       end
 
@@ -506,29 +506,6 @@ module Engine
           hex_exit = vertex.exit_for_edge(edge)
           hex_exit && state.stack_exits.include?(hex_exit)
         end
-      end
-
-      # Marks a HexExit at a vertex as active on the call stack.
-      # @param vertex [Vertex] The vertex being crossed.
-      # @param edge [Edge] The edge that the walk has come from.
-      # @param state [WalkState]
-      def mark_crossed_exit(vertex, edge, state)
-        return unless vertex.is_a?(HexEdgeVertex)
-
-        hex_exit = vertex.exit_for_edge(edge)
-        return unless hex_exit
-
-        state.stack_exits << hex_exit
-      end
-
-      # Unmarks a HexExit at a vertex after their subtree returns.
-      # @param vertex [Vertex]
-      # @param edge [Edge]
-      # @param state [WalkState]
-      def unmark_crossed_exit(vertex, edge, state)
-        return unless vertex.is_a?(HexEdgeVertex)
-
-        state.stack_exits.delete(vertex.exit_for_edge(edge))
       end
 
       # Tests if there are any converging junctions in a set of edges.
@@ -614,8 +591,8 @@ module Engine
     # that alternate routes being explored from the same home node can
     # revisit the same vertices/edges that were explored earlier.
     class WalkState
-      # This accumulates the set of visited `[vertex, edge]` tuples that have
-      # been explored from a home node.
+      # This accumulates the set of visited locations that have been been
+      # explored from a home node.
       # @return [Set<Array<Vertex, Edge>]
       attr_reader :walk_explored
 
@@ -632,15 +609,23 @@ module Engine
       attr_reader :stack_nodes
 
       # The lifecycle of the {#walk_explored} visited set.
-      #   - `:whole_walk` (stage 2) — the visited set persists for the whole
-      #     walk from a home node: the hook is a no-op, so entries added on
-      #     `enter` survive after the subtree returns. Makes the walk linear on
-      #     plain track, but is unsound inside a loop (a cached subtree can hide
-      #     a valid route).
-      #   - `:route_local` (stage 3) — the visited set is cleared on backtrack:
-      #     the hook removes the entry, so each route re-explores the subtree
-      #     under its own context. Exact but exponential in the number of routes
-      #     through the loop; only used when stage 2 demonstrably under-reached.
+      #   - `:backtracking` (stage 1) — the visited set is keyed on the vertex
+      #     alone and the route stacks are not populated, so the route-local
+      #     gates ({#arrival_blocked?}, the track-reuse check in {#edge_blocked?},
+      #     converging-junction backtracking) no-op. Yields the lax upper bound
+      #     L: backtracking at converging junctions is allowed and towns may be
+      #     re-entered. Static gates (terminal track, blocked cities, reversal)
+      #     still fire.
+      #   - `:whole_walk` (stage 2) — the visited set is keyed on
+      #     `[vertex, incoming]` and persists for the whole walk from a home
+      #     node: the leave hook is a no-op, so entries survive after the
+      #     subtree returns. Linear on plain track, but unsound inside a loop
+      #     (a cached subtree can hide a valid route).
+      #   - `:route_local` (stage 3) — the visited set is keyed on
+      #     `[vertex, incoming]` and cleared on backtrack: the leave hook
+      #     removes the entry, so each route re-explores the subtree under its
+      #     own context. Exact but exponential in the number of routes through
+      #     the loop; only used when stage 2 demonstrably under-reached.
       # @return [Label]
       attr_reader :mode
 
@@ -670,14 +655,61 @@ module Engine
         @stack_nodes.clear
       end
 
+      def explored?(vertex, edge)
+        @walk_explored.include?(key(vertex, edge))
+      end
+
       def on_explored_enter(vertex, edge)
-        @walk_explored << [vertex, edge]
+        @walk_explored << key(vertex, edge)
       end
 
       def on_explored_leave(vertex, edge)
         return unless @mode == :route_local
 
-        @walk_explored.delete([vertex, edge])
+        @walk_explored.delete(key(vertex, edge))
+      end
+
+      # Route-stack push/pop. These are no-ops in `:backtracking` mode so the
+      # gates that read these stacks will always return false (testing against
+      # empty sets).
+
+      def push_node(vertex)
+        @stack_nodes << vertex unless @mode == :backtracking
+      end
+
+      def pop_node(vertex)
+        @stack_nodes.delete(vertex) unless @mode == :backtracking
+      end
+
+      def push_edge(edge)
+        @stack_edges << edge unless @mode == :backtracking
+      end
+
+      def pop_edge(edge)
+        @stack_edges.delete(edge) unless @mode == :backtracking
+      end
+
+      def push_exit(vertex, edge)
+        return if @mode == :backtracking
+        return unless vertex.is_a?(HexEdgeVertex)
+
+        hex_exit = vertex.exit_for_edge(edge)
+        @stack_exits << hex_exit if hex_exit
+      end
+
+      def pop_exit(vertex, edge)
+        return if @mode == :backtracking
+        return unless vertex.is_a?(HexEdgeVertex)
+
+        @stack_exits.delete(vertex.exit_for_edge(edge))
+      end
+
+      private
+
+      # The DFS visited set key. Stage 1 (`:backtracking`) keys on the vertex
+      # alone; stages 2 and 3 key on `[vertex, incoming edge]`.
+      def key(vertex, edge)
+        @mode == :backtracking ? vertex : [vertex, edge]
       end
     end
   end
