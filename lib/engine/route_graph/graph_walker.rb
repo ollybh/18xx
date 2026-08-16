@@ -45,12 +45,15 @@ module Engine
       # @param graph [RouteGraph::Graph] The route graph to be walked.
       # @param entity [Operator] The entity whose routes will be calculated by
       #   the GraphWalker.
+      # @param backtracking [Boolean] Whether backtracking at converging
+      #   junctions is permitted.
       # @param statistics [Boolean] If true then walk instrumentation statistics
       #   will be collected.
       # @return [RouteGraph::GraphWalker] The new GraphWalker.
-      def initialize(graph, entity, statistics: false)
+      def initialize(graph, entity, backtracking: false, statistics: false)
         @graph = graph
         @entity = entity
+        @backtracking = backtracking
         @graph_version = nil
         @stats = if statistics
                    {
@@ -340,14 +343,19 @@ module Engine
         @cache_nodes = nil
         @cache_hexes = nil
         @cache_hexes_edges = nil
+        found = nil
         start = time if @stats
 
         l = backtracking_walk
-        s = approximate_walk
-        frontier = l.vertices - s.vertices
-        @stats[:frontier] = frontier.size if @stats
+        if @backtracking || !converging_junctions?(l.edges)
+          found = l
+        else
+          s = approximate_walk
+          frontier = l.vertices - s.vertices
+          @stats[:frontier] = frontier.size if @stats
 
-        found = frontier.empty? ? s : resolve_walk
+          found = frontier.empty? ? s : resolve_walk
+        end
 
         @connected_vertices = found.vertices
         @connected_edges = found.edges
@@ -487,12 +495,6 @@ module Engine
       # would involve revisiting a converging junction where one of the other
       # edges has already been walked in the current route being explored.
       #
-      # A subclass that overrides this method to allow backtracking at
-      # converging junctions will also need to override {#mark_crossed_exit} and
-      # {#unmark_crossed_exit}. If this method allows revisiting HexExits then
-      # the base implementation of {#mark_crossed_exit} will attempt to add a
-      # duplicate to a set, leading to later corruption of the stack.
-      #
       # @param edge [RouteGraph::Edge]
       # @param from_vertex [RouteGraph::Vertex]
       # @param state [WalkState]
@@ -527,6 +529,13 @@ module Engine
         return unless vertex.is_a?(HexEdgeVertex)
 
         state.stack_exits.delete(vertex.exit_for_edge(edge))
+      end
+
+      # Tests if there are any converging junctions in a set of edges.
+      # @param edges [Set<Edge>]
+      # @return [Boolean]
+      def converging_junctions?(edges)
+        edges.any?(&:converges?)
       end
 
       # Checks whether the GraphWalker is synchronised with the current graph

@@ -84,6 +84,16 @@ module Engine
         else raise GameError, "Edge #{self} not linked to Vertex {vertex}"
         end
       end
+
+      # Tests whether either end of this edge is part of a converging junction.
+      # @return [Boolean]
+      def converges?
+        ends.any? do |vertex|
+          next false unless vertex.is_a?(HexEdgeVertex)
+
+          vertex.edge_converges?(self)
+        end
+      end
     end
   end
 end

@@ -209,8 +209,6 @@ module Engine
         edges.map(&:gauge).uniq.one?
       end
 
-      protected
-
       # Tests whether an edge is part of a converging junction at this vertex.
       # @param edge [Edge]
       # @return [Boolean]
