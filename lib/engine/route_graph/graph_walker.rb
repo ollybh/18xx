@@ -346,15 +346,22 @@ module Engine
         found = nil
         start = time if @stats
 
-        l = backtracking_walk
+        l = walk_from_homes(:backtracking)
         if @backtracking || !converging_junctions?(l.edges)
           found = l
         else
-          s = approximate_walk
+          s = walk_from_homes(:whole_walk)
           frontier = l.vertices - s.vertices
           @stats[:frontier] = frontier.size if @stats
 
-          found = frontier.empty? ? s : resolve_walk
+          # TODO: The route local walk is a brute-force approach to finding the
+          # correct set of reachable vertices and edges. It will always work but
+          # has potentially exponential time complexity. It is unlikely that
+          # this can be avoided in all cases, but there might be ways to take
+          # the difference between the stage 1 and stage 2 walks (the frontier
+          # vertices/edges), break them into subgraphs and test whether they are
+          # reachable.
+          found = frontier.empty? ? s : walk_from_homes(:route_local)
         end
 
         @connected_vertices = found.vertices
@@ -367,77 +374,17 @@ module Engine
         @stats[:time] = time - start if @stats
       end
 
-      # Stage 1 walk: backtracking allowed.
-      #
-      # A simplified walk that does not prevent backtracking at converging
-      # junctions. It returns the correct set of reachable vertices and edges
-      # if no converging junctions are found, or when the walker permits
-      # backtracking (e.g. for token placement). In other cases it may allow
-      # illegal routes through converging junctions and include vertices and
-      # edges that should not be reachable.
-      #
-      # Implemented as a {#dfs} walk with a `:backtracking` {WalkState}: the
-      # route-local stacks are not populated (so the route-local gates no-op
-      # and converging backtracking is allowed) and the visited set is keyed on
-      # the vertex alone. The static gates ({#edge_blocked?}'s terminal spur,
-      # {#departure_blocked?}'s blocked-city and terminal-through-node rules)
-      # still fire.
-      #
+      # Runs the DFS algorithm starting at each of @entity's home nodes.
       # @see #walk!
-      # @return [Found] The sets of vertices and edges reachable using this walk
-      #   algorithm.
-      def backtracking_walk
+      # @param stage [Label] The label for the stage whose walk is being carried
+      #   out. Passed to {RouteState#initialize}.
+      # @return [Found] The sets of vertices and edges found.
+      def walk_from_homes(stage)
         found = Found.new
-        state = WalkState.new(:backtracking)
-        home_vertices.each do |home|
+        state = WalkState.new(stage)
+        home_vertices.each do |vertex|
           state.reset!
-          dfs(home, nil, state, found)
-        end
-        found
-      end
-
-      # Stage 2: the fast route-aware walk.
-      #
-      # Runs the DFS once per home node with a whole-walk `[vertex, incoming]`
-      # visited set and route stacks of hex exits, nodes and edges to check
-      # route validity. Linear time complexity but can under-report if nested
-      # loops poison the DFS visited set.
-      #
-      # @see #walk!
-      # @return [Found] The sets of vertices and edges reachable using this walk
-      #   algorithm.
-      def approximate_walk
-        found = Found.new
-        state = WalkState.new(:whole_walk)
-        home_vertices.each do |home|
-          state.reset!
-          dfs(home, nil, state, found)
-        end
-        found
-      end
-
-      # Stage 3: exact route resolution.
-      #
-      # Runs the DFS with a `[vertex, incoming]` visited set that is cleared on
-      # backtrack, so each route will fully explore subtrees with its own
-      # context, avoiding the risk of visited set poisoning in the stage 2 walk.
-      #
-      # @todo This is a brute-force approach to finding the correct set of
-      # reachable vertices and edges. It will always work but has potentially
-      # exponential time complexity. It is unlikely that this can be avoided in
-      # all cases, but there might be ways to take the difference between the
-      # stage 1 and stage 2 walks (the frontier vertices/edges), break them into
-      # subgraphs and test whether they are reachable.
-      #
-      # @see #walk!
-      # @return [Found] The sets of vertices and edges reachable using this walk
-      #   algorithm.
-      def resolve_walk
-        found = Found.new
-        state = WalkState.new(:route_local)
-        home_vertices.each do |home|
-          state.reset!
-          dfs(home, nil, state, found)
+          dfs(vertex, nil, state, found)
         end
         found
       end
