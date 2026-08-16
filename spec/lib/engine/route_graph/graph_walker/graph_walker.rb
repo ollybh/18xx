@@ -60,6 +60,53 @@ module Engine
           expect(walker.connected_nodes).to be_empty
         end
       end
+
+      describe 'a triangle with blocked cities' do
+        # A test to make sure that a path between two cities is not reachable,
+        # even when there is a route to both cities.
+        #
+        # The layout is three cities in a triangle: A1, A3 and B2. A1 (α's home)
+        # has track to A3 and B2. A3 and B2 are each tokened by β, so both block
+        # α. The track between A3 and B2 is not reachable.
+        let(:hexes) { { white: { %w[A1 A3 B2] => '' } } }
+        let(:tiles) { { '5' => 3 } }
+
+        before do
+          beta = game.corporation_by_id('β')
+          lay_tile('A1', '5', 5, 0)
+          lay_tile('A3', '5', 3, 1)
+          lay_tile('B2', '5', 1, 2)
+          hex('A1').tile.cities.first.place_token(alpha, alpha.next_token, free: true)
+          hex('A3').tile.cities.first.place_token(beta, beta.next_token, free: true)
+          hex('B2').tile.cities.first.place_token(beta, beta.next_token, free: true)
+        end
+
+        it 'reaches all three cities' do
+          expect(walker.connected_nodes).to contain_exactly(
+            hex('A1').tile.cities.first,
+            hex('A3').tile.cities.first,
+            hex('B2').tile.cities.first
+          )
+        end
+
+        it 'includes the A1<->A3 paths' do
+          a1_a3 = hex('A1').tile.paths.find { |p| p.exits.include?(0) }
+          a3_a1 = hex('A3').tile.paths.find { |p| p.exits.include?(3) }
+          expect(walker.connected_paths).to include(a1_a3, a3_a1)
+        end
+
+        it 'includes the A1<->B2 paths' do
+          a1_b2 = hex('A1').tile.paths.find { |p| p.exits.include?(5) }
+          b2_a1 = hex('B2').tile.paths.find { |p| p.exits.include?(2) }
+          expect(walker.connected_paths).to include(a1_b2, b2_a1)
+        end
+
+        it 'excludes the B2<->A3 paths' do
+          b2_a3 = hex('B2').tile.paths.find { |p| p.exits.include?(1) }
+          a3_b2 = hex('A3').tile.paths.find { |p| p.exits.include?(4) }
+          expect(walker.connected_paths).not_to include(b2_a3, a3_b2)
+        end
+      end
     end
   end
 end
